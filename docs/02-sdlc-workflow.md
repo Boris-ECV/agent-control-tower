@@ -116,6 +116,7 @@ Gate 是狀態轉換上的可切換閘門。定義於 `config/gates.yaml`。
 ## 5. Blocked 協議
 
 - 進入 Blocked 必須同時：留言寫明阻塞原因 + 需要什麼才能解除 + 關聯的 HUMAN-INPUT 工單（若因缺人類輸入）。
+- **建立 HUMAN-INPUT 工單時，Jira 標題（summary）本身必須以 `[HUMAN-INPUT]` 開頭**，不可只寫在描述內容裡——人類常只掃看板標題列表，沒有標記會讓待回答的問題淹沒在一般工單中（見 `templates/ticket-human-input.md`）。
 - Orchestrator 每個 session 檢視所有 Blocked 工單：可解除就解除；Blocked 超過 3 天的工單必須出現在 session 報告的醒目位置。
 
 ## 6. 拆分規則（Story 過大時）
