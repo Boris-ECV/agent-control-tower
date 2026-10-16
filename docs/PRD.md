@@ -49,3 +49,23 @@
 
 **規模預估**
 <= 1 開發日。判斷為機械式搬移 verify.py 既有邏輯，非新邏輯設計；若搬移本身超出預期，建議拆分為「成本類對帳」與「錯誤率+延遲類對帳」兩票。
+
+## SDLCCT-12 — Agent registry store
+
+**使用者故事**
+身為 BFF 的開發者，我需要一份以 `seed/catalog.py` 的 AGENTS 為唯一事實來源、可查詢的 Agent registry（欄位含 key、display、dept、dept_code、owner、budget、registered），使 Portal 的 Agent 清冊畫面與異常偵測能查到每個 Opik project 對應的顯示名、部門、負責人、月預算，以及是否已登錄。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 讀取 registry 回傳全部 9 個 Agent 及其完整欄位
+2. 可查詢並區分「有花費但未登錄」的治理缺口案例（temp_supplier_scraper）
+3. registry 的種子資料由 catalog.py 匯出，而非手動重複維護
+
+**範圍外**
+- 異常偵測／比對邏輯（屬 E4）
+- 預算超支告警
+- 新增或修改劇本內容
+- 與治理查詢無關的模擬資料生成欄位
+- 寫入介面是否實作，留給 G1b 架構師判斷
+
+**規模預估**
+<= 1 開發日
