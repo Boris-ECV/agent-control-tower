@@ -178,3 +178,49 @@
 
 **規模預估**
 <= 1 開發日
+
+## SDLCCT-23 — Guard seed generator writes against existing-data overwrite
+
+**使用者故事**
+身為維護 seed/generate.py 的開發者，我需要 main() 既有的「已存在資料拒絕覆寫、--force 可明確繞過」防護邏輯有自動化測試覆蓋，讓這個落實 CONSTITUTION.md 原則的程式碼不會在未來修改中被意外破壞而不被發現。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 無 --write 時只落 dry-run manifest，完全不觸碰後端
+2. 有既存 project 且未帶 --force 時拒絕寫入（回傳碼 2）
+3. 有既存 project 且帶 --force 時正常送出
+4. 無既存 project 時帶 --force 為 no-op，行為與不帶 --force 相同
+
+**範圍外**
+- 不修改 generate.py::main() 的防護邏輯本身
+- 不修改 catalog.py 情境內容
+- 不涉及 Portal/BFF/Agent 清冊資料庫
+- 不涉及伺服器或部署
+- 不測試 generate()/Collector/cohorts() 本身（已有既有測試覆蓋）
+- 不針對 manifest 檔案內容做斷言
+
+**規模預估**
+<= 1 開發日
+
+## SDLCCT-26 — Convert preflight.py pricing reconciliation into a skip-if-no-backend integration test
+
+**使用者故事**
+身為維運此 seed 工具的工程師，我想要把 preflight.py 的定價對帳邏輯轉成可重跑的 pytest 整合測試，以便能像 SDLCCT-8 的 test_reconciliation.py 一樣，在有真實 Opik 後端時驗證定價正確性、無後端時乾淨略過，不再需要手動執行腳本。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 未設定 OPIK_BASE_URL 時乾淨略過（SKIPPED）
+2. 有定價的模型，實際成本與期望成本一致時測試通過（容差 < 1e-9）
+3. 不在定價表中的模型，成本為 None 或 0 時測試通過
+4. 某模型實際成本超出容差時測試失敗並指出是哪個模型
+5. 無論測試成功或失敗，throwaway 專案都會被清除
+
+**範圍外**
+- preflight.py 腳本本身是否繼續保留可獨立執行留待設計文件決定
+- 是否需要額外清理機制留待設計文件決定
+- 不修改 generate.py 或情境內容
+- 不涉及 Portal/BFF/Agent 清冊資料庫
+- 不涉及伺服器或部署
+- 不在 CI 中啟用此測試
+- 不要求重複利用 verify.py 的 metric/parse helper
+
+**規模預估**
+<= 1 開發日
