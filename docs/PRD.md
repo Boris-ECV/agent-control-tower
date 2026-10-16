@@ -133,3 +133,26 @@
 
 **規模預估**
 <= 1 開發日
+
+## SDLCCT-15 — Opik read client: workspace/project summary endpoints
+
+**使用者故事**
+身為 Portal/BFF 開發者，我需要延續 SDLCCT-10 已建立的共用 Opik 唯讀客戶端慣例（明確 project id 強制、型別化錯誤、Comet-Workspace 標頭、SDLCCT-9 演示錨點日），把 `/workspaces/costs`、`/projects/stats` 這兩個已在 seed/verify.py 驗證過的摘要端點封裝起來，使之後 Portal 畫面（E3）需要的工作區成本、專案統計資料都能安全重用同一套規則，不會因為忘記傳 project id 而把已刪除專案的殘留資料一併加總，也不會把查詢失敗誤顯示成「沒有花費/沒有資料」。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 未傳入 project id 時拒絕查詢（兩個端點皆適用），不送出 HTTP 請求
+2. 傳入明確 project id 成功取得對應資料；`/projects/stats` 並確認不混入回應中其他未被要求的專案
+3. 後端 HTTP 錯誤、逾時、非預期格式時明確拋出型別化錯誤，不回傳 0 或空值
+4. 每次請求都帶上 Comet-Workspace 標頭
+5. 查詢時間窗以演示錨點日（SDLCCT-9）為基準，而非系統時鐘
+
+**範圍外**
+- 不對 Opik 執行任何寫入
+- 不新增或變更 Portal 對外的 HTTP 路由
+- `/projects/{id}/kpi-cards`（repo 內無已驗證形狀，已移出，另開 SDLCCT-18）
+- `/spans/stats` 與 trace 搜尋端點（SDLCCT-16/17）
+- 快取（留給未排程的後續故事）
+- BFF/API 層技術選型（已於 SDLCCT-10 的 G1b 決定）
+
+**規模預估**
+<= 1 開發日
