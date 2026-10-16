@@ -22,6 +22,7 @@ import httpx
 # the design doc's decision #3 explicitly anticipates adjusting the import
 # path when copying the module into bff/.
 from anchor import get_anchor_date  # noqa: F401  (re-exported for callers)
+from cache import TTLCache
 
 BASE_URL_ENV_VAR = "OPIK_BASE_URL"
 WORKSPACE_ENV_VAR = "OPIK_WORKSPACE"
@@ -199,3 +200,89 @@ def _iso(ts: datetime) -> str:
     from datetime import UTC
 
     return ts.astimezone(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+_METRICS_CACHE_TTL_SECONDS = 60.0
+_metrics_cache = TTLCache(ttl_seconds=_METRICS_CACHE_TTL_SECONDS)
+
+
+def _metrics_cache_key(
+    project_ids: Sequence[str],
+    metric_type: MetricType,
+    *,
+    interval: Interval,
+    interval_start: datetime,
+    interval_end: datetime,
+    breakdown: Breakdown | None,
+) -> tuple:
+    breakdown_key = (
+        (breakdown.field.value, breakdown.metadata_key) if breakdown is not None else None
+    )
+    return (
+        tuple(sorted(project_ids)),  # order-insensitive; see decision below
+        metric_type.value,
+        interval.value,
+        _iso(interval_start),
+        _iso(interval_end),
+        breakdown_key,
+    )
+
+
+def get_project_metrics_cached(
+    project_ids: Sequence[str],
+    metric_type: MetricType,
+    *,
+    interval: Interval,
+    interval_start: datetime,
+    interval_end: datetime,
+    breakdown: Breakdown | None = None,
+) -> dict[str, tuple[MetricSeries, ...]]:
+    """Cached wrapper around get_project_metrics() (SDLCCT-11).
+
+    Same signature, same return type, same exceptions as
+    get_project_metrics() -- a caller can swap between the two freely.
+    Cache read/write failures never change the result or swallow a
+    backend exception: see "快取失敗隔離" decision below.
+    """
+    key = _metrics_cache_key(
+        project_ids,
+        metric_type,
+        interval=interval,
+        interval_start=interval_start,
+        interval_end=interval_end,
+        breakdown=breakdown,
+    )
+
+    try:
+        hit, cached_value = _metrics_cache.get(key)
+    except Exception:
+        hit, cached_value = False, None  # treat read failure as a miss (AC6)
+
+    if hit:
+        return cached_value
+
+    # NOT inside a try/except: any OpikHTTPError / OpikTimeoutError /
+    # OpikResponseFormatError / OpikConfigError / MissingProjectIdsError
+    # raised here must propagate to the caller completely unchanged.
+    result = get_project_metrics(
+        project_ids,
+        metric_type,
+        interval=interval,
+        interval_start=interval_start,
+        interval_end=interval_end,
+        breakdown=breakdown,
+    )
+
+    try:
+        _metrics_cache.set(key, result)
+    except Exception:
+        pass  # write failure must not affect the result just obtained (AC5)
+
+    return result
+
+
+def invalidate_project_metrics_cache() -> None:
+    """Manual invalidation hook (clears all cached entries). Exposed for
+    tests and for any future admin/debug entry point; not wired to any
+    HTTP route in this Story (no such route exists yet)."""
+    _metrics_cache.invalidate_all()
