@@ -30,3 +30,7 @@
 {"ts": "2026-10-17T01:27:44Z", "event": "gate_review", "ticket": "SDLCCT-11", "agent": "orch-20261016-k3f9", "data": {"gate": "G1b", "mode": "auto", "result": "pass"}}
 {"ts": "2026-10-17T01:36:15Z", "event": "gate_review", "ticket": "SDLCCT-11", "agent": "orch-20261016-k3f9", "data": {"gate": "G2", "mode": "auto", "result": "pass"}}
 {"ts": "2026-10-17T01:36:54Z", "event": "stage_transition", "ticket": "SDLCCT-11", "agent": "orch-20261016-k3f9", "data": {"to": "Done", "reopens": 0}}
+{"ts": "2026-10-17T01:47:20Z", "event": "gate_review", "ticket": "SDLCCT-15", "agent": "orch-20261016-k3f9", "data": {"gate": "G1", "mode": "auto", "result": "pass", "note": "3rd endpoint (kpi-cards) split out to SDLCCT-18: no validated shape evidence, no live backend to preflight"}}
+{"ts": "2026-10-17T01:54:33Z", "event": "gate_review", "ticket": "SDLCCT-15", "agent": "orch-20261016-k3f9", "data": {"gate": "G1b", "mode": "auto", "result": "pass"}}
+{"ts": "2026-10-17T03:41:52Z", "event": "gate_review", "ticket": "SDLCCT-15", "agent": "orch-20261016-k3f9", "data": {"gate": "G2", "mode": "auto", "result": "pass"}}
+{"ts": "2026-10-17T03:42:30Z", "event": "stage_transition", "ticket": "SDLCCT-15", "agent": "orch-20261016-k3f9", "data": {"to": "Done", "reopens": 0}}
