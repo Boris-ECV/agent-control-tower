@@ -224,3 +224,50 @@
 
 **規模預估**
 <= 1 開發日
+
+## SDLCCT-24 — Unit-test client.py's pure helpers and required-env-var contract
+
+**使用者故事**
+身為維護 seed 腳本的開發者，我想要 client.py 的純邏輯函式（iso()、uuid7_at()、load_prices()）與 base_url() 的必填環境變數契約都有單元測試覆蓋，以便能安全重構/變更這些共用函式，並確認「未設定 OPIK_BASE_URL 時應直接失敗、不送網路請求、不悄悄回退預設值」這條原則有可驗證的保證。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. iso() 將 datetime 轉為帶毫秒精度、Z 結尾的 UTC ISO8601 字串
+2. uuid7_at() 依傳入時間遞增產生可字典排序的字串
+3. load_prices() 正確解析 model_prices.snapshot.json 並回傳 Decimal 區間
+4. base_url() 在 OPIK_BASE_URL 未設定時以 SystemExit 失敗且不送出任何請求
+5. base_url() 在 OPIK_BASE_URL 為空字串或僅含空白時同樣以 SystemExit 失敗
+6. base_url() 在設定有效值時原樣回傳（去除尾端斜線）
+
+**範圍外**
+- 不修改資料產生器情境內容
+- 不涉及 Portal/BFF/Agent 清冊資料庫
+- 不涉及伺服器或部署
+- 不測試 api()（薄組合，測試它等同重複測試 base_url()）
+- 不處理 save()/load()/project_ids()
+- coverage omit 清單異動為本票產出的一部分
+
+**規模預估**
+<= 1 開發日
+
+## SDLCCT-25 — Unit-test ingest.py's retry-and-backoff logic with a mocked transport
+
+**使用者故事**
+身為維護 seed/ingest.py 的開發者，我想要用 httpx.MockTransport（或等效 monkeypatch）為 post_all() 的重試/退避邏輯補上單元測試，以便在不呼叫真實 Opik 伺服器的情況下，確保失敗情境明確出錯，避免未來重構時悄悄破壞重試行為。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 前兩次 503 後第三次 200 成功
+2. 非可重試狀態碼（400）立即失敗
+3. 連續 5 次失敗後放棄
+4. 第 5 次（最後一次嘗試）成功仍算數
+5. 第一次就成功，無延遲
+6. 連線層例外（httpx.TransportError）與 HTTP 狀態碼共用重試機制
+
+**範圍外**
+- 不修改資料產生器情境內容
+- 不涉及 Portal/BFF/Agent 清冊資料庫
+- 不涉及伺服器或部署
+- 不測試 size 參數的分批（chunking）邏輯本身
+- 不測試 print 進度輸出
+
+**規模預估**
+<= 1 開發日
