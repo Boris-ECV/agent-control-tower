@@ -1,0 +1,1 @@
+{"ts": "2026-10-16T09:00:19Z", "event": "gate_review", "ticket": "SDLCCT-7", "agent": "orch-20261016-k3f9", "data": {"gate": "G1", "mode": "auto", "result": "approved", "criteria_results": {"no_human_gate_label": "pass", "gherkin_present": "pass", "out_of_scope_declared": "pass", "no_open_questions": "pass", "size_ok": "pass"}}}
