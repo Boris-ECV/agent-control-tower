@@ -39,3 +39,11 @@
 {"ts": "2026-10-16T20:06:48Z", "event": "gate_review", "ticket": "SDLCCT-17", "agent": "orch-20261016-k3f9", "data": {"gate": "G2", "mode": "auto", "result": "pass"}}
 {"ts": "2026-10-16T20:08:57Z", "event": "stage_transition", "ticket": "SDLCCT-17", "agent": "orch-20261016-k3f9", "data": {"to": "Done", "reopens": 0}}
 {"ts": "2026-10-17T04:20:00Z", "event": "session_end", "ticket": null, "agent": "orch-20261016-k3f9", "data": {"tickets_touched": ["SDLCCT-11", "SDLCCT-15", "SDLCCT-16", "SDLCCT-17", "SDLCCT-18", "SDLCCT-19", "SDLCCT-20", "SDLCCT-21", "SDLCCT-22"], "stories_completed_this_session": 3, "stories_split": 2, "reopens": 0, "human_input_tickets_created": 3, "gates_processed": 9, "human_interventions": 0, "escalations_used": 0, "prs_opened": 9, "prs_merged": 9, "prs_pending_human_review": 2}}
+{"ts": "2026-10-16T20:26:41Z", "event": "gate_review", "ticket": "SDLCCT-23", "agent": "orch-20261016-k3f9", "data": {"gate": "G1", "mode": "auto", "result": "pass", "note": "split out of E1 epic decomposition"}}
+{"ts": "2026-10-16T20:34:20Z", "event": "gate_review", "ticket": "SDLCCT-23", "agent": "orch-20261016-k3f9", "data": {"gate": "G1b", "mode": "auto", "result": "pass"}}
+{"ts": "2026-10-16T20:49:08Z", "event": "gate_review", "ticket": "SDLCCT-23", "agent": "orch-20261016-k3f9", "data": {"gate": "G2", "mode": "auto", "result": "pass"}}
+{"ts": "2026-10-16T20:51:39Z", "event": "stage_transition", "ticket": "SDLCCT-23", "agent": "orch-20261016-k3f9", "data": {"to": "Done", "reopens": 0}}
+{"ts": "2026-10-16T20:26:42Z", "event": "gate_review", "ticket": "SDLCCT-26", "agent": "orch-20261016-k3f9", "data": {"gate": "G1", "mode": "auto", "result": "pass", "note": "split out of E1 epic decomposition"}}
+{"ts": "2026-10-16T20:34:21Z", "event": "gate_review", "ticket": "SDLCCT-26", "agent": "orch-20261016-k3f9", "data": {"gate": "G1b", "mode": "auto", "result": "pass"}}
+{"ts": "2026-10-16T20:49:11Z", "event": "gate_review", "ticket": "SDLCCT-26", "agent": "orch-20261016-k3f9", "data": {"gate": "G2", "mode": "auto", "result": "pass"}}
+{"ts": "2026-10-16T20:51:41Z", "event": "stage_transition", "ticket": "SDLCCT-26", "agent": "orch-20261016-k3f9", "data": {"to": "Done", "reopens": 0}}
