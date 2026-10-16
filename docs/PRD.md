@@ -156,3 +156,25 @@
 
 **規模預估**
 <= 1 開發日
+
+## SDLCCT-17 — Opik read client: trace search endpoint (sort by cost)
+
+**使用者故事**
+身為 Portal/BFF 開發者，我需要一個封裝好的唯讀函式可以查詢「依 total_estimated_cost 排序」的 trace 清單，使之後上層（Portal 畫面或 BFF 其他模組）可以組出「最貴 trace」清單類的功能，而不必各自重新處理 Opik 的 /v1/private/traces 請求細節、Comet-Workspace 標頭與錯誤處理。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 查詢某專案依 total_estimated_cost 由高到低排序的 trace 清單
+2. 未指定 project_name 時拒絕查詢、不送出 HTTP 請求
+3. 後端非 2xx 回應或逾時時明確拋型別化錯誤，不回傳空清單掩蓋
+4. 一律帶 Comet-Workspace 標頭
+
+**範圍外**
+- trace 樹（span tree）組裝邏輯放哪一層（留給 G1b 架構師）
+- 依 metadata 篩選的 trace 搜尋（無已驗證形狀，已移出，另開 SDLCCT-20）
+- /v1/private/spans 本身的查詢
+- 對 Opik 執行任何寫入
+- 快取（TTLCache 已存在於 SDLCCT-11，本票不套用）
+- 多頁分頁迴圈
+
+**規模預估**
+<= 1 開發日
