@@ -89,3 +89,25 @@
 
 **規模預估**
 <= 1 開發日
+## SDLCCT-10 — Opik read client: project metrics endpoints (explicit project ids, explicit error handling)
+
+**使用者故事**
+身為 Portal/BFF 開發者，我需要一層可重用、唯讀的 Opik 查詢客戶端，涵蓋「專案指標」端點（COST、TRACE_COUNT、TRACE_ERROR_RATE、SPAN_COUNT、SPAN_TOKEN_USAGE，可選擇依 metadata key / tags / name 拆分），且強制呼叫端明確傳入 project id、對後端失敗明確拋出錯誤、並使用 SDLCCT-9 的演示錨點日作為時間窗基準，使之後所有畫面與資料存取都能安全重用同一套規則，不會因為忘記傳 project id 而把已刪除專案的殘留資料一併加總，也不會把查詢失敗誤顯示成「沒有花費」。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 未傳入 project id 時直接拒絕，不送出 HTTP 請求
+2. 傳入明確單一或多個 project id 成功取得指標
+3. 後端 HTTP 錯誤、逾時、非預期格式時明確拋出錯誤，不回傳 0 或空值
+4. 每次請求都帶上 Comet-Workspace 標頭
+5. 查詢時間窗以演示錨點日（SDLCCT-9）為基準，而非系統時鐘
+6. 成本缺少必要欄位時保留為 null，不可當作 0
+7. 可依 metadata key、tags 或 name 拆分指標；支援全部五種指標名稱
+
+**範圍外**
+- 不對 Opik 執行任何寫入
+- 不含任何快取（SDLCCT-11 處理）
+- /workspaces/costs、/projects/stats、/projects/{id}/kpi-cards、/spans/stats、trace 搜尋端點（已拆分為 SDLCCT-15/16/17）
+- BFF/API 層的語言與框架選擇（延至本票 G1b）
+
+**規模預估**
+<= 1 開發日（原票已拆分為 4 張 Story）
