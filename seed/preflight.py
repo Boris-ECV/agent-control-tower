@@ -4,6 +4,8 @@ import sys
 import time
 from datetime import UTC, datetime, timedelta
 
+import httpx
+
 from catalog import MODELS
 from client import api, iso, load_prices, uuid7_at
 
@@ -11,11 +13,21 @@ PROJECT = "preflight_pricing"
 PROMPT, COMPLETION = 24000, 1500
 
 
-def main() -> int:
-    c = api()
-    prices = load_prices(MODELS)
-    cases = list(MODELS.items()) + [("gemini-2.5-pro", "google_ai"), ("gemini-2.5-flash", "google_ai"),
+def pricing_cases() -> list[tuple[str, str]]:
+    """Pure, no I/O. Same case list the script has always exercised: all
+    MODELS plus the gemini-2.5-pro/flash "google_ai" provider alias plus the
+    deliberately-unpriced "unknown-model-x"."""
+    return list(MODELS.items()) + [("gemini-2.5-pro", "google_ai"), ("gemini-2.5-flash", "google_ai"),
                                     ("unknown-model-x", "openai")]
+
+
+def seed_and_collect(
+    c: httpx.Client, cases: list[tuple[str, str]],
+    *, attempts: int = 20, delay: float = 3.0,
+) -> dict[str, dict]:
+    """Write trace+span batches for `cases` (write failures raise), then poll
+    GET /v1/private/spans up to `attempts` times until every case shows up or
+    attempts run out. Returns {f"{model}@{provider}": span_dict}."""
     base = datetime.now(UTC) - timedelta(minutes=5)
     traces, spans = [], []
     for i, (model, provider) in enumerate(cases):
@@ -33,28 +45,56 @@ def main() -> int:
     assert c.post("/v1/private/spans/batch", json={"spans": spans}).status_code == 204
 
     got = {}
-    for _ in range(20):
+    for _ in range(attempts):
         r = c.get("/v1/private/spans", params={"project_name": PROJECT, "size": 50})
         got = {s["name"]: s for s in r.json().get("content", [])} if r.status_code == 200 else {}
         if len(got) == len(cases):
             break
-        time.sleep(3)
+        time.sleep(delay)
+    return got
 
-    ok_all = True
-    for model, provider in cases:
-        s = got.get(f"{model}@{provider}")
-        cost = s.get("total_estimated_cost") if s else None
-        if model in prices:
-            p_in, p_out = prices[model]
-            exp = float(p_in * PROMPT + p_out * COMPLETION)
-            ok = cost is not None and abs(float(cost) - exp) < 1e-9
-        else:
-            exp, ok = None, cost in (None, 0)
-        ok_all &= ok
-        print(f"[{'OK ' if ok else 'BAD'}] {model:<20}{provider:<18} cost={cost} expected={exp}")
 
-    pid = {p["name"]: p["id"] for p in c.get("/v1/private/projects", params={"size": 200}).json()["content"]}[PROJECT]
-    print("delete preflight project:", c.post("/v1/private/projects/delete", json={"ids": [pid]}).status_code)
+def evaluate_case(
+    model: str, provider: str, got: dict[str, dict], prices: dict,
+) -> tuple[float | None, float | None, bool]:
+    """Pure, no I/O. Returns (cost, expected, ok)."""
+    s = got.get(f"{model}@{provider}")
+    cost = s.get("total_estimated_cost") if s else None
+    if model in prices:
+        p_in, p_out = prices[model]
+        exp = float(p_in * PROMPT + p_out * COMPLETION)
+        ok = cost is not None and abs(float(cost) - exp) < 1e-9
+    else:
+        exp, ok = None, cost in (None, 0)
+    return cost, exp, ok
+
+
+def delete_project(c: httpx.Client, name: str) -> int | None:
+    """Look up the project id by name; no-op (returns None, never raises) if
+    it isn't found. Otherwise calls /v1/private/projects/delete and returns
+    that call's status code."""
+    pid = {p["name"]: p["id"] for p in c.get("/v1/private/projects", params={"size": 200}).json()["content"]}.get(name)
+    if pid is None:
+        return None
+    return c.post("/v1/private/projects/delete", json={"ids": [pid]}).status_code
+
+
+def main() -> int:
+    c = api()
+    prices = load_prices(MODELS)
+    cases = pricing_cases()
+    try:
+        got = seed_and_collect(c, cases)
+
+        ok_all = True
+        for model, provider in cases:
+            cost, exp, ok = evaluate_case(model, provider, got, prices)
+            ok_all &= ok
+            print(f"[{'OK ' if ok else 'BAD'}] {model:<20}{provider:<18} cost={cost} expected={exp}")
+    finally:
+        status = delete_project(c, PROJECT)
+        print("delete preflight project:", status)
+
     return 0 if ok_all else 1
 
 
