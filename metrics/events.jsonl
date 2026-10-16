@@ -26,3 +26,7 @@
 {"ts": "2026-10-17T01:10:11Z", "event": "gate_review", "ticket": "SDLCCT-10", "agent": "orch-20261016-k3f9", "data": {"gate": "G2", "mode": "escalated-to-manual", "result": "approved", "escalation_reasons": ["needs-human-gate label", "protected_paths_untouched: .github/workflows/ci.yml"]}}
 {"ts": "2026-10-17T01:12:18Z", "event": "stage_transition", "ticket": "SDLCCT-10", "agent": "orch-20261016-k3f9", "data": {"to": "Done", "reopens": 1}}
 {"ts": "2026-10-17T01:15:00Z", "event": "session_end", "ticket": null, "agent": "orch-20261016-k3f9", "data": {"tickets_touched": ["SDLCCT-9", "SDLCCT-10", "SDLCCT-15", "SDLCCT-16", "SDLCCT-17"], "stories_completed_this_session": 2, "stories_split": 1, "reopens": 1, "human_input_tickets_created": 2, "gates_processed": 6, "human_interventions": 3, "escalations_used": 0, "prs_opened": 11, "prs_merged": 9, "prs_pending_human_review": 2}}
+{"ts": "2026-10-17T01:21:10Z", "event": "gate_review", "ticket": "SDLCCT-11", "agent": "orch-20261016-k3f9", "data": {"gate": "G1", "mode": "auto", "result": "pass"}}
+{"ts": "2026-10-17T01:27:44Z", "event": "gate_review", "ticket": "SDLCCT-11", "agent": "orch-20261016-k3f9", "data": {"gate": "G1b", "mode": "auto", "result": "pass"}}
+{"ts": "2026-10-17T01:36:15Z", "event": "gate_review", "ticket": "SDLCCT-11", "agent": "orch-20261016-k3f9", "data": {"gate": "G2", "mode": "auto", "result": "pass"}}
+{"ts": "2026-10-17T01:36:54Z", "event": "stage_transition", "ticket": "SDLCCT-11", "agent": "orch-20261016-k3f9", "data": {"to": "Done", "reopens": 0}}
