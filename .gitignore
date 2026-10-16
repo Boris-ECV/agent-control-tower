@@ -1,0 +1,32 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.venv/
+venv/
+*.egg-info/
+node_modules/
+dist/
+build/
+.env
+.env.*
+!.env.example
+cdk.out/
+test-results/
+.next/
+.tmp/
+
+# Secrets and generated artefacts that must never be committed
+*.pem
+*.key
+seed/out/
+
+# This machine has a global git excludesfile with
+# **/.claude/settings.local.json (Claude Code's usual "local, not
+# version-controlled" convention). We deliberately want this file
+# tracked in THIS repo -- it's the reusable, non-path-bound permission
+# baseline for the template -- so negate it here to override the
+# global rule for this repo specifically.
+!.claude/settings.local.json

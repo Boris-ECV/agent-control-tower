@@ -1,0 +1,98 @@
+# ============================================================
+# Gate configuration — HUMAN-EDITABLE ONLY.
+# Agents MUST NOT modify this file. Orchestrator reads it at bootstrap.
+# mode: manual  -> orchestrator posts gate report, waits for human comment
+#                  "GATE APPROVED" or "GATE REJECTED: <reason>" on the ticket
+# mode: auto    -> orchestrator verifies all criteria, passes gate, logs evidence
+#
+# THIS PROJECT: all gates are `auto` by explicit human decision. Two
+# criteria below are escalation conditions (CLAUDE.md rule 10): when
+# `no_human_gate_label` or `protected_paths_untouched` fails, the gate is
+# NOT rejected - it is handled as `manual` instead.
+# ============================================================
+
+gates:
+  G1:
+    name: requirements-approved
+    transition: "Refining -> Designing"   # architecture module enabled: G1 now
+                                           # leads into Designing, not directly to
+                                           # Ready — see G1b and modules/architecture
+    mode: auto                # manual | auto
+    criteria:                 # ALL must pass (checked in both modes; in manual
+                              # mode they gate the report, human is final say)
+      - id: no_human_gate_label
+        check: "The ticket does not carry the label needs-human-gate"
+      - id: gherkin_present
+        check: "Requirement spec contains >= 1 Gherkin acceptance criterion"
+      - id: out_of_scope_declared
+        check: "Out-of-scope section is present and non-empty"
+      - id: no_open_questions
+        check: "Open-questions section is empty"
+      - id: size_ok
+        check: "Estimated size <= 1 dev-day, otherwise story must be split first"
+
+  G2:
+    name: merge-to-main
+    transition: "In Review -> Done (PR merge)"
+    mode: auto
+    criteria:
+      - id: no_human_gate_label
+        check: "The ticket does not carry the label needs-human-gate"
+      - id: protected_paths_untouched
+        check: |
+          The PR diff touches none of: .claude/, config/, templates/,
+          CONSTITUTION.md, project-profile.yaml, modules-enabled.yaml,
+          docs/00-*.md through docs/08-*.md, .github/workflows/.
+          A failure here is an escalation, not a rejection
+          (CLAUDE.md rule 10).
+      - id: pr_exists
+        check: "PR exists and targets main"
+      - id: ci_green
+        check: "All GitHub Actions status checks pass"
+      - id: reviewer_approve
+        check: "Reviewer verdict comment is APPROVE"
+      - id: checklist_complete
+        check: "Every item in review checklist has an explicit result"
+      - id: coverage_met
+        check: "Coverage >= profile.quality.coverage_threshold"
+      - id: e2e_declared_and_honored
+        check: |
+          Testing stage's e2e declaration (docs/02 §3.3) is present in
+          ticket comments. If declared "needs e2e": at least one
+          non-skipped Playwright test under tests/e2e/ was added/changed
+          in this PR's diff and is passing in CI. A skip-only placeholder
+          does not satisfy this — reject and send back to Testing.
+
+  G1b:
+    name: design-approved
+    module: architecture
+    transition: "Designing -> Ready"
+    mode: auto                # see docs/06 §5 for the usual graduation path;
+                              # this project starts at auto by human decision
+    criteria:
+      - id: no_human_gate_label
+        check: "The ticket does not carry the label needs-human-gate"
+      - id: design_doc_exists
+        check: "docs/design/<JIRA-KEY>.md exists, following templates/design-spec.md"
+      - id: interface_declared
+        check: "Interface/API contract section is non-empty (or explicitly 'N/A' with reason)"
+      - id: data_model_declared
+        check: "Data model section is non-empty (or explicitly 'no new data model')"
+      - id: no_open_design_questions
+        check: "Open design questions section is empty"
+      - id: ui_prototype_present
+        check: |
+          If the story adds or changes frontend UI, the design doc's
+          "UI 原型" section references a static, browser-openable
+          prototype file (e.g. docs/design/<JIRA-KEY>-prototype.html)
+          that exists in the PR/branch. If the story does not touch
+          frontend UI, this section explicitly states so with a reason
+          instead.
+
+# Module-provided gates are appended below by the module enablement
+# procedure (docs/05 §3). Example:
+# G3:
+#   name: deploy-to-production
+#   module: deployment
+#   mode: manual
+#   criteria: [...]
