@@ -47,3 +47,11 @@
 {"ts": "2026-10-16T20:34:21Z", "event": "gate_review", "ticket": "SDLCCT-26", "agent": "orch-20261016-k3f9", "data": {"gate": "G1b", "mode": "auto", "result": "pass"}}
 {"ts": "2026-10-16T20:49:11Z", "event": "gate_review", "ticket": "SDLCCT-26", "agent": "orch-20261016-k3f9", "data": {"gate": "G2", "mode": "auto", "result": "pass"}}
 {"ts": "2026-10-16T20:51:41Z", "event": "stage_transition", "ticket": "SDLCCT-26", "agent": "orch-20261016-k3f9", "data": {"to": "Done", "reopens": 0}}
+{"ts": "2026-10-16T20:57:46Z", "event": "gate_review", "ticket": "SDLCCT-24", "agent": "orch-20261016-k3f9", "data": {"gate": "G1", "mode": "auto", "result": "pass", "note": "split out of E1 epic decomposition"}}
+{"ts": "2026-10-17T00:05:57Z", "event": "gate_review", "ticket": "SDLCCT-24", "agent": "orch-20261016-k3f9", "data": {"gate": "G1b", "mode": "auto", "result": "pass"}}
+{"ts": "2026-10-17T00:50:59Z", "event": "gate_review", "ticket": "SDLCCT-24", "agent": "orch-20261016-k3f9", "data": {"gate": "G2", "mode": "auto", "result": "pass"}}
+{"ts": "2026-10-17T00:54:40Z", "event": "stage_transition", "ticket": "SDLCCT-24", "agent": "orch-20261016-k3f9", "data": {"to": "Done", "reopens": 0}}
+{"ts": "2026-10-16T20:57:47Z", "event": "gate_review", "ticket": "SDLCCT-25", "agent": "orch-20261016-k3f9", "data": {"gate": "G1", "mode": "auto", "result": "pass", "note": "split out of E1 epic decomposition"}}
+{"ts": "2026-10-17T00:05:58Z", "event": "gate_review", "ticket": "SDLCCT-25", "agent": "orch-20261016-k3f9", "data": {"gate": "G1b", "mode": "auto", "result": "pass"}}
+{"ts": "2026-10-17T00:51:00Z", "event": "gate_review", "ticket": "SDLCCT-25", "agent": "orch-20261016-k3f9", "data": {"gate": "G2", "mode": "auto", "result": "pass"}}
+{"ts": "2026-10-17T00:54:41Z", "event": "stage_transition", "ticket": "SDLCCT-25", "agent": "orch-20261016-k3f9", "data": {"to": "Done", "reopens": 0}}
