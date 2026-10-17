@@ -35,3 +35,26 @@ jobs:
       - name: Test + coverage gate
         if: hashFiles('seed/tests/**/*.py') != ''
         run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=60 -q
+
+  bff:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bff
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Syntax check
+        run: uv run python -m compileall -q .
+
+      - name: Test + coverage gate
+        if: hashFiles('bff/tests/**/*.py') != ''
+        run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=60 -q
