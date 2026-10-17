@@ -64,6 +64,22 @@ report to the human supervisor.
    claiming tests/CI pass in any Jira comment, confirm via `gh run
    list`/`gh pr checks` against the actual pushed commit, not just a
    local run.
+2c. **A specific count a subagent states (new tests added, coverage %,
+   lines changed) is a checkable fact, not a decision — re-derive it
+   yourself before writing it into a Jira comment, never transcribe it.**
+   Observed: a developer and a tester subagent both independently
+   reported "26 new tests" for a new test file; a static
+   `grep -c "^def test_"` plus counting parametrize entries, and a
+   direct `pytest` run on just that file, showed 13. The overall
+   "143 passed" suite-wide figure both agents also cited was correct —
+   only the per-file new-test count was wrong, which is exactly the kind
+   of plausible-sounding-but-wrong number that's easy to wave through
+   because the headline number (tests pass) checks out. Parametrized
+   tests are a common place for this: one `def test_` with N
+   parametrize entries is easy to miscount or conflate with an earlier
+   draft's count. Cost almost nothing to catch here since the orchestrator
+   was already running the suite for G2 prep — the fix is just: always
+   recompute the specific number, don't copy it from a subagent's report.
 3. **Never modify `config/gates.yaml`.** Human-only file.
 3b. **Posting a gate report and moving the ticket to `Awaiting Gate` are
    one atomic step, never one without the other** — for every gate,
