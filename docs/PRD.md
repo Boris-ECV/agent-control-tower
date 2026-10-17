@@ -271,3 +271,46 @@
 
 **規模預估**
 <= 1 開發日
+
+## SDLCCT-27 — Day-over-day baseline comparison helper + context-bloat detection rule
+
+**使用者故事**
+身為負責異常偵測邏輯的開發者，我想要一個可重用的「近N日基準比較」共用元件，並用它實作「avg prompt token/trace 持續攀升」（context bloat）規則，以便用 Demo 資料集中 maintenance_copilot 的真實攀升模式驗證規則能正確判定，且輸出含可解釋的基準/實際/偏離數字，供未來其他異常規則重用。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 純函式正確計算基準比較
+2. Demo 資料集中 context_bloat 被正確偵測（deviation_ratio 大於等於 1.30，依公式約1.9倍）
+3. 其餘 8 個 agent 不被誤報（deviation_ratio 小於 1.30）
+4. 輸出包含具體數字（baseline_value/actual_value/deviation_ratio/pct/baseline_days_used）
+5. 可用資料天數不足時明確反映、零資料時拋例外
+6. 門檻值邊界（恰為 1.30）視為異常
+
+**範圍外**
+- 不含畫面呈現（E3）
+- 不含自動處置/暫停 Agent
+- 不含 AI 產生說明文字
+- 不含 SPAN_TOKEN_USAGE 以外的拆解
+
+**規模預估**
+<= 1 開發日
+
+## SDLCCT-31 — Governance-gap (unregistered agent) anomaly detection rule
+
+**使用者故事**
+身為平台治理負責人，我想要系統交叉比對 seed/registry.py 的登錄狀態（registered/owner/budget）與 Opik 逐日花費紀錄，自動標記出未登錄、無負責人或無預算卻持續產生花費的 Agent，以便我能在人工審核前就先定位治理缺口，不必逐一手動比對 9 個 Agent 的登錄表與帳單。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 標記 temp_supplier_scraper 為治理缺口
+2. 8 個已登錄 Agent 不被誤報
+3. 輸出包含判斷依據的具體數字
+4. project_ids 為空時拋出例外
+5. Opik 無花費資料時仍可依 registry 旗標標記
+
+**範圍外**
+- 不含前端畫面呈現
+- 不含自動處置（停用/通知/工單）
+- 不含 AI 產生說明文字
+- 不含「逐日花費持續成長」獨立門檻值
+
+**規模預估**
+<= 1 開發日
