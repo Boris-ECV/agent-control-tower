@@ -507,3 +507,14 @@ the JSON is well-formed and the API call succeeds, so nothing errors;
 the mistake only surfaces if a human happens to read the rendered
 text closely. If escapes are unavoidable, re-read the field immediately
 after writing and visually check the CJK characters before moving on.
+
+A second, distinct source of the same symptom: text a subagent hands back
+(e.g. requirements-analyst's drafted spec) can itself contain stray
+Simplified-variant characters or an outright wrong-but-valid character
+mixed into otherwise-Traditional prose, even though no `\uXXXX` escape
+was involved anywhere in the pipeline. One observed case flipped the
+meaning of a sentence (「請另開工單」became「請別開工單」— "please open a
+separate ticket" became "please do NOT open a ticket"). Before pasting a
+subagent's drafted CJK text into any Jira field verbatim, visually
+proofread it end-to-end for this class of error — do not treat "the
+subagent said it's finalized" as proof the text is clean.
