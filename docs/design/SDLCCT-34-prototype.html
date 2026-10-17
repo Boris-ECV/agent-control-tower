@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>G1b 原型 — SDLCCT-34 Portal shell：側欄導覽</title>
+<style>
+  /* ============================================================
+     docs/design-system.md 定稿 token（與 SDLCCT-32/33 原型相同來源），
+     加上本故事「關鍵技術決策 1」訂定的 --sidebar* 修正後對應值
+     （別名指向下列 5 個 --color-* token，不是 shadcn 預設獨立 oklch）。
+     ============================================================ */
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #4B5563;
+    --color-border: #E5E7EB;
+    --color-accent: #2563EB;
+
+    /* shadcn 語意變數別名（SDLCCT-33 既定寫法） */
+    --background: var(--color-bg);
+    --foreground: var(--color-text-primary);
+    --muted-foreground: var(--color-text-secondary);
+    --border: var(--color-border);
+    --primary: var(--color-accent);
+    --primary-foreground: #FFFFFF;
+
+    /* --sidebar* 系列：本故事（SDLCCT-34）修正後的別名對應，
+       逐一指向上方 5 個既定 token，不保留 shadcn 預設獨立 oklch 值。 */
+    --sidebar: var(--color-bg);
+    --sidebar-foreground: var(--color-text-primary);
+    --sidebar-primary: var(--color-accent);
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: var(--color-border);
+    --sidebar-accent-foreground: var(--color-text-primary);
+    --sidebar-border: var(--color-border);
+    --sidebar-ring: var(--color-accent);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    color: var(--color-text-primary);
+    background: #F9FAFB; /* 既有 page.tsx 用的 bg-gray-50，非新 token，沿用現狀 */
+  }
+
+  a { color: var(--color-accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* focus 樣式：docs/design-system.md 第 8 節 */
+  a:focus-visible,
+  button:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  .shell {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ---------------- 側欄 ---------------- */
+  .sidebar {
+    width: 272px;
+    flex-shrink: 0;
+    background: var(--sidebar);
+    color: var(--sidebar-foreground);
+    border-right: 1px solid var(--sidebar-border);
+    display: flex;
+    flex-direction: column;
+    padding: 16px 0;
+  }
+
+  .sidebar-header {
+    padding: 0 16px 16px;
+    border-bottom: 1px solid var(--sidebar-border);
+    margin-bottom: 16px;
+  }
+
+  .sidebar-header .brand {
+    font-size: 18px;
+    line-height: 26px;
+    font-weight: 600;
+    color: var(--sidebar-foreground);
+  }
+
+  .sidebar-group {
+    padding: 0 8px;
+    margin-bottom: 24px;
+  }
+
+  .sidebar-group-label {
+    padding: 0 8px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    line-height: 18px;
+    font-weight: 400;
+    color: var(--color-text-secondary);
+    text-transform: none;
+  }
+
+  .sidebar-menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* 所有導覽項（可用與無功能）共用同一套樣式：對應設計文件決策 4
+     「同一個元件、同一套 class，只是沒有點擊行為」，視覺上完全一致。 */
+  .sidebar-menu-button {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    text-align: left;
+    padding: 8px 8px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--sidebar-foreground);
+    font-size: 14px;
+    line-height: 22px;
+    font-weight: 400;
+    cursor: pointer;
+  }
+
+  .sidebar-menu-button:hover {
+    background: var(--sidebar-accent);
+    color: var(--sidebar-accent-foreground);
+  }
+
+  /* current-page indicator：AC3，僅 Cost Dashboard / System 會套用 */
+  .sidebar-menu-button.is-active {
+    background: var(--sidebar-primary);
+    color: var(--sidebar-primary-foreground);
+    font-weight: 600;
+  }
+  .sidebar-menu-button.is-active:hover {
+    background: var(--sidebar-primary);
+    color: var(--sidebar-primary-foreground);
+  }
+
+  /* ---------------- 主內容區 ---------------- */
+  .content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+    padding: 12px 24px;
+  }
+
+  .topbar .title {
+    font-size: 18px;
+    line-height: 26px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .topbar .meta {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+  }
+
+  main {
+    max-width: 1024px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 24px;
+    flex: 1;
+  }
+
+  h1 {
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    text-align: left;
+    margin: 0 0 4px;
+  }
+
+  .page-desc {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    text-align: left;
+    margin: 0 0 24px;
+  }
+
+  h2 {
+    font-size: 18px;
+    line-height: 26px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    text-align: left;
+    margin: 0 0 16px;
+  }
+
+  section { margin-bottom: 32px; }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .card {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 16px;
+    background: var(--color-bg);
+  }
+
+  .card .label {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    margin-bottom: 4px;
+  }
+
+  .card .value {
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+
+  .card .value.warn { color: #B91C1C; }
+
+  .badge {
+    display: inline-block;
+    font-size: 12px;
+    line-height: 18px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #FEF3C7;
+    color: #92400E;
+    margin-bottom: 8px;
+  }
+
+  .gap-list {
+    margin: 8px 0 0;
+    padding-left: 20px;
+    font-size: 14px;
+    line-height: 22px;
+    color: var(--color-text-primary);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    line-height: 22px;
+  }
+
+  th, td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  td.num, th.num { text-align: right; }
+
+  .delta-up { color: #B91C1C; font-weight: 600; }
+
+  footer.page-footer {
+    border-top: 1px solid var(--color-border);
+    padding: 16px 0;
+    margin-top: 48px;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    text-align: left;
+  }
+
+  .note {
+    background: #EFF6FF;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    margin-bottom: 24px;
+  }
+
+  .blank-page {
+    min-height: 240px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<p class="note" style="max-width:1024px;margin:16px auto 0;">
+  本頁為 G1b 審核用靜態原型，模擬兩種狀態：上半部「Cost Dashboard
+  為目前畫面」、下半部（捲動至底部的 <code>#system</code> 區塊）示範
+  「Settings/System 空白頁」狀態。側欄的 7 個無功能項目（Agent
+  Registry、Anomalies &amp; Alerts、Budget &amp; Savings Simulation、
+  Policy Engine、Approval Workflow、Pause Agent、Kill Switch）在本靜態
+  原型中以 <code>href="#"</code> 僅模擬「無任何視覺差異」；在實際 Next.js
+  實作中這些項目是沒有 <code>href</code>/<code>onClick</code> 的
+  <code>&lt;button type="button"&gt;</code>（見設計文件決策 4），不會
+  產生任何導向。
+</p>
+
+<div class="shell" id="dashboard-state">
+  <!-- ============== 側欄 ============== -->
+  <nav class="sidebar" aria-label="Portal 主導覽">
+    <div class="sidebar-header">
+      <span class="brand">Agent Control Tower</span>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">Overview 總覽</div>
+      <ul class="sidebar-menu">
+        <li>
+          <a class="sidebar-menu-button is-active" href="#dashboard-state" aria-current="page">
+            Cost Dashboard 成本儀表板
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">Governance 治理</div>
+      <ul class="sidebar-menu">
+        <li><button class="sidebar-menu-button" type="button">Agent Registry Agent 清單</button></li>
+        <li><button class="sidebar-menu-button" type="button">Anomalies &amp; Alerts 異常與告警</button></li>
+        <li><button class="sidebar-menu-button" type="button">Budget &amp; Savings Simulation 預算與節省模擬</button></li>
+        <li><button class="sidebar-menu-button" type="button">Policy Engine 政策引擎</button></li>
+        <li><button class="sidebar-menu-button" type="button">Approval Workflow 核准流程</button></li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">Action 操作</div>
+      <ul class="sidebar-menu">
+        <li><button class="sidebar-menu-button" type="button">Pause Agent 暫停 Agent</button></li>
+        <li><button class="sidebar-menu-button" type="button">Kill Switch 緊急關閉</button></li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">Settings 設定</div>
+      <ul class="sidebar-menu">
+        <li>
+          <a class="sidebar-menu-button" href="#system-state">System 系統</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ============== 主內容：Cost Dashboard（包裝後，功能不變） ============== -->
+  <div class="content">
+    <header class="topbar">
+      <span class="title">成本總覽</span>
+      <span class="meta">今天（台灣時間）：2026年10月17日</span>
+    </header>
+
+    <main>
+      <h1>成本總覽</h1>
+      <p class="page-desc">本月成本 vs 預算、預估月底超支、跨 Agent 期間比較</p>
+
+      <section aria-label="本月成本 vs 預算總覽">
+        <h2>本月成本 vs 預算總覽</h2>
+        <div class="card-grid">
+          <div class="card">
+            <div class="label">本月總花費</div>
+            <div class="value">NT$ 12,346</div>
+          </div>
+          <div class="card">
+            <div class="label">本月總預算</div>
+            <div class="value">NT$ 9,000</div>
+          </div>
+          <div class="card">
+            <div class="label">預算消耗</div>
+            <div class="value warn">137.2%</div>
+          </div>
+          <div class="card">
+            <div class="label">預估月底超支</div>
+            <div class="value warn">+NT$ 16,507</div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <span class="badge">治理缺口：1 個未登錄 Agent</span>
+          <ul class="gap-list">
+            <li>臨時供應商爬蟲 — NT$ 235（計入總花費，未計入預算分母）</li>
+          </ul>
+        </div>
+      </section>
+
+      <section aria-label="跨 Agent 期間比較">
+        <h2>跨 Agent 期間比較（誰漲最多）</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th class="num">本期（10/1–10/15）</th>
+              <th class="num">前期（9/1–9/15）</th>
+              <th class="num">變化</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>設備預測性維護</td>
+              <td class="num">NT$ 3,200</td>
+              <td class="num">NT$ 1,800</td>
+              <td class="num delta-up">+NT$ 1,400（+77.8%）</td>
+            </tr>
+            <tr>
+              <td>品質異常偵測</td>
+              <td class="num">NT$ 2,100</td>
+              <td class="num">NT$ 1,950</td>
+              <td class="num delta-up">+NT$ 150（+7.7%）</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <footer class="page-footer">
+        資料來源：Agent registry ＋ 觀測性後端成本查詢。
+      </footer>
+    </main>
+  </div>
+</div>
+
+<!-- ============== 第二種狀態：Settings/System 空白頁 ============== -->
+<div class="shell" id="system-state" style="border-top: 8px solid var(--color-border); margin-top:24px;">
+  <nav class="sidebar" aria-label="Portal 主導覽（System 畫面狀態）">
+    <div class="sidebar-header">
+      <span class="brand">Agent Control Tower</span>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">Overview 總覽</div>
+      <ul class="sidebar-menu">
+        <li><a class="sidebar-menu-button" href="#dashboard-state">Cost Dashboard 成本儀表板</a></li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">Governance 治理</div>
+      <ul class="sidebar-menu">
+        <li><button class="sidebar-menu-button" type="button">Agent Registry Agent 清單</button></li>
+        <li><button class="sidebar-menu-button" type="button">Anomalies &amp; Alerts 異常與告警</button></li>
+        <li><button class="sidebar-menu-button" type="button">Budget &amp; Savings Simulation 預算與節省模擬</button></li>
+        <li><button class="sidebar-menu-button" type="button">Policy Engine 政策引擎</button></li>
+        <li><button class="sidebar-menu-button" type="button">Approval Workflow 核准流程</button></li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">Action 操作</div>
+      <ul class="sidebar-menu">
+        <li><button class="sidebar-menu-button" type="button">Pause Agent 暫停 Agent</button></li>
+        <li><button class="sidebar-menu-button" type="button">Kill Switch 緊急關閉</button></li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">Settings 設定</div>
+      <ul class="sidebar-menu">
+        <li>
+          <a class="sidebar-menu-button is-active" href="#system-state" aria-current="page">System 系統</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="content">
+    <header class="topbar">
+      <span class="title">系統</span>
+      <span class="meta"></span>
+    </header>
+    <main>
+      <div class="blank-page">（空白頁面——規格範圍外，本故事只需導覽項目可到達此頁）</div>
+    </main>
+  </div>
+</div>
+
+</body>
+</html>
