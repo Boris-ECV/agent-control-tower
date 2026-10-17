@@ -27,4 +27,4 @@ testpaths = ["tests"]
 # backend and are exercised by hand, not in CI.
 [tool.coverage.run]
 source = ["."]
-omit = ["tests/*", "verify.py", "preflight.py", "ingest.py", "client.py", ".venv/*"]
+omit = ["tests/*", "verify.py", "preflight.py", "ingest.py", ".venv/*"]
