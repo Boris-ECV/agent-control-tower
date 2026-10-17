@@ -435,3 +435,33 @@
 
 **規模預估**
 <= 1 開發日（已拆出 SDLCCT-33 為獨立前置票）
+
+## SDLCCT-34 — Portal shell: sidebar navigation (wraps Cost Dashboard)
+
+**使用者故事**
+身為工廠主管，我希望打開 Portal 時看到依 L1 觀測／L2 治理／L3 介入分層的專業側欄導覽（即使多數項目目前尚無功能），而不是目前只有單一畫面的頂部 navbar，這樣我能理解 Portal 未來的完整功能範圍，並能順暢使用目前唯一功能完整的成本儀表板。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 側欄結構與分組正確
+2. Cost Dashboard 包裝後功能不變
+3. 目前畫面在側欄中被標示
+4. 七個無功能項目點擊不產生任何導向或互動
+5. Settings System 為可導航的空白頁
+6. 套用既定 design-system token 無新色彩或間距
+7. 語言與品牌限制
+8. G1b 原型可獨立開啟
+
+**範圍外**
+- 其餘 5 個畫面的實際內容
+- Policy Engine／Approval Workflow／Pause Agent／Kill Switch 的任何真實業務邏輯
+- Settings／System 頁面的實際設定功能
+- 側欄收合展開等進階互動
+- 登入／權限／多租戶
+- 客戶品牌色與 Logo
+
+**依賴**
+- 依賴 SDLCCT-32（Done）、SDLCCT-33（Done）
+- 架構備註：frontend/app/globals.css 的 --sidebar* 系列 CSS 變數目前仍是 shadcn 預設的獨立 oklch 值，未如 --background／--accent 一樣別名指向既有的 5 個 design-system token，此為 G1b 架構設計階段必須處理的具體決策
+
+**規模預估**
+中等，預估可於一個開發日內完成，不拆分（側欄元件加入、既有頁面重構進新外殼、新增空白路由三者高度耦合）。
