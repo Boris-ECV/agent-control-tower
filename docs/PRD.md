@@ -314,3 +314,68 @@
 
 **規模預估**
 <= 1 開發日
+
+## SDLCCT-28 — Model-switch cost spike detection rule
+
+**使用者故事**
+作為 FinOps/維運人員，我想要系統自動偵測某 agent 的 model tag 從低成本模型切換為高成本模型、但交易量未明顯變化的情況，以便在模型升級造成成本暴增被發現前及時收到異常提示。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 偵測 order_status 的真實 model 切換日（switch_date 對應第九天，deviation_ratio≈21.0，遠超門檻3.0）
+2. 其餘八個agent不應被標記為 model_switch 異常（全程只使用單一 model tag，switch_date 永遠為 null）
+3. 異常輸出必須攜帶具體證據，不可只回報布林值（switch_date/before_model_tag/after_model_tag/before_cost_per_trace/after_cost_per_trace/deviation_ratio/deviation_threshold 皆非 None）
+4. 查詢窗口內若找不到 dominant tag 改變的日期（回報 is_anomalous=false，相關欄位皆為 null）
+
+**範圍外**
+- 不新增任何 Opik 後端 endpoint
+- 不包含告警、通知或 UI 呈現
+- 不處理同一天同一 agent 混用兩種以上 model tag 的情況
+- 不做跨 agent 的規則
+- 不做成本預測或趨勢預測，僅做歷史事實偵測
+- 不回溯超過可查詢資料窗口（HISTORY_DAYS=30）之前的資料
+
+**規模預估**
+預估一個開發日內可完成
+
+## SDLCCT-29 — Tool-retry-loop anomaly detection rule
+
+**使用者故事**
+身為負責異常偵測邏輯的開發者，我想要新增一個「同日錯誤率與 spans/trace 比值同步異常攀升」偵測規則，用 Opik 的 TRACE_ERROR_RATE 與 SPAN_COUNT/TRACE_COUNT 比值比對 Agent 自身基準，以便用 Demo 資料集中 quality_rca 的真實重試迴圈事件驗證規則能正確判定，且不誤報其餘八個 agent（包含僅單一訊號異常、未同步出現的情境）。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 偵測 quality_rca 的真實重試迴圈事件（avg spans/trace 偏離比約2.09，error_rate約0.03，co_occurred為true）
+2. 其餘八個agent不被誤報（含僅單一訊號異常的情境，例如 procurement_rfq 的 night_batch_burst 事件日僅流量異常但 error_rate=0）
+3. 輸出含具體證據（error_rate、comparison.deviation_ratio、co_occurred）
+4. 門檻邊界（ratio恰為1.5且error_rate恰為0.01時視為異常）
+
+**範圍外**
+- 不含前端畫面呈現
+- 不含自動處置（停用/通知/工單）
+- 不含 AI 產生說明文字
+- 不含跨 agent 關聯分析
+- 不含即時串流或多日趨勢或嚴重度分級
+
+**規模預估**
+<= 1 開發日
+
+## SDLCCT-30 — Nighttime batch burst anomaly detection rule
+
+**使用者故事**
+身為負責異常偵測邏輯的開發者，我想要新增一個「非營業時段流量暴增」偵測規則，用 Opik 的 TRACE_COUNT（HOURLY）比對 Agent 自身基準小時流量，並以 metadata.workflow 作為佐證，以便用 Demo 資料集中 procurement_rfq 的真實夜間批次重跑事件（d=4, UTC17:00-19:00, 600筆）驗證規則能正確判定，且不誤報其餘8個 agent。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 偵測 procurement_rfq 的真實夜間暴增（ratio約290-353，遠超門檻10）
+2. 其餘8個agent不被誤報（最大比值約1，margin>=9）
+3. 輸出含具體證據與佐證metadata（off_hours_trace_count=600、baseline_hourly_rate、ratio、corroborating_workflow="rfq_batch_rerun"）
+4. project_ids為空時拋出例外（MissingProjectIdsError，不回傳猜測值）
+5. 門檻邊界（ratio恰為10時視為異常）
+
+**範圍外**
+- 不含前端畫面呈現
+- 不含自動處置（停用/通知/工單）
+- 不含 AI 產生說明文字
+- 不含 workflow metadata 佐證本身作為獨立判異門檻
+- 不含離峰時段窗口本身的自動偵測/推斷
+
+**規模預估**
+<= 1 開發日
