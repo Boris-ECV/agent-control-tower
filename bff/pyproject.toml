@@ -20,7 +20,7 @@ select = ["E", "F", "W", "I", "B", "UP"]
 ignore = ["E501"]
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
+pythonpath = [".", "../seed"]
 testpaths = ["tests"]
 
 [tool.coverage.run]
