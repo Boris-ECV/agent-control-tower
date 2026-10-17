@@ -31,26 +31,26 @@ type NavGroup = {
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Overview 總覽",
-    items: [{ label: "Cost Dashboard 成本儀表板", href: "/cost-dashboard" }],
+    label: "總覽",
+    items: [{ label: "成本儀表板", href: "/cost-dashboard" }],
   },
   {
-    label: "Governance 治理",
+    label: "治理",
     items: [
-      { label: "Agent Registry Agent 清單" },
-      { label: "Anomalies & Alerts 異常與告警" },
-      { label: "Budget & Savings Simulation 預算與節省模擬" },
-      { label: "Policy Engine 政策引擎" },
-      { label: "Approval Workflow 核准流程" },
+      { label: "Agent 清單" },
+      { label: "異常與告警" },
+      { label: "預算與節省模擬" },
+      { label: "政策引擎" },
+      { label: "核准流程" },
     ],
   },
   {
-    label: "Action 操作",
-    items: [{ label: "Pause Agent 暫停 Agent" }, { label: "Kill Switch 緊急關閉" }],
+    label: "操作",
+    items: [{ label: "暫停 Agent" }, { label: "緊急關閉" }],
   },
   {
-    label: "Settings 設定",
-    items: [{ label: "System 系統", href: "/settings/system" }],
+    label: "設定",
+    items: [{ label: "系統", href: "/settings/system" }],
   },
 ];
 
