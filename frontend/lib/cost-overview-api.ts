@@ -2,8 +2,11 @@
 // See docs/design/SDLCCT-32.md "介面/API 契約" for the exact response
 // shapes this mirrors.
 
-export const BFF_BASE_URL =
-  process.env.NEXT_PUBLIC_BFF_URL ?? "http://localhost:8000";
+if (!process.env.NEXT_PUBLIC_BFF_URL) {
+  throw new Error("NEXT_PUBLIC_BFF_URL is not set");
+}
+
+export const BFF_BASE_URL = process.env.NEXT_PUBLIC_BFF_URL;
 
 export interface UnregisteredAgentSpend {
   key: string;
