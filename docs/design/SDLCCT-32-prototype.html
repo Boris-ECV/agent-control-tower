@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>成本總覽 — Agent Control Tower（原型，非真實資料）</title>
+<style>
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #4B5563;
+    --color-border: #E5E7EB;
+    --color-accent: #2563EB;
+    --color-accent-dark: #1D4ED8;
+    --color-danger: #B91C1C;
+    --color-danger-bg: #FEF2F2;
+    --color-warning-bg: #FFFBEB;
+    --color-warning-border: #FDE68A;
+    --color-warning-text: #92400E;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: #F9FAFB;
+    color: var(--color-text-primary);
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    font-size: 14px;
+    line-height: 22px;
+  }
+
+  a { color: var(--color-accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* 導覽列 */
+  header.navbar {
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+    position: sticky;
+    top: 0;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header.navbar .title {
+    font-size: 18px;
+    line-height: 26px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  header.navbar .anchor-date {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+  }
+
+  main {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  h1.page-title {
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    text-align: left;
+  }
+  p.page-subtitle {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    margin: 0 0 24px 0;
+    text-align: left;
+  }
+
+  .prototype-banner {
+    background: var(--color-warning-bg);
+    border: 1px solid var(--color-warning-border);
+    color: var(--color-warning-text);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 12px;
+    line-height: 18px;
+    margin-bottom: 24px;
+  }
+
+  section.block { margin-bottom: 32px; }
+
+  h2.section-title {
+    font-size: 18px;
+    line-height: 26px;
+    font-weight: 600;
+    margin: 0 0 16px 0;
+    text-align: left;
+  }
+
+  /* 卡片 */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 1024px) {
+    .card-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .card-grid { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .card .meta-label {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    margin: 0 0 8px 0;
+    text-align: left;
+  }
+  .card .value {
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin: 0 0 4px 0;
+    text-align: left;
+  }
+  .card .value.danger { color: var(--color-danger); }
+  .card .sub {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    text-align: left;
+  }
+
+  /* 治理缺口徽章 */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--color-danger-bg);
+    color: var(--color-danger);
+    border: 1px solid #FCA5A5;
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 12px;
+    line-height: 18px;
+    font-weight: 600;
+  }
+
+  .governance-card {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+  }
+  .governance-card .governance-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .governance-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .governance-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 14px;
+    line-height: 22px;
+  }
+  .governance-list li:last-child { border-bottom: none; }
+  .governance-list .amount { text-align: right; font-weight: 600; }
+
+  /* 排行清單 */
+  .ranking-card {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  table.ranking-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  table.ranking-table th {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    text-align: left;
+    font-weight: 400;
+    padding: 8px 8px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  table.ranking-table th.num, table.ranking-table td.num {
+    text-align: right;
+  }
+  table.ranking-table td {
+    font-size: 14px;
+    line-height: 22px;
+    padding: 12px 8px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  table.ranking-table tr:last-child td { border-bottom: none; }
+  .delta-up { color: var(--color-danger); font-weight: 600; }
+  .delta-down { color: var(--color-text-secondary); }
+  .rank-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    background: #EFF6FF;
+    color: var(--color-accent);
+    font-size: 12px;
+    font-weight: 600;
+    margin-right: 8px;
+  }
+  .unregistered-tag {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 12px;
+    color: var(--color-danger);
+    border: 1px solid #FCA5A5;
+    background: var(--color-danger-bg);
+    border-radius: 4px;
+    padding: 0 6px;
+  }
+
+  /* 錯誤卡片 */
+  .error-card {
+    background: var(--color-danger-bg);
+    border: 1px solid #FCA5A5;
+    border-radius: 8px;
+    padding: 16px;
+    color: var(--color-danger);
+  }
+  .error-card .error-title {
+    font-weight: 600;
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    line-height: 22px;
+  }
+  .error-card .error-detail {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-danger);
+    opacity: 0.85;
+    margin: 0;
+  }
+  .error-card button {
+    margin-top: 12px;
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .error-card button:hover { background: #F9FAFB; }
+
+  footer.page-footer {
+    margin-top: 48px;
+    padding: 16px 0;
+    border-top: 1px solid var(--color-border);
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    text-align: left;
+  }
+</style>
+</head>
+<body>
+
+<header class="navbar">
+  <span class="title">Agent Control Tower</span>
+  <span class="anchor-date">今天（台灣時間）：2026年10月15日</span>
+</header>
+
+<main>
+  <h1 class="page-title">成本總覽</h1>
+  <p class="page-subtitle">本月成本 vs 預算、預估月底超支、跨 Agent 期間比較 — 2026年10月1日 至 2026年10月15日</p>
+
+  <div class="prototype-banner">
+    此畫面為 G1b 設計原型（SDLCCT-32），數字為佔位範例，非真實查詢結果。開發階段將串接
+    <code>bff</code> 的 <code>/api/cost-overview/summary</code> 與 <code>/api/cost-overview/period-comparison</code> 端點。
+  </div>
+
+  <!-- 區塊一：本月成本 vs 預算總覽 -->
+  <section class="block" aria-label="本月成本 vs 預算總覽">
+    <h2 class="section-title">本月成本 vs 預算總覽</h2>
+    <div class="card-grid">
+      <div class="card">
+        <p class="meta-label">本月總花費（含未登錄 Agent）</p>
+        <p class="value">NT$ 358,420</p>
+        <p class="sub">9 個 Agent 累計（COST，本月至今）</p>
+      </div>
+      <div class="card">
+        <p class="meta-label">本月總預算</p>
+        <p class="value">NT$ 270,000</p>
+        <p class="sub">8 個已登錄 Agent 的 budget 加總</p>
+      </div>
+      <div class="card">
+        <p class="meta-label">預算消耗百分比</p>
+        <p class="value danger">132.7%</p>
+        <p class="sub">已超過本月預算</p>
+      </div>
+      <div class="card">
+        <p class="meta-label">預估月底超支金額</p>
+        <p class="value danger">NT$ 470,000</p>
+        <p class="sub">依目前花費速度線性外推至 10/31</p>
+      </div>
+    </div>
+
+    <div class="governance-card">
+      <div class="governance-header">
+        <span class="badge">⚠ 治理缺口：1 個 Agent 未登錄</span>
+        <span class="sub" style="color: var(--color-text-secondary);">花費計入總花費，但不計入總預算分母</span>
+      </div>
+      <ul class="governance-list">
+        <li>
+          <span>臨時供應商爬蟲<span class="unregistered-tag">未登錄</span></span>
+          <span class="amount">NT$ 12,800</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 區塊二：跨 Agent 期間比較 -->
+  <section class="block" aria-label="跨 Agent 期間比較">
+    <h2 class="section-title">跨 Agent 期間比較（誰漲最多）</h2>
+    <div class="ranking-card">
+      <table class="ranking-table">
+        <thead>
+          <tr>
+            <th>Agent</th>
+            <th class="num">本期花費（10/1–10/15）</th>
+            <th class="num">前期花費（9/1–9/15）</th>
+            <th class="num">漲幅</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="rank-number">1</span>設備預測性維護</td>
+            <td class="num">NT$ 96,200</td>
+            <td class="num">NT$ 54,000</td>
+            <td class="num delta-up">+NT$ 42,200（+78.1%）</td>
+          </tr>
+          <tr>
+            <td><span class="rank-number">2</span>品質異常偵測助理</td>
+            <td class="num">NT$ 71,500</td>
+            <td class="num">NT$ 48,900</td>
+            <td class="num delta-up">+NT$ 22,600（+46.2%）</td>
+          </tr>
+          <tr>
+            <td><span class="rank-number">3</span>臨時供應商爬蟲<span class="unregistered-tag">未登錄</span></td>
+            <td class="num">NT$ 12,800</td>
+            <td class="num">NT$ 3,100</td>
+            <td class="num delta-up">+NT$ 9,700（+312.9%）</td>
+          </tr>
+          <tr>
+            <td><span class="rank-number">4</span>設備維修助理</td>
+            <td class="num">NT$ 45,300</td>
+            <td class="num">NT$ 41,000</td>
+            <td class="num delta-up">+NT$ 4,300（+10.5%）</td>
+          </tr>
+          <tr>
+            <td><span class="rank-number">5</span>排程最佳化顧問</td>
+            <td class="num">NT$ 28,900</td>
+            <td class="num">NT$ 31,200</td>
+            <td class="num delta-down">-NT$ 2,300（-7.4%）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 區塊三：per-card 錯誤狀態範例 -->
+  <section class="block" aria-label="錯誤狀態範例">
+    <h2 class="section-title">錯誤狀態範例（單一查詢失敗，不影響其他卡片）</h2>
+    <div class="card-grid">
+      <div class="error-card" style="grid-column: span 2;">
+        <p class="error-title">無法載入「跨 Agent 期間比較」</p>
+        <p class="error-detail">
+          查詢失敗：/api/cost-overview/period-comparison 回應 502（上游 Opik 逾時）。
+          其他卡片資料不受影響。
+        </p>
+        <button type="button">重試</button>
+      </div>
+      <div class="card">
+        <p class="meta-label">本月總花費（含未登錄 Agent）</p>
+        <p class="value">NT$ 358,420</p>
+        <p class="sub">此卡片查詢成功，不受上方錯誤影響</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="page-footer">
+    資料來源：Agent registry（SDLCCT-12）＋ 觀測性後端成本查詢。本頁不顯示任何觀測性後端品牌名稱。
+  </footer>
+</main>
+
+</body>
+</html>
