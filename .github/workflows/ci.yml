@@ -82,4 +82,6 @@ jobs:
       - name: Build
         run: npm run build
         env:
+          # placeholder only — next build evaluates cost-overview-api.ts's
+          # module-load guard; never dereferenced as a real network target here
           NEXT_PUBLIC_BFF_URL: 'http://localhost:8000'
