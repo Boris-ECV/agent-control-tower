@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>G1b 原型 — SDLCCT-36 側欄響應式行為（sm / lg 斷點示範）</title>
+<style>
+  /* ============================================================
+     docs/design-system.md 定稿 token（與 SDLCCT-34/35 原型相同來源）。
+     本原型不改變色票/字體，只示範 collapsible="offcanvas" 在
+     sm（< 640px）與 lg（>= 1024px）兩個寬度下的真實外觀與互動。
+     ============================================================ */
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #4B5563;
+    --color-border: #E5E7EB;
+    --color-accent: #2563EB;
+
+    --background: var(--color-bg);
+    --foreground: var(--color-text-primary);
+    --muted-foreground: var(--color-text-secondary);
+    --border: var(--color-border);
+    --primary: var(--color-accent);
+    --primary-foreground: #FFFFFF;
+
+    --sidebar: var(--color-bg);
+    --sidebar-foreground: var(--color-text-primary);
+    --sidebar-primary: var(--color-accent);
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: var(--color-border);
+    --sidebar-accent-foreground: var(--color-text-primary);
+    --sidebar-border: var(--color-border);
+    --sidebar-ring: var(--color-accent);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 24px;
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    color: var(--color-text-primary);
+    background: #F3F4F6;
+  }
+
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  p.lede { color: var(--color-text-secondary); margin: 0 0 24px; font-size: 13px; }
+
+  .demo-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    align-items: flex-start;
+  }
+
+  .demo-card {
+    background: #FFFFFF;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .demo-label {
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    background: #111827;
+    color: #FFFFFF;
+  }
+
+  .demo-sub {
+    padding: 6px 12px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    border-bottom: 1px solid var(--color-border);
+    background: #F9FAFB;
+  }
+
+  a:focus-visible, button:focus-visible, label:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* ---------------- 共用側欄內容（4 組 9 項，逐字對應 SDLCCT-34/35） ---------------- */
+  .sidebar-inner {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .sidebar-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--sidebar-border);
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .sidebar-group { padding: 8px 8px 0; }
+  .sidebar-group-label {
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted-foreground);
+  }
+  .sidebar-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--sidebar-foreground);
+    background: none;
+    border: none;
+    cursor: default;
+  }
+  a.sidebar-item { cursor: pointer; }
+  a.sidebar-item:hover { background: var(--sidebar-accent); text-decoration: none; }
+  .sidebar-item.active { background: var(--primary); color: var(--primary-foreground); }
+
+  /* ====================================================================
+     sm（< 640px）示範：寬度固定 360px 模擬手機視窗。
+     collapsible="offcanvas" 在 isMobile 時以 Sheet 呈現：
+     - 「收合狀態」：側欄面板完全不佔用版面寬度（宽度 0），只有一顆
+       SidebarTrigger 按鈕可見，內容區占滿可視寬度。
+     - 「展開狀態」：點擊觸發按鈕後，側欄面板以覆蓋層滑出，完整
+       4 組 9 項導覽可見；再次點擊觸發按鈕或點擊遮罩可收回
+       （對應既有 Sheet 關閉機制，不需額外開發）。
+     ==================================================================== */
+  .sm-frame {
+    width: 360px;
+    height: 560px;
+    position: relative;
+  }
+  .sm-topbar {
+    height: 44px;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    gap: 8px;
+  }
+  .sm-trigger {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+    background: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .sm-trigger svg { width: 16px; height: 16px; }
+  .sm-content {
+    padding: 16px;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+  }
+  .sm-sheet {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100%;
+    background: var(--sidebar);
+    border-right: 1px solid var(--sidebar-border);
+    box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+  }
+  .sm-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+  }
+
+  /* ====================================================================
+     lg（>= 1024px）示範：寬度固定 1024px 模擬桌面視窗。
+     側欄固定展開佔用左側 256px 版面寬度，不顯示 SidebarTrigger
+     （決策 2：md 以上不渲染觸發按鈕，維持「固定展開、不收合」不變，
+     與修正前逐位元相同）。
+     ==================================================================== */
+  .lg-frame {
+    width: 1024px;
+    height: 420px;
+    display: flex;
+  }
+  .lg-sidebar {
+    width: 256px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--sidebar-border);
+    background: var(--sidebar);
+  }
+  .lg-content {
+    flex: 1;
+    padding: 20px;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+  }
+</style>
+</head>
+<body>
+  <h1>G1b 原型 — SDLCCT-36：側欄在 md 斷點（768px）上下的響應式行為</h1>
+  <p class="lede">
+    下方兩個區塊分別以固定像素寬度的容器模擬 sm（&lt; 640px）與
+    lg（&ge; 1024px）視窗，直接示範真實外觀與互動，不以文字描述取代。
+    側欄內容為既有 4 組 9 項導覽（逐字對應 SDLCCT-34/35 已核准範圍，
+    本票未修改分組/標籤文字/href）。
+  </p>
+
+  <div class="demo-row">
+
+    <!-- ======================= sm：收合狀態 ======================= -->
+    <div class="demo-card">
+      <div class="demo-label">sm（&lt; 640px）— 收合狀態（預設載入時）</div>
+      <div class="demo-sub">側欄不佔用版面寬度；內容區使用完整可視寬度；可見觸發按鈕</div>
+      <div class="sm-frame">
+        <div class="sidebar-inner" style="height:100%;">
+          <div class="sm-topbar">
+            <div class="sm-trigger" aria-label="開啟側欄" role="button" tabindex="0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="16" rx="2"/>
+                <line x1="9" y1="4" x2="9" y2="20"/>
+              </svg>
+            </div>
+            <span style="font-size:13px;font-weight:600;">成本儀表板</span>
+          </div>
+          <div class="sm-content">
+            內容區（SidebarInset）佔滿可視寬度 360px，側欄不佔用任何版面寬度。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================= sm：展開狀態 ======================= -->
+    <div class="demo-card">
+      <div class="demo-label">sm（&lt; 640px）— 展開狀態（點擊觸發按鈕後）</div>
+      <div class="demo-sub">側欄面板滑出覆蓋，完整 4 組 9 項導覽可見；再次點擊觸發按鈕或遮罩可收回</div>
+      <div class="sm-frame">
+        <div class="sidebar-inner" style="height:100%;">
+          <div class="sm-topbar">
+            <div class="sm-trigger" aria-label="收回側欄" role="button" tabindex="0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="16" rx="2"/>
+                <line x1="9" y1="4" x2="9" y2="20"/>
+              </svg>
+            </div>
+            <span style="font-size:13px;font-weight:600;">成本儀表板</span>
+          </div>
+          <div class="sm-content">內容區被遮罩覆蓋（互動上仍在底層）。</div>
+        </div>
+        <div class="sm-overlay"></div>
+        <div class="sm-sheet">
+          <div class="sidebar-inner">
+            <div class="sidebar-header">Agent Control Tower</div>
+            <div class="sidebar-group">
+              <div class="sidebar-group-label">總覽</div>
+              <a class="sidebar-item active" href="#">成本儀表板</a>
+            </div>
+            <div class="sidebar-group">
+              <div class="sidebar-group-label">治理</div>
+              <button class="sidebar-item" type="button">Agent 清單</button>
+              <button class="sidebar-item" type="button">異常與告警</button>
+              <button class="sidebar-item" type="button">預算與節省模擬</button>
+              <button class="sidebar-item" type="button">政策引擎</button>
+              <button class="sidebar-item" type="button">核准流程</button>
+            </div>
+            <div class="sidebar-group">
+              <div class="sidebar-group-label">操作</div>
+              <button class="sidebar-item" type="button">暫停 Agent</button>
+              <button class="sidebar-item" type="button">緊急關閉</button>
+            </div>
+            <div class="sidebar-group">
+              <div class="sidebar-group-label">設定</div>
+              <a class="sidebar-item" href="#">系統</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================= lg：固定展開（不收合） ======================= -->
+    <div class="demo-card">
+      <div class="demo-label">lg（&ge; 1024px）— 固定展開，不收合（與修正前相同）</div>
+      <div class="demo-sub">側欄固定佔用左側 256px；不顯示觸發按鈕；視覺與修正前逐位元相同</div>
+      <div class="lg-frame">
+        <div class="lg-sidebar">
+          <div class="sidebar-inner">
+            <div class="sidebar-header">Agent Control Tower</div>
+            <div class="sidebar-group">
+              <div class="sidebar-group-label">總覽</div>
+              <a class="sidebar-item active" href="#">成本儀表板</a>
+            </div>
+            <div class="sidebar-group">
+              <div class="sidebar-group-label">治理</div>
+              <button class="sidebar-item" type="button">Agent 清單</button>
+              <button class="sidebar-item" type="button">異常與告警</button>
+              <button class="sidebar-item" type="button">預算與節省模擬</button>
+              <button class="sidebar-item" type="button">政策引擎</button>
+              <button class="sidebar-item" type="button">核准流程</button>
+            </div>
+            <div class="sidebar-group">
+              <div class="sidebar-group-label">操作</div>
+              <button class="sidebar-item" type="button">暫停 Agent</button>
+              <button class="sidebar-item" type="button">緊急關閉</button>
+            </div>
+            <div class="sidebar-group">
+              <div class="sidebar-group-label">設定</div>
+              <a class="sidebar-item" href="#">系統</a>
+            </div>
+          </div>
+        </div>
+        <div class="lg-content">
+          內容區（SidebarInset）佔用剩餘的 1024 - 256 = 768px 寬度。
+          此區塊無觸發按鈕，側欄無法被使用者收合，與修正前（
+          <code>collapsible="none"</code>）的桌面視覺完全相同。
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
