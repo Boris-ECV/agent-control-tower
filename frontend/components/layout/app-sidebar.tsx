@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { t } from "@/lib/i18n/t";
+
 import {
   Sidebar,
   SidebarContent,
@@ -31,26 +33,26 @@ type NavGroup = {
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: "總覽",
-    items: [{ label: "成本儀表板", href: "/cost-dashboard" }],
+    label: t("sidebar.groups.overview"),
+    items: [{ label: t("sidebar.items.costDashboard"), href: "/cost-dashboard" }],
   },
   {
-    label: "治理",
+    label: t("sidebar.groups.governance"),
     items: [
-      { label: "Agent 清單" },
-      { label: "異常與告警" },
-      { label: "預算與節省模擬" },
-      { label: "政策引擎" },
-      { label: "核准流程" },
+      { label: t("sidebar.items.agentList") },
+      { label: t("sidebar.items.anomalyAlerts") },
+      { label: t("sidebar.items.budgetSimulation") },
+      { label: t("sidebar.items.policyEngine") },
+      { label: t("sidebar.items.approvalFlow") },
     ],
   },
   {
-    label: "操作",
-    items: [{ label: "暫停 Agent" }, { label: "緊急關閉" }],
+    label: t("sidebar.groups.operations"),
+    items: [{ label: t("sidebar.items.pauseAgent") }, { label: t("sidebar.items.emergencyShutdown") }],
   },
   {
-    label: "設定",
-    items: [{ label: "系統", href: "/settings/system" }],
+    label: t("sidebar.groups.settings"),
+    items: [{ label: t("sidebar.items.system"), href: "/settings/system" }],
   },
 ];
 

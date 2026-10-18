@@ -2,6 +2,7 @@
 
 import { fetchCostOverviewSummary } from "@/lib/cost-overview-api";
 import { formatCurrency, formatPercent } from "@/lib/format";
+import { t } from "@/lib/i18n/t";
 import { useFetchOnce } from "@/lib/use-fetch-once";
 
 import { ErrorCard } from "./error-card";
@@ -53,7 +54,7 @@ export function SummarySection({
   if (state.status === "error") {
     onAnchorDate?.(null);
     return (
-      <ErrorCard title="本月成本 vs 預算總覽" error={state.error} onRetry={state.retry} />
+      <ErrorCard title={t("costOverview.summarySection.title")} error={state.error} onRetry={state.retry} />
     );
   }
 
@@ -66,25 +67,29 @@ export function SummarySection({
     <>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card
-          label="本月總花費（含未登錄 Agent）"
+          label={t("costOverview.summary.totalSpend.label")}
           value={formatCurrency(summary.total_spend)}
-          sub="9 個 Agent 累計（COST，本月至今）"
+          sub={t("costOverview.summary.totalSpend.sub")}
         />
         <Card
-          label="本月總預算"
+          label={t("costOverview.summary.totalBudget.label")}
           value={formatCurrency(summary.total_budget)}
-          sub="已登錄 Agent 的 budget 加總"
+          sub={t("costOverview.summary.totalBudget.sub")}
         />
         <Card
-          label="預算消耗百分比"
+          label={t("costOverview.summary.budgetConsumedPct.label")}
           value={formatPercent(summary.budget_consumed_pct)}
-          sub={overBudget ? "已超過本月預算" : "尚在預算內"}
+          sub={
+            overBudget
+              ? t("costOverview.summary.budgetConsumedPct.subOverBudget")
+              : t("costOverview.summary.budgetConsumedPct.subWithinBudget")
+          }
           danger={overBudget}
         />
         <Card
-          label="預估月底超支金額"
+          label={t("costOverview.summary.projectedOverspend.label")}
           value={formatCurrency(summary.projected_overspend)}
-          sub={`依目前花費速度線性外推至月底（第 ${summary.days_in_month} 天）`}
+          sub={t("costOverview.summary.projectedOverspend.sub")(summary.days_in_month)}
           danger={overspend}
         />
       </div>
@@ -93,11 +98,11 @@ export function SummarySection({
         <div className="mb-3 flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-1 rounded-full border border-red-300 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
             {summary.unregistered.agents.length > 0
-              ? `⚠ 治理缺口：${summary.unregistered.agents.length} 個 Agent 未登錄`
-              : "✓ 無治理缺口：所有 Agent 皆已登錄"}
+              ? t("costOverview.summary.governanceGap.hasGap")(summary.unregistered.agents.length)
+              : t("costOverview.summary.governanceGap.noGap")}
           </span>
           <span className="text-xs text-text-secondary">
-            花費計入總花費，但不計入總預算分母
+            {t("costOverview.summary.governanceGap.note")}
           </span>
         </div>
         {summary.unregistered.agents.length > 0 && (
@@ -110,7 +115,7 @@ export function SummarySection({
                 <span>
                   {a.display}
                   <span className="ml-2 rounded border border-red-300 bg-red-50 px-2 text-xs text-red-700">
-                    未登錄
+                    {t("costOverview.summary.unregisteredBadge")}
                   </span>
                 </span>
                 <span className="text-right font-semibold">{formatCurrency(a.spend)}</span>
