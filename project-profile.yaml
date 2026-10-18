@@ -33,7 +33,7 @@ commands:
   test: "cd seed && uv run pytest -q"
   lint: "cd seed && uv run ruff check ."
   coverage: "cd seed && uv run pytest --cov --cov-report=term-missing -q"
-  e2e: ""                              # Still none: SDLCCT-32 explicitly scoped a visual smoke check instead of Playwright (no e2e/.tsx test tooling added); set this when the first story that needs e2e adds it.
+  e2e: "cd frontend && npm run test:e2e"   # SDLCCT-40: Playwright demo e2e test fulfills the condition noted here since SDLCCT-32 (no e2e tooling until a story needed it).
   bff_setup: "cd bff && uv sync"
   bff_test: "cd bff && uv run pytest -q"
   bff_lint: "cd bff && uv run ruff check ."
@@ -43,6 +43,8 @@ commands:
   frontend_dev: "cd frontend && npm run dev"
   frontend_build: "cd frontend && npm run build"
   frontend_lint: "cd frontend && npm run lint"
+  frontend_test: "cd frontend && npm run test"
+  frontend_e2e: "cd frontend && npm run test:e2e"
 
 quality:
   coverage_threshold: 60               # starting value; measured over seed/catalog.py and seed/generate.py only (see seed/pyproject.toml). Raise after the first stories land.
