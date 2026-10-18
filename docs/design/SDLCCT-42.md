@@ -68,6 +68,8 @@ SDLCCT-32/34/35/41 已合併的 PR。Story 尺寸:very small。
 
       - name: Build
         run: npm run build
+        env:
+          NEXT_PUBLIC_BFF_URL: 'http://localhost:8000'
 ```
 
    此 job 定義直接插入既有 `jobs:` 區塊下,與 `quality`、`bff` 平行(縮排
@@ -82,6 +84,35 @@ SDLCCT-32/34/35/41 已合併的 PR。Story 尺寸:very small。
    `package.json` 且原始碼目錄已存在,不屬於「檔案尚不存在」的情境,因此
    不需要、也不應該加這種條件式跳過——加了反而會讓本該攔截的 lint/build
    回歸被靜默略過,違反本票「自動攔截回歸」的目的。
+
+6. **CI 環境下 `NEXT_PUBLIC_BFF_URL` 的設定:只在 `Build` 步驟的 `env:`
+   設定一個佔位字串 `http://localhost:8000`,不設在 job 層級的 `env:`,也
+   不透過 GitHub repo secret。**
+   `frontend/lib/cost-overview-api.ts`(SDLCCT-41,已合併到 `main`)在模組
+   最外層同步檢查 `if (!process.env.NEXT_PUBLIC_BFF_URL) { throw ... }`。
+   `/cost-dashboard` 頁面會在 `next build` 的靜態預渲染階段 import 到這個
+   模組,因此只要這個環境變數在 `npm run build` 執行時未設定,`build` 步驟
+   會在每一個 PR 上無條件失敗,與程式碼本身是否正確無關——這是本設計文件
+   先前版本未考慮到的既有行為,實作時被開發者發現並回報。
+   - **只放在 `Build` 步驟,不放 job 層級**:這個變數只有
+     `npm run build`(把 `NEXT_PUBLIC_*` 內嵌進 client bundle 的階段)才會
+     用到;`Install dependencies`、`Lint` 兩步驟都不會觸發
+     `cost-overview-api.ts` 的模組求值,放在 job 層級會讓這個 CI 專用的
+     設定值不必要地對其他步驟的環境也可見,放在單一步驟的 `env:` 範圍最小。
+   - **值選擇佔位字串,不是真實後端網址**:此 job 只執行 `npm run lint`
+     與 `npm run build`,兩者都是靜態分析/編譯期檢查,不會啟動伺服器、不會
+     對這個網址發出任何實際 HTTP 請求(參照本文件決策 1 的範圍:本票不含
+     任何測試步驟)。`cost-overview-api.ts` 只在模組載入時檢查這個變數
+     「是否為空字串」,從不在 build 期間讀取其內容去連線,因此任何非空字串
+     都能滿足檢查、讓 build 通過;沿用 `frontend/.env.example`(若存在)或
+     本機開發慣用的 `http://localhost:8000` 最直觀,不需要是一個真的可連線
+     的服務。
+   - **不需要 GitHub repo secret**:因為值本身不是機密(是一個本機佔位
+     URL、build 期間也從未真正連線),用 workflow YAML 內的字面常數即可,
+     用 secret 反而是過度設計,也會讓之後要調整這個佔位值的人多一層不必要
+     的 repo 設定依賴。
+   - （本決策的本機驗證由 orchestrator 於 G1b 核實階段執行，詳見 Jira
+     G1b gate report，非本文件作者本人執行——架構設計階段無 shell 存取權限。）
 
 ## UI 原型
 不適用,不需要新增原型檔案。本票是純 CI 設定變更(`.github/workflows/`
