@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 import { AppSidebar } from "@/components/layout/app-sidebar";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 
 // docs/design-system.md 第2節：zh-TW 內容以系統字體堆疊呈現，不載入任何
 // web font（next/font 不使用）。
@@ -18,7 +22,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <SidebarProvider>
           <AppSidebar />
-          <SidebarInset>{children}</SidebarInset>
+          <SidebarInset>
+            <div className="flex items-center p-2 md:hidden">
+              <SidebarTrigger />
+            </div>
+            {children}
+          </SidebarInset>
         </SidebarProvider>
       </body>
     </html>

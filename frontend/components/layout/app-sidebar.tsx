@@ -58,7 +58,7 @@ export function AppSidebar() {
   const pathname = usePathname();
 
   return (
-    <Sidebar collapsible="none">
+    <Sidebar collapsible="offcanvas">
       <SidebarHeader>
         <span className="px-2 text-lg leading-[26px] font-semibold text-sidebar-foreground">
           Agent Control Tower
