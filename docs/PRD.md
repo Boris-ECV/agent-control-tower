@@ -544,3 +544,32 @@
 
 **規模預估**
 小到中等，單一 story 不拆分，預估可於一個開發日內完成。
+
+## SDLCCT-37 — Portal UI 字串 i18n 架構（僅 zh-TW）
+
+**使用者故事**
+身為維護 Agent Control Tower Portal 的工程師，我希望現有畫面（側欄、成本儀表板、設定頁骨架）裡寫死的繁體中文字串改由一個集中管理的 i18n 機制讀取，並讓後續新畫面有明確可遵循的字串慣例，這樣未來新增畫面時抽取翻譯 key 的成本很小，不會累積成一張大型機械式重構票。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. i18n 機制已建立且被實際頁面使用（非僅設定好但未串接）
+2. 既有畫面（app-sidebar.tsx、cost-dashboard/page.tsx、summary-section.tsx、period-comparison-section.tsx、error-card.tsx）的寫死字串已全數改為透過 i18n 機制讀取，重複字串共用同一 key
+3. 顯示結果與改動前逐字相同，且有可自動重跑的驗證方式佐證（非僅肉眼核對）
+4. 新畫面可遵循的翻譯 key 命名慣例已有文件記載
+5. 空骨架頁面（settings/system/page.tsx）不受影響，不需為湊字串新增內容
+
+**範圍外**
+- 語言切換 UI
+- 第二語言內容
+- 改變任何畫面現有文字內容、版面或行為
+- Jira、程式碼註解、commit message 的語言處理
+- settings/system/page.tsx 的實際內容填充
+
+**依賴**
+- 不依賴其他待辦票
+- 與 SDLCCT-38、SDLCCT-39 檔案層級無重疊（兩者改動 cost-overview-api.ts，本票改動 JSX 顯示字串），可並行處理
+
+**架構備註**
+- 留給 G1b 架構師決定的 HOW 項目：i18n 套件或手刻方案選擇、翻譯 key 命名慣例格式、顯示結果不變的具體驗證方式（建議善用 SDLCCT-40 新落地的 Playwright e2e）、layout.tsx 的 head metadata 是否納入遷移範圍
+
+**規模預估**
+中等，架構決策本身小，但需逐檔搬移既有字串並逐一確認顯示結果不變。
