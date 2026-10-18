@@ -2,6 +2,7 @@
 
 import { fetchPeriodComparison } from "@/lib/cost-overview-api";
 import { formatDateRange, formatPercent, formatSignedCurrency } from "@/lib/format";
+import { t } from "@/lib/i18n/t";
 import { useFetchOnce } from "@/lib/use-fetch-once";
 
 import { ErrorCard } from "./error-card";
@@ -15,7 +16,7 @@ export function PeriodComparisonSection() {
 
   if (state.status === "error") {
     return (
-      <ErrorCard title="跨 Agent 期間比較" error={state.error} onRetry={state.retry} />
+      <ErrorCard title={t("costOverview.periodSection.title")} error={state.error} onRetry={state.retry} />
     );
   }
 
@@ -30,13 +31,17 @@ export function PeriodComparisonSection() {
               Agent
             </th>
             <th className="border-b border-border p-2 text-right text-xs font-normal text-text-secondary">
-              本期花費（{formatDateRange(current_period.start, current_period.end)}）
+              {t("costOverview.period.currentPeriod")(
+                formatDateRange(current_period.start, current_period.end),
+              )}
             </th>
             <th className="border-b border-border p-2 text-right text-xs font-normal text-text-secondary">
-              前期花費（{formatDateRange(previous_period.start, previous_period.end)}）
+              {t("costOverview.period.previousPeriod")(
+                formatDateRange(previous_period.start, previous_period.end),
+              )}
             </th>
             <th className="border-b border-border p-2 text-right text-xs font-normal text-text-secondary">
-              漲幅
+              {t("costOverview.period.delta")}
             </th>
           </tr>
         </thead>
