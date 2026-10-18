@@ -85,3 +85,14 @@ jobs:
           # placeholder only — next build evaluates cost-overview-api.ts's
           # module-load guard; never dereferenced as a real network target here
           NEXT_PUBLIC_BFF_URL: 'http://localhost:8000'
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E tests
+        run: npm run test:e2e
+        env:
+          NEXT_PUBLIC_BFF_URL: 'http://localhost:8000'
