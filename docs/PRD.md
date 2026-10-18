@@ -465,3 +465,53 @@
 
 **規模預估**
 中等，預估可於一個開發日內完成，不拆分（側欄元件加入、既有頁面重構進新外殼、新增空白路由三者高度耦合）。
+
+## SDLCCT-36 — 側欄在 md 斷點以下無響應式行為
+
+**使用者故事**
+身為在手機或小尺寸平板（寬度小於 768px）上使用 Agent Control Tower 的使用者，我希望側欄導覽在窄螢幕下不要固定佔用版面寬度，並有明確的方式可以開關它，這樣我在窄螢幕上仍能看到完整的內容區域，且需要時仍能使用側欄導覽。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 窄螢幕（< 768px）下側欄預設不佔用固定版面寬度
+2. 窄螢幕下有可用的觸發按鈕（SidebarTrigger）可開啟/收合側欄
+3. 桌面寬度（>= 768px）下側欄維持現有固定展開樣式不變
+4. 側欄分組、項目內容、7 個無功能項目行為不受本次修正影響
+
+**範圍外**
+- 側欄分組結構、9 個項目文字內容、7 個無 href 項目行為（SDLCCT-34 已核准範圍，不重新開放）
+- 其他畫面（Cost Dashboard 以外）的響應式設計
+- 收合模式選型（offcanvas vs icon）與觸發按鈕放置位置（留給 G1b 原型決定）
+- 收合狀態是否持久化（localStorage 等，不預設需求）
+
+**依賴**
+- 關聯 SDLCCT-34（修正範圍是該票當時刻意排除的部分），不依賴其後續工單
+- 與 SDLCCT-38、SDLCCT-39（改動 cost-overview-api.ts）無檔案層級衝突，可並行處理
+
+**規模預估**
+小，核心改動集中於 `frontend/components/layout/app-sidebar.tsx`（與可能的 `layout.tsx` 微調），shadcn 元件已內建大部分收合邏輯，可於一個開發日內完成，不拆分。
+
+## SDLCCT-42 — 新增前端 lint/build CI job
+
+**使用者故事**
+身為維護此專案 CI 流程的工程師，我希望在 `.github/workflows/ci.yml` 新增一個與現有 `bff`/`quality` job 對稱的 `frontend` job，自動執行 `npm run lint` 與 `npm run build`，這樣前端程式碼的 lint/build 回歸能在每個 PR 被 CI 自動攔截，不再依賴人工重跑確認綠燈。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 新 frontend job 的結構（runs-on、working-directory、checkout、Node 設定）與現有 job 對稱
+2. job 執行 `npm run lint` 與 `npm run build`，任一失敗即讓該步驟/job 回報失敗
+3. job 在既有 PR 流程中正確觸發，並回報對應的綠燈/紅燈
+4. 不含任何單元測試或 e2e 測試步驟（測試工具鏈屬 SDLCCT-40 範疇）
+5. 不要求對已合併的 Story（SDLCCT-32、34、35、41）做任何回溯動作
+
+**範圍外**
+- 單元測試/e2e 測試導入與工具鏈選型（SDLCCT-40 範疇）
+- 對已合併 PR 的回溯補做
+- 修改既有 `quality`/`bff` job 行為（除對稱風格所需的最小調整外）
+
+**依賴**
+- 不依賴其他待辦票；與 SDLCCT-40 互補，非前置依賴
+
+**架構備註**
+- 本票 PR 必定修改 `.github/workflows/ci.yml`，屬 `config/gates.yaml` `protected_paths_untouched` 列出的保護路徑，依 CLAUDE.md 規則 10(b)，其 G2 將自動升級為 manual gate。
+
+**規模預估**
+很小，單一檔案新增一個對稱 job，可於一個開發日內完成，不拆分。
