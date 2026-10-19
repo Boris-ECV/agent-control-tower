@@ -573,3 +573,60 @@
 
 **規模預估**
 中等，架構決策本身小，但需逐檔搬移既有字串並逐一確認顯示結果不變。
+
+## SDLCCT-38 — 從 BFF OpenAPI schema 產生前端 TypeScript 型別
+
+**使用者故事**
+身為前端開發者（之後要寫畫面 Story 的人），我希望從 BFF 的 OpenAPI schema 自動產生 TypeScript 型別，取代 cost-overview-api.ts 現有手寫的回應型別，這樣 BFF 回應形狀改變時，前端型別不同步會變成建置期的型別錯誤，而不是靜默的執行期錯誤。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 型別產生流程存在並可重複執行（冪等）
+2. cost-overview-api.ts 改用產生出來的型別，函式簽名與行為不變
+3. 產生出來的型別檔案標記為自動產生、不應手動編輯
+4. 產生指令整理進既有 frontend_* 指令慣例（package.json + project-profile.yaml）
+5. 不改變任何 BFF 端點邏輯，不加入執行期 schema 驗證
+
+**範圍外**
+- 不改變 API 端點邏輯
+- 不要求 BFF 新增端點
+- 不做執行期 schema 驗證
+- 不涉及 SDLCCT-39 的重構範圍
+
+**依賴**
+- 無待辦票依賴
+- 建議與 SDLCCT-39 協調合併時序（兩者都動到 cost-overview-api.ts）
+
+**架構備註**
+- requirements-analyst 發現 BFF 的 live OpenAPI endpoint 在 CI 中不可達（CI 未啟動 BFF server），建議改用離線匯出靜態 schema 檔案的方式產生型別，這是 G1b 的關鍵決策點
+- 本票 PR 必定修改 project-profile.yaml（保護路徑），G2 將依規則 10(b) 自動升級為人工核准
+
+**規模預估**
+小到中等，單一 story 不拆分。
+
+## SDLCCT-39 — 抽出共用前端 API client（fetch/錯誤處理）
+
+**使用者故事**
+身為負責後續 5 個畫面開發的工程師，我希望 fetchJson/ApiError/BFF_BASE_URL 等與畫面無關的邏輯被抽出成獨立共用模組，這樣之後要調整錯誤處理方式只需改一處，而非在 6 個畫面各自重複修改。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 共用模組包含畫面無關的請求/錯誤處理邏輯（fetchJson、ApiError、BFF_BASE_URL）
+2. cost-overview-api.ts 僅保留成本儀表板專屬邏輯，底層呼叫共用模組
+3. 既有呼叫點與既有自動化測試行為完全不變（測試檔案零修改）
+4. per-card 錯誤隔離行為（SDLCCT-32 已核准）不受影響
+5. 錯誤訊息格式與回應資料結構逐位元不變
+
+**範圍外**
+- 不改變 API 請求/回應邏輯
+- 不新增 retry/timeout/cache
+- 不變更 BFF_BASE_URL 的 fail-fast 驗證規則本身
+- 不改變對外函式簽名
+
+**依賴**
+- 無待辦票依賴
+- 建議與 SDLCCT-38 協調合併時序（兩者都動到 cost-overview-api.ts），合併衝突風險中等
+
+**架構備註**
+- 純程式碼搬移重構，本票不觸及任何保護路徑，G2 預期為一般 auto gate
+
+**規模預估**
+小，單一 story 不拆分。
