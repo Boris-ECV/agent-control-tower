@@ -630,3 +630,38 @@
 
 **規模預估**
 小，單一 story 不拆分。
+
+## SDLCCT-43 — Agent registry screen (Portal MVP, screen 2 of 6)
+
+**使用者故事**
+身為工廠主管，我想要從側欄點進「Agent 清單」畫面，看到全部 9 個 Agent（8 個已登錄 + 1 個未登錄但有花費）各自的本期預算消耗、近期花費趨勢、以及是否有治理缺口（未登錄／無負責人／無預算），以便我能一眼看出哪些 Agent 的治理狀態需要優先處理，不必再逐一去找負責人確認。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 新 BFF 端點組裝全部 9 個 Agent 的資料（預算消耗、花費趨勢、治理缺口旗標），遵循既有 response_model 三層慣例，不以 find_governance_gaps() 的子集回傳值作為完整資料來源
+2. 側欄「Agent 清單」項目取得真實 href 並可導覽，isActive 高亮與既有項目一致；其餘 6 個無 href 項目行為不受影響
+3. 新頁面套用共用 API client（lib/api-client.ts）、OpenAPI 產生型別（lib/generated/bff-types.ts）、i18n 機制（t()/messages.ts），不手刻舊模式
+4. 響應式設計：窄螢幕（<768px）版面不破版，桌面寬度（>=1024px）完整呈現，遵循 design-system.md 斷點
+5. 畫面上每個數字可追溯回後端真實查詢結果；後端查詢失敗時端點回傳明確錯誤狀態，前端顯示既有 ErrorCard 樣式，不呈現為 0 或空白
+6. 畫面不得出現 Opik 品牌字樣；介面語言為繁體中文，透過 i18n 管理
+
+**範圍外**
+- 畫面 #3「Agent 詳情」下鑽頁（另開票）
+- 任何編輯負責人/預算的寫入功能
+- 建立預算或告警規則（屬畫面 #5 範疇）
+- 套用 compare_to_baseline() 做異常偏離判斷（留給未來票，若 G1b 判定本票只需 sparkline）
+- 側欄其餘 6 個無 href 項目的功能化
+- 語言切換 UI
+
+**依賴**
+- 依賴 SDLCCT-12、SDLCCT-10/11/15、SDLCCT-31、SDLCCT-27、SDLCCT-37/38/39（全部已 Done）
+- 依賴 SDLCCT-34（側欄外殼，已 Done，本票修改其 Agent 清單項目的 href）
+- SDLCCT-32（非阻斷，但端點與前端三態慣例需對齊）
+
+**架構備註**（留給 G1b 架構師最終決定，已在 G1 記錄為非阻斷）
+1. 趨勢呈現建議 sparkline（近 7 天花費序列），非 compare_to_baseline() 異常偏離判定
+2. 新端點建議對 load_registry() 全部 9 筆直接 inline 套用三個 OR 條件（registered is False or owner is None or budget is None），不呼叫 find_governance_gaps()
+3. 新路由字串建議 /agents
+4. 版面型態（表格 vs. 卡片網格）留給 G1b 原型階段決定
+
+**規模預估**
+中等，預估一個開發日內可完成，不拆分。
