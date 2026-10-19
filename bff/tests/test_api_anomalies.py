@@ -283,6 +283,150 @@ def test_ac6_governance_gap_batch_failure_emits_error_row_with_null_agent(monkey
     assert row["reason"] == "opik backend unavailable"
 
 
+def test_ac1_normal_rule_anomalous_tool_retry_loop_emits_row_with_reason(monkeypatch):
+    # Covers the tool_retry_loop-specific reason_fn (_tool_retry_loop_reason),
+    # which is a distinct code path from context_bloat's -- not exercised by
+    # test_ac1_normal_rule_anomalous_emits_one_row_with_target_date above.
+    _patch_all_no_findings(monkeypatch)
+
+    def anomalous_tool_retry_loop(project_id, *, target_date, **kw):
+        if project_id != "order_status":
+            return _not_anomalous_tool_retry_loop(project_id, target_date=target_date, **kw)
+        return ToolRetryLoopFinding(
+            project_id=project_id,
+            is_anomalous=True,
+            co_occurred=True,
+            ratio_threshold=1.5,
+            error_rate_threshold=0.01,
+            error_rate=0.25,
+            comparison=BaselineComparison(
+                target_date=target_date,
+                baseline_window_days=21,
+                baseline_days_used=21,
+                baseline_value=1.0,
+                actual_value=3.0,
+                deviation_ratio=3.0,
+                deviation_pct=200.0,
+            ),
+        )
+
+    monkeypatch.setattr(anomalies_module, "detect_tool_retry_loop", anomalous_tool_retry_loop)
+
+    resp = client.get("/api/anomalies")
+    assert resp.status_code == 200
+    rows = resp.json()["anomalies"]
+
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["agent"] == "order_status"
+    assert row["anomaly_type"] == "tool_retry_loop"
+    assert row["date"] == ANCHOR_DATE_ISO
+    assert row["status"] == "ok"
+    assert "error_rate=0.25" in row["reason"]
+    assert "3.0" in row["reason"]
+
+
+def test_ac1_normal_rule_anomalous_night_batch_burst_emits_row_with_reason(monkeypatch):
+    # Covers the night_batch_burst-specific reason_fn
+    # (_night_batch_burst_reason), also not exercised by the context_bloat
+    # AC1 test above.
+    _patch_all_no_findings(monkeypatch)
+
+    def anomalous_night_batch_burst(project_id, **kw):
+        if project_id != "supply_risk_monitor":
+            return _not_anomalous_night_batch_burst(project_id, **kw)
+        return NightBatchBurstFinding(
+            project_id=project_id,
+            is_anomalous=True,
+            ratio_threshold=10.0,
+            off_hours_window_utc=(17, 19),
+            off_hours_trace_count=42,
+            baseline_hourly_rate=1.0,
+            ratio=42.0,
+            corroborating_workflow="nightly_sync",
+        )
+
+    monkeypatch.setattr(anomalies_module, "detect_night_batch_burst", anomalous_night_batch_burst)
+
+    resp = client.get("/api/anomalies")
+    assert resp.status_code == 200
+    rows = resp.json()["anomalies"]
+
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["agent"] == "supply_risk_monitor"
+    assert row["anomaly_type"] == "night_batch_burst"
+    assert row["date"] == ANCHOR_DATE_ISO
+    assert row["status"] == "ok"
+    assert "off_hours_trace_count=42" in row["reason"]
+    assert "nightly_sync" in row["reason"]
+
+
+def test_ac6_model_switch_exception_emits_explicit_error_row(monkeypatch):
+    # AC6 for model_switch's own try/except block (_run_model_switch),
+    # a code path distinct from the normal-rule (_run_target_date_rule) and
+    # governance_gap exception handlers already covered above.
+    _patch_all_no_findings(monkeypatch)
+
+    def flaky_model_switch(project_id, **kw):
+        if project_id == "ehs_qa":
+            raise ValueError("boom: missing model_tag metadata")
+        return _no_switch_model_switch(project_id, **kw)
+
+    monkeypatch.setattr(anomalies_module, "detect_model_switch", flaky_model_switch)
+
+    resp = client.get("/api/anomalies")
+    assert resp.status_code == 200
+    rows = resp.json()["anomalies"]
+
+    error_rows = [r for r in rows if r["status"] == "error"]
+    assert len(error_rows) == 1
+    row = error_rows[0]
+    assert row["agent"] == "ehs_qa"
+    assert row["anomaly_type"] == "model_switch"
+    assert row["date"] is None
+    assert row["reason"] == "boom: missing model_tag metadata"
+
+    # Other agents' model_switch calls unaffected and no other anomaly_type dropped.
+    assert [r for r in rows if r["anomaly_type"] != "model_switch"] == []
+
+
+def test_ac5_governance_gap_reason_includes_owner_budget_and_cost_fields(monkeypatch):
+    # The existing AC5 test only exercises the all-None (unregistered, no
+    # owner/budget/cost) case and only asserts "registered=False" is in the
+    # reason string -- it does not prove owner/budget/cost values actually
+    # appear. Exercise a flagged *registered* agent with real owner/budget/
+    # cost values instead.
+    _patch_all_no_findings(monkeypatch)
+
+    finding = GovernanceGapFinding(
+        key="production_scheduler",
+        display="Production Scheduler",
+        owner="team-ops",
+        budget=500.0,
+        registered=True,
+        daily_costs=(10.0, 20.0),
+        first_day_cost=10.0,
+        last_day_cost=20.0,
+    )
+    monkeypatch.setattr(anomalies_module, "find_governance_gaps", lambda *a, **kw: (finding,))
+
+    resp = client.get("/api/anomalies")
+    rows = resp.json()["anomalies"]
+
+    gov_rows = [r for r in rows if r["anomaly_type"] == "governance_gap"]
+    assert len(gov_rows) == 1
+    row = gov_rows[0]
+    assert row["agent"] == "production_scheduler"
+    assert row["date"] is None
+    assert row["status"] == "ok"
+    assert "owner='team-ops'" in row["reason"]
+    assert "budget=500.0" in row["reason"]
+    assert "first_day_cost=10.0" in row["reason"]
+    assert "last_day_cost=20.0" in row["reason"]
+    assert "registered=True" in row["reason"]
+
+
 def test_ac7_coverage_one_call_per_rule_per_registered_agent_and_one_batch_governance_call(monkeypatch):
     calls = {
         "tool_retry_loop": [],
