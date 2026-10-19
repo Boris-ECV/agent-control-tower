@@ -310,6 +310,33 @@ def test_opik_config_error_maps_to_502(monkeypatch):
     assert body["error"]["endpoint"] is None
 
 
+def test_model_breakdown_query_failure_maps_to_502_even_when_version_succeeds(monkeypatch):
+    """AC4 says "any one of the three underlying queries" fails -> 502.
+    The other tests in this group all fail on the *first* call made
+    (version/DAILY), since get_project_metrics_cached is mocked with a
+    single unconditional raiser. This test fails only on the *second*
+    call (model/TOTAL) while the first succeeds, proving the error
+    propagates regardless of which of the three queries is the one that
+    fails -- not just because it happens to be first."""
+    exc = OpikHTTPError(
+        "non-2xx response", endpoint="/v1/private/projects/p1/metrics", status_code=503
+    )
+
+    def fake(keys, metric_type, *, interval, breakdown=None, **kw):
+        if interval.value == "DAILY":
+            return _version_series_map({"v1.2.0": [1.0] * 7})
+        raise exc
+
+    monkeypatch.setattr(agent_detail_module, "get_project_metrics_cached", fake)
+    _patch_traces(monkeypatch, ())
+
+    resp = client.get(f"/api/agents/{AGENT_KEY}/cost-breakdown")
+    assert resp.status_code == 502
+    body = resp.json()
+    assert body["error"]["message"] == str(exc)
+    assert body["error"]["endpoint"] == "/v1/private/projects/p1/metrics"
+
+
 def test_traces_query_failure_maps_to_502_even_when_metrics_succeed(monkeypatch):
     _patch_metrics(
         monkeypatch,
