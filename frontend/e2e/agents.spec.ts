@@ -27,3 +27,27 @@ test("sidebar Agent 清單項目可導覽至 /agents", async ({ page }) => {
     page.getByRole("heading", { name: "Agent 清單" }),
   ).toBeVisible();
 });
+
+test("sidebar Agent 清單項目在導覽後顯示 active 樣式狀態", async ({ page }) => {
+  await page.goto("/cost-dashboard");
+
+  const agentListLink = page.getByRole("link", { name: "Agent 清單" });
+  const costDashboardLink = page.getByRole("link", { name: "成本儀表板" });
+
+  // Before navigating to /agents, the Agent 清單 item must not be marked
+  // active (components/ui/sidebar.tsx's SidebarMenuButton only renders the
+  // data-active attribute at all when isActive is true, which app-sidebar.tsx
+  // derives from usePathname() === item.href; when false the attribute is
+  // simply absent from the DOM, and when true it's present as an empty
+  // boolean attribute, i.e. `data-active=""`).
+  await expect(agentListLink).not.toHaveAttribute("data-active");
+  await expect(costDashboardLink).toHaveAttribute("data-active");
+
+  await agentListLink.click();
+  await expect(page).toHaveURL(/\/agents$/);
+
+  // After navigating, the clicked item becomes active and the
+  // previously-active item (Cost Dashboard) becomes inactive.
+  await expect(agentListLink).toHaveAttribute("data-active");
+  await expect(costDashboardLink).not.toHaveAttribute("data-active");
+});
