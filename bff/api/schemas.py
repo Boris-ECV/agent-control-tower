@@ -87,6 +87,37 @@ class AgentsListResponse(BaseModel):
     agents: list[AgentRegistryEntry]
 
 
+class VersionCostPoint(BaseModel):
+    date: str
+    value: float | None
+
+
+class VersionCostSeriesEntry(BaseModel):
+    version: str
+    points: list[VersionCostPoint]
+
+
+class ModelCostBreakdownEntry(BaseModel):
+    model: str
+    cost: float | None
+
+
+class TopTraceItem(BaseModel):
+    id: str
+    total_estimated_cost: float | None
+    metadata: dict | None
+
+
+class AgentCostBreakdownResponse(BaseModel):
+    key: str
+    display: str
+    anchor_date: str
+    period_start: str
+    version_cost_series: list[VersionCostSeriesEntry]
+    model_cost_breakdown: list[ModelCostBreakdownEntry]
+    top_traces: list[TopTraceItem]
+
+
 class AnomalyRow(BaseModel):
     agent: str | None
     anomaly_type: str
