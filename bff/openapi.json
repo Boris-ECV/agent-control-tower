@@ -1,0 +1,263 @@
+{
+  "components": {
+    "schemas": {
+      "CostOverviewSummary": {
+        "properties": {
+          "anchor_date": {
+            "title": "Anchor Date",
+            "type": "string"
+          },
+          "budget_consumed_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Consumed Pct"
+          },
+          "days_elapsed": {
+            "title": "Days Elapsed",
+            "type": "integer"
+          },
+          "days_in_month": {
+            "title": "Days In Month",
+            "type": "integer"
+          },
+          "month_start": {
+            "title": "Month Start",
+            "type": "string"
+          },
+          "projected_month_end_spend": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projected Month End Spend"
+          },
+          "projected_overspend": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projected Overspend"
+          },
+          "total_budget": {
+            "title": "Total Budget",
+            "type": "number"
+          },
+          "total_spend": {
+            "title": "Total Spend",
+            "type": "number"
+          },
+          "unregistered": {
+            "$ref": "#/components/schemas/Unregistered"
+          }
+        },
+        "required": [
+          "anchor_date",
+          "month_start",
+          "days_elapsed",
+          "days_in_month",
+          "total_spend",
+          "total_budget",
+          "budget_consumed_pct",
+          "projected_month_end_spend",
+          "projected_overspend",
+          "unregistered"
+        ],
+        "title": "CostOverviewSummary",
+        "type": "object"
+      },
+      "PeriodComparison": {
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/PeriodComparisonAgent"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
+          "anchor_date": {
+            "title": "Anchor Date",
+            "type": "string"
+          },
+          "current_period": {
+            "$ref": "#/components/schemas/PeriodRange"
+          },
+          "previous_period": {
+            "$ref": "#/components/schemas/PeriodRange"
+          }
+        },
+        "required": [
+          "anchor_date",
+          "current_period",
+          "previous_period",
+          "agents"
+        ],
+        "title": "PeriodComparison",
+        "type": "object"
+      },
+      "PeriodComparisonAgent": {
+        "properties": {
+          "current_cost": {
+            "title": "Current Cost",
+            "type": "number"
+          },
+          "delta": {
+            "title": "Delta",
+            "type": "number"
+          },
+          "delta_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Pct"
+          },
+          "display": {
+            "title": "Display",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "previous_cost": {
+            "title": "Previous Cost",
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "display",
+          "current_cost",
+          "previous_cost",
+          "delta",
+          "delta_pct"
+        ],
+        "title": "PeriodComparisonAgent",
+        "type": "object"
+      },
+      "PeriodRange": {
+        "properties": {
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "PeriodRange",
+        "type": "object"
+      },
+      "Unregistered": {
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/UnregisteredAgentSpend"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
+          "spend": {
+            "title": "Spend",
+            "type": "number"
+          }
+        },
+        "required": [
+          "spend",
+          "agents"
+        ],
+        "title": "Unregistered",
+        "type": "object"
+      },
+      "UnregisteredAgentSpend": {
+        "properties": {
+          "display": {
+            "title": "Display",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "spend": {
+            "title": "Spend",
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "display",
+          "spend"
+        ],
+        "title": "UnregisteredAgentSpend",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Agent Control Tower BFF",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/cost-overview/period-comparison": {
+      "get": {
+        "operationId": "cost_overview_period_comparison_api_cost_overview_period_comparison_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeriodComparison"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Cost Overview Period Comparison"
+      }
+    },
+    "/api/cost-overview/summary": {
+      "get": {
+        "operationId": "cost_overview_summary_api_cost_overview_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostOverviewSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Cost Overview Summary"
+      }
+    }
+  }
+}

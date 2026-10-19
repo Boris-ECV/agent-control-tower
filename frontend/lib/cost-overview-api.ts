@@ -5,44 +5,12 @@
 // types and endpoint functions.
 
 import { fetchJson } from "@/lib/api-client";
+import type { components } from "@/lib/generated/bff-types";
 
-export interface UnregisteredAgentSpend {
-  key: string;
-  display: string;
-  spend: number;
-}
-
-export interface CostOverviewSummary {
-  anchor_date: string;
-  month_start: string;
-  days_elapsed: number;
-  days_in_month: number;
-  total_spend: number;
-  total_budget: number;
-  budget_consumed_pct: number | null;
-  projected_month_end_spend: number | null;
-  projected_overspend: number | null;
-  unregistered: {
-    spend: number;
-    agents: UnregisteredAgentSpend[];
-  };
-}
-
-export interface PeriodComparisonAgent {
-  key: string;
-  display: string;
-  current_cost: number;
-  previous_cost: number;
-  delta: number;
-  delta_pct: number | null;
-}
-
-export interface PeriodComparison {
-  anchor_date: string;
-  current_period: { start: string; end: string };
-  previous_period: { start: string; end: string };
-  agents: PeriodComparisonAgent[];
-}
+export type UnregisteredAgentSpend = components["schemas"]["UnregisteredAgentSpend"];
+export type CostOverviewSummary = components["schemas"]["CostOverviewSummary"];
+export type PeriodComparisonAgent = components["schemas"]["PeriodComparisonAgent"];
+export type PeriodComparison = components["schemas"]["PeriodComparison"];
 
 export function fetchCostOverviewSummary(): Promise<CostOverviewSummary> {
   return fetchJson<CostOverviewSummary>("/api/cost-overview/summary");
