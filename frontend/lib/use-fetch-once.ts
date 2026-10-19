@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import type { ApiError } from "@/lib/cost-overview-api";
+import type { ApiError } from "@/lib/api-client";
 
 type FetchState<T> =
   | { status: "loading" }
