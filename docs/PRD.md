@@ -690,3 +690,34 @@ As a FinOps reviewer, I want a single BFF endpoint returning one Agent's version
 
 **規模預估**
 <= 1 開發日
+
+**狀態**：Done（PR #143，合併後 reviewer APPROVE，G2 通過）
+
+## SDLCCT-51 — Anomaly aggregation endpoint (backend)
+
+來源：split from SDLCCT-45（Anomalies screen, Portal MVP screen 5 of 6）
+
+**使用者故事**
+As a Portal backend, I want a single endpoint that runs all 5 anomaly rules across registered and unregistered agents for the demo window, so the frontend can render one unified anomaly feed.
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 一般規則（tool_retry_loop/context_bloat/night_batch_burst）有異常 → 一列，date=target_date
+2. 一般規則無異常 → 不產生列
+3. 模型切換有偵測到 switch_date 且異常 → 一列，date=switch_date
+4. 模型切換無 switch_date → 不產生列
+5. 治理缺口 → 每個標記 Agent 一列，date=null（欄位存在，值為 null，非省略）
+6. 任一規則呼叫失敗 → 回傳明確的 per-rule/per-agent 錯誤列，不中斷其餘處理
+7. 覆蓋率：4 條單日規則每個已註冊 Agent 各呼叫一次；治理缺口對全部（已註冊+未註冊）Agent id 整批呼叫一次
+
+**範圍外**
+- pagination、filtering/sorting 參數
+- 固定 demo anchor window 以外的歷史日期範圍查詢
+- 既有 portal middleware 以外的 auth/RBAC
+
+**依賴**
+- SDLCCT-27/28/29/30/31（Done）、SDLCCT-49（已解決）
+
+**規模預估**
+<= 1 開發日
+
+**狀態**：Done（PR #142，合併時與 SDLCCT-47 的 app.py/schemas.py 新增發生相鄰衝突，已手動解決並保留兩者共存，reviewer APPROVE，G2 通過）
