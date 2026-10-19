@@ -6,19 +6,26 @@ overview screen's two endpoints. See docs/design/SDLCCT-32.md "介面/API
 import sys
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from .agent_detail import get_agent_cost_breakdown
 from .agents import get_agent_registry
 from .cost_overview import get_period_comparison, get_summary
-from .schemas import AgentsListResponse, CostOverviewSummary, PeriodComparison
+from .schemas import (
+    AgentCostBreakdownResponse,
+    AgentsListResponse,
+    CostOverviewSummary,
+    PeriodComparison,
+)
 
 _BFF_ROOT = Path(__file__).resolve().parent.parent
 if str(_BFF_ROOT) not in sys.path:
     sys.path.insert(0, str(_BFF_ROOT))
 
 from opik_metrics import MissingProjectIdsError, OpikClientError, OpikConfigError  # noqa: E402
+from opik_traces import DEFAULT_TOP_TRACES_SIZE  # noqa: E402
 
 app = FastAPI(title="Agent Control Tower BFF")
 
@@ -81,3 +88,11 @@ def cost_overview_period_comparison() -> dict:
 @app.get("/api/agents", response_model=AgentsListResponse)
 def agents_list() -> dict:
     return get_agent_registry()
+
+
+@app.get("/api/agents/{key}/cost-breakdown", response_model=AgentCostBreakdownResponse)
+def agent_cost_breakdown(key: str, top_n: int = DEFAULT_TOP_TRACES_SIZE) -> dict:
+    result = get_agent_cost_breakdown(key, top_n=top_n)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"Agent '{key}' not found")
+    return result
