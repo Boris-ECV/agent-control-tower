@@ -10,8 +10,9 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from .agents import get_agent_registry
 from .cost_overview import get_period_comparison, get_summary
-from .schemas import CostOverviewSummary, PeriodComparison
+from .schemas import AgentsListResponse, CostOverviewSummary, PeriodComparison
 
 _BFF_ROOT = Path(__file__).resolve().parent.parent
 if str(_BFF_ROOT) not in sys.path:
@@ -75,3 +76,8 @@ def cost_overview_summary() -> dict:
 @app.get("/api/cost-overview/period-comparison", response_model=PeriodComparison)
 def cost_overview_period_comparison() -> dict:
     return get_period_comparison()
+
+
+@app.get("/api/agents", response_model=AgentsListResponse)
+def agents_list() -> dict:
+    return get_agent_registry()
