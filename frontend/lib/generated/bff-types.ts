@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Agents List */
+        get: operations["agents_list_api_agents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/cost-overview/period-comparison": {
         parameters: {
             query?: never;
@@ -42,6 +59,45 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AgentRegistryEntry */
+        AgentRegistryEntry: {
+            /** Budget */
+            budget: number | null;
+            /** Budget Consumed Pct */
+            budget_consumed_pct: number | null;
+            /** Current Period Spend */
+            current_period_spend: number;
+            /** Dept */
+            dept: string;
+            /** Display */
+            display: string;
+            /** Has Governance Gap */
+            has_governance_gap: boolean;
+            /** Key */
+            key: string;
+            /** Owner */
+            owner: string | null;
+            /** Registered */
+            registered: boolean;
+            /** Trend */
+            trend: components["schemas"]["AgentTrendPoint"][];
+        };
+        /** AgentTrendPoint */
+        AgentTrendPoint: {
+            /** Date */
+            date: string;
+            /** Value */
+            value: number | null;
+        };
+        /** AgentsListResponse */
+        AgentsListResponse: {
+            /** Agents */
+            agents: components["schemas"]["AgentRegistryEntry"][];
+            /** Anchor Date */
+            anchor_date: string;
+            /** Period Start */
+            period_start: string;
+        };
         /** CostOverviewSummary */
         CostOverviewSummary: {
             /** Anchor Date */
@@ -120,6 +176,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    agents_list_api_agents_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentsListResponse"];
+                };
+            };
+        };
+    };
     cost_overview_period_comparison_api_cost_overview_period_comparison_get: {
         parameters: {
             query?: never;

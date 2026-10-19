@@ -61,3 +61,27 @@ class PeriodComparison(BaseModel):
     current_period: PeriodRange
     previous_period: PeriodRange
     agents: list[PeriodComparisonAgent]
+
+
+class AgentTrendPoint(BaseModel):
+    date: str
+    value: float | None
+
+
+class AgentRegistryEntry(BaseModel):
+    key: str
+    display: str
+    dept: str
+    owner: str | None
+    budget: float | None
+    registered: bool
+    current_period_spend: float
+    budget_consumed_pct: float | None
+    trend: list[AgentTrendPoint]
+    has_governance_gap: bool
+
+
+class AgentsListResponse(BaseModel):
+    anchor_date: str
+    period_start: str
+    agents: list[AgentRegistryEntry]

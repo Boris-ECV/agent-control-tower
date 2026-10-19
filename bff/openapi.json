@@ -1,6 +1,139 @@
 {
   "components": {
     "schemas": {
+      "AgentRegistryEntry": {
+        "properties": {
+          "budget": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget"
+          },
+          "budget_consumed_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Consumed Pct"
+          },
+          "current_period_spend": {
+            "title": "Current Period Spend",
+            "type": "number"
+          },
+          "dept": {
+            "title": "Dept",
+            "type": "string"
+          },
+          "display": {
+            "title": "Display",
+            "type": "string"
+          },
+          "has_governance_gap": {
+            "title": "Has Governance Gap",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner"
+          },
+          "registered": {
+            "title": "Registered",
+            "type": "boolean"
+          },
+          "trend": {
+            "items": {
+              "$ref": "#/components/schemas/AgentTrendPoint"
+            },
+            "title": "Trend",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "display",
+          "dept",
+          "owner",
+          "budget",
+          "registered",
+          "current_period_spend",
+          "budget_consumed_pct",
+          "trend",
+          "has_governance_gap"
+        ],
+        "title": "AgentRegistryEntry",
+        "type": "object"
+      },
+      "AgentTrendPoint": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "date",
+          "value"
+        ],
+        "title": "AgentTrendPoint",
+        "type": "object"
+      },
+      "AgentsListResponse": {
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/AgentRegistryEntry"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
+          "anchor_date": {
+            "title": "Anchor Date",
+            "type": "string"
+          },
+          "period_start": {
+            "title": "Period Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "anchor_date",
+          "period_start",
+          "agents"
+        ],
+        "title": "AgentsListResponse",
+        "type": "object"
+      },
       "CostOverviewSummary": {
         "properties": {
           "anchor_date": {
@@ -223,6 +356,24 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/agents": {
+      "get": {
+        "operationId": "agents_list_api_agents_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentsListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Agents List"
+      }
+    },
     "/api/cost-overview/period-comparison": {
       "get": {
         "operationId": "cost_overview_period_comparison_api_cost_overview_period_comparison_get",
