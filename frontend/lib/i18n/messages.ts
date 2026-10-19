@@ -60,6 +60,31 @@ export const messages = {
       delta: "漲幅",
     },
   },
+  agents: {
+    header: {
+      title: "Agent 清單",
+      subtitle: "全部 9 個 Agent 的本期預算消耗、近期花費趨勢、治理缺口一覽",
+    },
+    table: {
+      columns: {
+        agent: "Agent",
+        dept: "部門",
+        owner: "負責人",
+        budget: "預算",
+        currentPeriodSpend: "本期花費",
+        budgetConsumedPct: "預算消耗%",
+        trend: "趨勢（近 7 天）",
+        governance: "治理狀態",
+      },
+    },
+    governanceBadge: {
+      hasGap: "治理缺口",
+      ok: "正常",
+    },
+    unknownOwner: "未指定",
+    unknownBudget: "未設定",
+    footer: { dataSource: "資料來源：Agent registry ＋ 觀測性後端成本查詢。" },
+  },
   errorCard: {
     loadFailedTitle: (title: string) => `無法載入「${title}」`,
     queryFailed: (endpoint: string, status: string, message?: string) =>
