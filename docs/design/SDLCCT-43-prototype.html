@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>原型 — SDLCCT-43 Agent 清單畫面</title>
+<style>
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #4B5563;
+    --color-border: #E5E7EB;
+    --color-accent: #2563EB;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #F9FAFB;
+    color: var(--color-text-primary);
+  }
+  header.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg);
+    padding: 12px 24px;
+  }
+  header.topbar .brand {
+    font-size: 18px;
+    line-height: 26px;
+    font-weight: 600;
+  }
+  header.topbar .today {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+  }
+  main {
+    max-width: 1152px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  h1 {
+    margin: 0 0 4px 0;
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 700;
+    text-align: left;
+  }
+  p.subtitle {
+    margin: 0 0 24px 0;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    text-align: left;
+  }
+  h2 {
+    margin: 0 0 16px 0;
+    font-size: 18px;
+    line-height: 26px;
+    font-weight: 600;
+    text-align: left;
+  }
+  .note-box {
+    border: 1px dashed var(--color-accent);
+    background: #EFF6FF;
+    color: var(--color-text-primary);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    line-height: 18px;
+    margin-bottom: 24px;
+  }
+  .viewport-demo {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    margin-bottom: 32px;
+  }
+  .viewport-demo .frame {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg);
+    padding: 16px;
+    overflow-x: auto;
+  }
+  .frame-label {
+    font-size: 12px;
+    line-height: 18px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    margin-bottom: 8px;
+  }
+  .frame.desktop { width: 680px; }
+  .frame.mobile { width: 320px; }
+
+  table.agents-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    line-height: 22px;
+  }
+  table.agents-table th {
+    text-align: left;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    font-weight: 400;
+    border-bottom: 1px solid var(--color-border);
+    padding: 8px 8px;
+    white-space: nowrap;
+  }
+  table.agents-table td {
+    border-bottom: 1px solid var(--color-border);
+    padding: 8px 8px;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  table.agents-table td.num { text-align: right; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--color-border);
+  }
+  .badge.gap {
+    border-color: #FCA5A5;
+    background: #FEF2F2;
+    color: #B91C1C;
+  }
+  .badge.ok {
+    border-color: var(--color-border);
+    background: #F9FAFB;
+    color: var(--color-text-secondary);
+  }
+
+  .card-list { display: flex; flex-direction: column; gap: 16px; }
+  .agent-card {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 16px;
+    background: var(--color-bg);
+  }
+  .agent-card .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .agent-card dl {
+    margin: 0;
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    row-gap: 4px;
+    font-size: 12px;
+    line-height: 18px;
+  }
+  .agent-card dt { color: var(--color-text-secondary); }
+  .agent-card dd { margin: 0; text-align: left; }
+  .agent-card .spark-row { margin-top: 8px; }
+
+  svg.spark { display: block; }
+  svg.spark polyline { fill: none; stroke: var(--color-accent); stroke-width: 1.5; }
+  svg.spark polyline.gapline { stroke: #B91C1C; }
+  svg.spark circle.null-point { fill: #FCA5A5; stroke: none; }
+
+  .error-card {
+    border: 1px solid #FCA5A5;
+    background: #FEF2F2;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+  }
+  .error-card .err-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #B91C1C;
+    margin: 0 0 4px 0;
+  }
+  .error-card .err-body {
+    font-size: 12px;
+    line-height: 18px;
+    color: rgba(185, 28, 28, 0.85);
+    margin: 0 0 12px 0;
+  }
+  .error-card button {
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+
+  footer.page-footer {
+    margin-top: 48px;
+    border-top: 1px solid var(--color-border);
+    padding: 16px 0;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    text-align: left;
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="brand">Agent Control Tower</span>
+  <span class="today">今天（台灣時間）：2026 年 10 月 15 日</span>
+</header>
+
+<main>
+  <h1>Agent 清單</h1>
+  <p class="subtitle">全部 9 個 Agent 的本期預算消耗、近 7 天花費趨勢、治理缺口狀態（未登錄／無負責人／無預算）。</p>
+
+  <div class="note-box">
+    本頁為設計原型（G1b 審核用），所有數字皆為示意資料，非真實查詢結果。
+    下方以兩個並排視窗寬度示意區塊，分別呈現「桌面（≥768px）表格型態」與
+    「窄螢幕（&lt;768px）卡片清單型態」——實際實作時兩者由同一份 API 回應渲染，
+    依 Tailwind <code>md:</code> 斷點切換可見性，不是兩次 fetch。
+  </div>
+
+  <h2>桌面表格型態（≥768px，AC4「桌面完整呈現」）</h2>
+  <div class="viewport-demo">
+    <div class="frame desktop">
+      <table class="agents-table">
+        <thead>
+          <tr>
+            <th>Agent</th>
+            <th>部門</th>
+            <th>負責人</th>
+            <th class="num">預算</th>
+            <th class="num">本期花費</th>
+            <th class="num">預算消耗%</th>
+            <th>趨勢（近7天）</th>
+            <th>治理狀態</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>設備維修助理</td>
+            <td>設備部</td>
+            <td>王志明</td>
+            <td class="num">NT$ 900</td>
+            <td class="num">NT$ 612</td>
+            <td class="num">68.0%</td>
+            <td>
+              <svg class="spark" width="80" height="24" viewBox="0 0 80 24">
+                <polyline points="0,14 13,10 26,12 39,12 52,6 65,3 78,8" />
+                <circle class="null-point" cx="39" cy="12" r="2" />
+              </svg>
+            </td>
+            <td><span class="badge ok">正常</span></td>
+          </tr>
+          <tr>
+            <td>品質異常分析</td>
+            <td>品保部</td>
+            <td>陳雅婷</td>
+            <td class="num">NT$ 400</td>
+            <td class="num">NT$ 455</td>
+            <td class="num">113.8%</td>
+            <td>
+              <svg class="spark" width="80" height="24" viewBox="0 0 80 24">
+                <polyline points="0,18 13,16 26,10 39,6 52,4 65,2 78,1" />
+              </svg>
+            </td>
+            <td><span class="badge ok">正常</span></td>
+          </tr>
+          <tr>
+            <td>採購詢價比價</td>
+            <td>採購部</td>
+            <td>林建宏</td>
+            <td class="num">NT$ 90</td>
+            <td class="num">NT$ 52</td>
+            <td class="num">57.8%</td>
+            <td>
+              <svg class="spark" width="80" height="24" viewBox="0 0 80 24">
+                <polyline points="0,16 13,15 26,14 39,16 52,13 65,15 78,14" />
+              </svg>
+            </td>
+            <td><span class="badge ok">正常</span></td>
+          </tr>
+          <tr>
+            <td>訂單查詢客服</td>
+            <td>業務部</td>
+            <td>黃淑芬</td>
+            <td class="num">NT$ 30</td>
+            <td class="num">NT$ 41</td>
+            <td class="num">136.7%</td>
+            <td>
+              <svg class="spark" width="80" height="24" viewBox="0 0 80 24">
+                <polyline points="0,16 13,14 26,11 39,9 52,6 65,4 78,2" />
+              </svg>
+            </td>
+            <td><span class="badge ok">正常</span></td>
+          </tr>
+          <tr>
+            <td>供應鏈風險監控</td>
+            <td>採購部</td>
+            <td>林建宏</td>
+            <td class="num">NT$ 60</td>
+            <td class="num">NT$ 48</td>
+            <td class="num">80.0%</td>
+            <td>
+              <svg class="spark" width="80" height="24" viewBox="0 0 80 24">
+                <polyline points="0,12 13,13 26,12 39,14 52,13 65,12 78,13" />
+              </svg>
+            </td>
+            <td><span class="badge ok">正常</span></td>
+          </tr>
+          <tr>
+            <td>生產排程建議</td>
+            <td>生管部</td>
+            <td>張偉倫</td>
+            <td class="num">NT$ 290</td>
+            <td class="num">NT$ 205</td>
+            <td class="num">70.7%</td>
+            <td>
+              <svg class="spark" width="80" height="24" viewBox="0 0 80 24">
+                <polyline points="0,14 13,13 26,15 39,12 52,14 65,11 78,13" />
+              </svg>
+            </td>
+            <td><span class="badge ok">正常</span></td>
+          </tr>
+          <tr>
+            <td>EHS 法規問答</td>
+            <td>EHS</td>
+            <td>李美玲</td>
+            <td class="num">NT$ 10</td>
+            <td class="num">NT$ 6</td>
+            <td class="num">60.0%</td>
+            <td>
+              <svg class="spark" width="80" height="24" viewBox="0 0 80 24">
+                <polyline points="0,16 13,16 26,15 39,16 52,15 65,16 78,15" />
+              </svg>
+            </td>
+            <td><span class="badge ok">正常</span></td>
+          </tr>
+          <tr>
+            <td>報價助理</td>
+            <td>業務部</td>
+            <td>黃淑芬</td>
+            <td class="num">NT$ 220</td>
+            <td class="num">NT$ 168</td>
+            <td class="num">76.4%</td>
+            <td>
+              <svg class="spark" width="80" height="24" viewBox="0 0 80 24">
+                <polyline points="0,15 13,14 26,13 39,13 52,12 65,13 78,12" />
+              </svg>
+            </td>
+            <td><span class="badge ok">正常</span></td>
+          </tr>
+          <tr>
+            <td>臨時供應商爬蟲</td>
+            <td>未登錄</td>
+            <td>—</td>
+            <td class="num">—</td>
+            <td class="num">NT$ 234</td>
+            <td class="num">—</td>
+            <td>
+              <svg class="spark" width="80" height="24" viewBox="0 0 80 24">
+                <polyline class="gapline" points="0,18 13,16 26,14 39,11 52,9 65,6 78,2" />
+              </svg>
+            </td>
+            <td><span class="badge gap">治理缺口</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h2>窄螢幕卡片清單型態（&lt;768px，AC4「窄螢幕不破版」）</h2>
+  <div class="viewport-demo">
+    <div class="frame mobile">
+      <div class="card-list">
+        <div class="agent-card">
+          <div class="card-title">
+            <span>設備維修助理</span>
+            <span class="badge ok">正常</span>
+          </div>
+          <dl>
+            <dt>部門</dt><dd>設備部</dd>
+            <dt>負責人</dt><dd>王志明</dd>
+            <dt>預算</dt><dd>NT$ 900</dd>
+            <dt>本期花費</dt><dd>NT$ 612</dd>
+            <dt>預算消耗%</dt><dd>68.0%</dd>
+          </dl>
+          <div class="spark-row">
+            <svg class="spark" width="100%" height="24" viewBox="0 0 280 24">
+              <polyline points="0,14 46,10 92,12 138,12 184,6 230,3 276,8" />
+              <circle class="null-point" cx="138" cy="12" r="2.5" />
+            </svg>
+          </div>
+        </div>
+
+        <div class="agent-card">
+          <div class="card-title">
+            <span>臨時供應商爬蟲</span>
+            <span class="badge gap">治理缺口</span>
+          </div>
+          <dl>
+            <dt>部門</dt><dd>未登錄</dd>
+            <dt>負責人</dt><dd>—（未指派）</dd>
+            <dt>預算</dt><dd>—（未設定）</dd>
+            <dt>本期花費</dt><dd>NT$ 234</dd>
+            <dt>預算消耗%</dt><dd>—</dd>
+          </dl>
+          <div class="spark-row">
+            <svg class="spark" width="100%" height="24" viewBox="0 0 280 24">
+              <polyline class="gapline" points="0,18 46,16 92,14 138,11 184,9 230,6 276,2" />
+            </svg>
+          </div>
+        </div>
+
+        <div class="agent-card">
+          <div class="card-title">
+            <span>品質異常分析</span>
+            <span class="badge ok">正常</span>
+          </div>
+          <dl>
+            <dt>部門</dt><dd>品保部</dd>
+            <dt>負責人</dt><dd>陳雅婷</dd>
+            <dt>預算</dt><dd>NT$ 400</dd>
+            <dt>本期花費</dt><dd>NT$ 455</dd>
+            <dt>預算消耗%</dt><dd>113.8%</dd>
+          </dl>
+          <div class="spark-row">
+            <svg class="spark" width="100%" height="24" viewBox="0 0 280 24">
+              <polyline points="0,18 46,16 92,10 138,6 184,4 230,2 276,1" />
+            </svg>
+          </div>
+        </div>
+
+        <p style="font-size:12px;line-height:18px;color:var(--color-text-secondary);text-align:center;margin:8px 0 0 0;">
+          （其餘 6 筆卡片省略，版面規律相同）
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <h2>錯誤狀態範例（AC5：不白屏、不呈現為 0 或空白）</h2>
+  <div class="error-card" style="max-width: 420px;">
+    <p class="err-title">無法載入「Agent 清單」</p>
+    <p class="err-body">查詢失敗：/api/agents 回應 502（OpikTimeoutError: request timed out (endpoint=/v1/private/projects/maintenance_copilot/metrics, status=None)）。</p>
+    <button type="button">重試</button>
+  </div>
+
+  <footer class="page-footer">
+    資料來源：Agent registry ＋ 觀測性後端成本查詢（近 7 天趨勢 + 本期月至今總額）。
+  </footer>
+</main>
+
+</body>
+</html>
