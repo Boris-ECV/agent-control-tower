@@ -11,8 +11,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .agents import get_agent_registry
+from .anomalies import get_anomaly_feed
 from .cost_overview import get_period_comparison, get_summary
-from .schemas import AgentsListResponse, CostOverviewSummary, PeriodComparison
+from .schemas import (
+    AgentsListResponse,
+    AnomalyFeedResponse,
+    CostOverviewSummary,
+    PeriodComparison,
+)
 
 _BFF_ROOT = Path(__file__).resolve().parent.parent
 if str(_BFF_ROOT) not in sys.path:
@@ -81,3 +87,8 @@ def cost_overview_period_comparison() -> dict:
 @app.get("/api/agents", response_model=AgentsListResponse)
 def agents_list() -> dict:
     return get_agent_registry()
+
+
+@app.get("/api/anomalies", response_model=AnomalyFeedResponse)
+def anomalies_feed() -> dict:
+    return get_anomaly_feed()

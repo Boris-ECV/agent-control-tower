@@ -85,3 +85,16 @@ class AgentsListResponse(BaseModel):
     anchor_date: str
     period_start: str
     agents: list[AgentRegistryEntry]
+
+
+class AnomalyRow(BaseModel):
+    agent: str | None
+    anomaly_type: str
+    date: str | None
+    status: str
+    reason: str
+
+
+class AnomalyFeedResponse(BaseModel):
+    anchor_date: str
+    anomalies: list[AnomalyRow]
