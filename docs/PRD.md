@@ -665,3 +665,28 @@
 
 **規模預估**
 中等，預估一個開發日內可完成，不拆分。
+
+## SDLCCT-47 — Agent detail cost-breakdown endpoint (backend)
+
+來源：split from SDLCCT-44（Agent detail screen, Portal MVP screen 3 of 6）
+
+**使用者故事**
+As a FinOps reviewer, I want a single BFF endpoint returning one Agent's version-split cost series, model-split cost, and top-cost trace list, so that I can see when cost jumped and which executions were most expensive.
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. Given a registered Agent key, When the new endpoint is called, Then the response includes a cost series broken down via Breakdown(field=METADATA, metadata_key="deployed_version"), with any backend-null point preserved as null (never coerced to 0).
+2. Given the same Agent, When called, Then the response includes a cost breakdown via Breakdown(field=TAGS) (by model).
+3. Given the same Agent, When called with an optional top-N param, Then the response includes a trace list from get_top_traces_by_cost(project_name, size=N), sorted DESC by total_estimated_cost, capped at N.
+4. Given any one of the three underlying queries fails, When called, Then the whole request returns an explicit 502 error — never 0/empty for the failed section.
+5. Given an Agent key not present in the registry, When called, Then the endpoint returns an explicit 404.
+
+**範圍外**
+- trace-tree/span assembly (screen #4, separate story)
+- any write operations
+- exact route path (left to architect)
+
+**依賴**
+- SDLCCT-10, SDLCCT-17 (Done)
+
+**規模預估**
+<= 1 開發日
