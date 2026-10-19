@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>原型 — SDLCCT-46 預算與節省模擬畫面</title>
+<style>
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #4B5563;
+    --color-border: #E5E7EB;
+    --color-accent: #2563EB;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #F9FAFB;
+    color: var(--color-text-primary);
+  }
+  header.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg);
+    padding: 12px 24px;
+  }
+  header.topbar .brand { font-size: 18px; line-height: 26px; font-weight: 600; }
+  header.topbar .today { font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px; }
+  h1 { margin: 0 0 4px 0; font-size: 24px; line-height: 32px; font-weight: 700; text-align: left; }
+  p.subtitle { margin: 0 0 24px 0; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); text-align: left; }
+  h2 { margin: 0 0 16px 0; font-size: 18px; line-height: 26px; font-weight: 600; text-align: left; }
+  .note-box {
+    border: 1px dashed var(--color-accent);
+    background: #EFF6FF;
+    color: var(--color-text-primary);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    line-height: 18px;
+    margin-bottom: 24px;
+  }
+  .card {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg);
+    padding: 16px;
+    margin-bottom: 24px;
+  }
+  .form-row { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 16px; }
+  .field { display: flex; flex-direction: column; gap: 4px; min-width: 220px; }
+  .field label { font-size: 12px; line-height: 18px; color: var(--color-text-secondary); font-weight: 400; }
+  .field label .required { color: #B91C1C; margin-left: 2px; }
+  .field select {
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 14px;
+    line-height: 22px;
+    color: var(--color-text-primary);
+    background: var(--color-bg);
+  }
+  .field select:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .btn-primary {
+    background: var(--color-accent);
+    color: #FFFFFF;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    align-self: flex-start;
+  }
+  .btn-primary:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .result-item {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .result-item .label { font-size: 12px; line-height: 18px; color: var(--color-text-secondary); margin-bottom: 4px; }
+  .result-item .value { font-size: 18px; line-height: 26px; font-weight: 600; }
+  .result-item .value.positive { color: #047857; }
+  .result-item .value.negative { color: #B91C1C; }
+
+  .estimate-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--color-accent);
+    background: #EFF6FF;
+    color: var(--color-accent);
+    margin-bottom: 8px;
+  }
+  .explanation-text {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    margin: 0;
+  }
+
+  .error-card {
+    border: 1px solid #FCA5A5;
+    background: #FEF2F2;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .error-card .err-title { font-size: 14px; font-weight: 600; color: #B91C1C; margin: 0 0 4px 0; }
+  .error-card .err-body { font-size: 12px; line-height: 18px; color: rgba(185, 28, 28, 0.85); margin: 0 0 12px 0; }
+  .error-card button {
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+
+  footer.page-footer {
+    margin-top: 48px;
+    border-top: 1px solid var(--color-border);
+    padding: 16px 0;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    text-align: left;
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="brand">Agent Control Tower</span>
+  <span class="today">今天（台灣時間）：2026 年 10 月 15 日</span>
+</header>
+
+<main>
+  <h1>預算與節省模擬</h1>
+  <p class="subtitle">選擇一個 Agent 與一個目標模型，試算若改用該模型的推算成本與預估月省（視窗固定近 30 天）。</p>
+
+  <div class="note-box">
+    本頁為設計原型（G1b 審核用），所有數字皆為示意資料，非真實查詢結果。
+    下方依序示範：表單輸入狀態、成功結果狀態、兩種錯誤狀態（AC4 找不到參照
+    Agent、AC5 底層查詢失敗）。
+  </div>
+
+  <h2>表單輸入（無障礙：label 對應、必填標示、可見 focus 樣式）</h2>
+  <div class="card">
+    <div class="form-row">
+      <div class="field">
+        <label for="agent-select">選擇 Agent<span class="required">（必填）</span></label>
+        <select id="agent-select">
+          <option>設備維修助理（maintenance_copilot）</option>
+          <option>品質異常分析（qc_vision_agent）</option>
+          <option>採購詢價比價</option>
+          <option>…（其餘 6 個已登錄 Agent）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="model-select">目標模型<span class="required">（必填）</span></label>
+        <select id="model-select">
+          <option>claude-sonnet-4-5</option>
+          <option>claude-haiku-4-5</option>
+          <option>gemini-2.5-pro</option>
+          <option>gemini-2.5-flash</option>
+          <option>gpt-4.1</option>
+          <option selected>gpt-4o-mini</option>
+          <option>gpt-4o</option>
+        </select>
+      </div>
+    </div>
+    <button type="button" class="btn-primary">試算</button>
+  </div>
+
+  <h2>成功結果（AC1-3、AC7）</h2>
+  <div class="card">
+    <span class="estimate-badge">估算值</span>
+    <div class="result-grid">
+      <div class="result-item">
+        <div class="label">目前有效費率（元／token）</div>
+        <div class="value">0.0000041</div>
+      </div>
+      <div class="result-item">
+        <div class="label">目標有效費率（元／token，參照 Agent：qc_vision_agent）</div>
+        <div class="value">0.0000021</div>
+      </div>
+      <div class="result-item">
+        <div class="label">推算月成本</div>
+        <div class="value">NT$ 386.82</div>
+      </div>
+      <div class="result-item">
+        <div class="label">預估月省</div>
+        <div class="value positive">NT$ 368.40</div>
+      </div>
+    </div>
+    <p class="explanation-text">
+      此為混合後的單一 token 有效費率估算（總成本 ÷ 總 token 數），非依
+      input/output 個別計價的精確試算。視窗：2026-09-16 ～ 2026-10-15（近 30 天）。
+    </p>
+  </div>
+
+  <h2>錯誤狀態範例一：找不到參照 Agent（AC4）</h2>
+  <div class="error-card">
+    <p class="err-title">無法試算</p>
+    <p class="err-body">找不到以 gemini-2.5-pro 為主要模型的已登錄 Agent，無法作為參照標竿（NoReferenceAgentForModelError）。</p>
+    <button type="button">重新選擇模型</button>
+  </div>
+
+  <h2>錯誤狀態範例二：底層查詢失敗（AC5，不呈現為 0 或空白）</h2>
+  <div class="error-card">
+    <p class="err-title">無法載入「預算與節省模擬」</p>
+    <p class="err-body">查詢失敗：/api/budget-simulation 回應 502（OpikTimeoutError: request timed out (endpoint=/v1/private/projects/qc_vision_agent/metrics, status=None)）。</p>
+    <button type="button">重試</button>
+  </div>
+
+  <footer class="page-footer">
+    資料來源：Agent registry ＋ 觀測性後端成本/token/標籤查詢（近 30 天視窗，HISTORY_DAYS=30）。
+  </footer>
+</main>
+
+</body>
+</html>
