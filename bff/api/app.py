@@ -12,10 +12,12 @@ from fastapi.responses import JSONResponse
 
 from .agent_detail import get_agent_cost_breakdown
 from .agents import get_agent_registry
+from .anomalies import get_anomaly_feed
 from .cost_overview import get_period_comparison, get_summary
 from .schemas import (
     AgentCostBreakdownResponse,
     AgentsListResponse,
+    AnomalyFeedResponse,
     CostOverviewSummary,
     PeriodComparison,
 )
@@ -96,3 +98,8 @@ def agent_cost_breakdown(key: str, top_n: int = DEFAULT_TOP_TRACES_SIZE) -> dict
     if result is None:
         raise HTTPException(status_code=404, detail=f"Agent '{key}' not found")
     return result
+
+
+@app.get("/api/anomalies", response_model=AnomalyFeedResponse)
+def anomalies_feed() -> dict:
+    return get_anomaly_feed()

@@ -116,3 +116,16 @@ class AgentCostBreakdownResponse(BaseModel):
     version_cost_series: list[VersionCostSeriesEntry]
     model_cost_breakdown: list[ModelCostBreakdownEntry]
     top_traces: list[TopTraceItem]
+
+
+class AnomalyRow(BaseModel):
+    agent: str | None
+    anomaly_type: str
+    date: str | None
+    status: str
+    reason: str
+
+
+class AnomalyFeedResponse(BaseModel):
+    anchor_date: str
+    anomalies: list[AnomalyRow]
