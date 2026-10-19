@@ -192,13 +192,22 @@ computed-style 一致性測試（這類測試只可能被會改變畫面渲染�
    路由函式本身的執行邏輯（呼叫 `get_summary()`/`get_period_comparison()`
    並回傳其 dict）完全不變；`response_model` 只是告訴 FastAPI「這個
    dict 应该长什么样」以供 `app.openapi()` 反映進 schema 與
-   `openapi-typescript` 產生對應 TS 型別，不改變任何計算或請求/回應的
-   處理流程，也不是本票禁止的「執行期 schema 驗證」新增邏輯——
-   `response_model` 本來就是 FastAPI 既有、框架內建的序列化機制，SDLCCT-32
-   建立這兩個端點時沒有用到它只是因為當時沒有型別產生的需求，不是刻意
-   避開；本票補上它是啟用型別產生這個目的的必要前提，不是額外新增的
-   執行期驗證層（純文字宣告，不是本票主動加的 `pydantic`/`jsonschema`
-   runtime validate 呼叫）。
+   `openapi-typescript` 產生對應 TS 型別，不是本票禁止的「執行期 schema
+   驗證」新增邏輯——`response_model` 本來就是 FastAPI 既有、框架內建的
+   序列化機制，SDLCCT-32 建立這兩個端點時沒有用到它只是因為當時沒有
+   型別產生的需求，不是刻意避開；本票補上它是啟用型別產生這個目的的
+   必要前提，不是額外新增的執行期驗證層。
+
+   **更正（code review 發現）：`response_model` 並非純文字宣告，不是
+   「位元組層級不變」。** FastAPI 會在每次請求時用這個 Pydantic model
+   重新序列化回傳的 dict：依欄位宣告順序重排 key、把值強制轉型成宣告的
+   型別、濾掉 dict 裡有但 model 沒宣告的欄位，且若必填欄位缺失或型別不
+   相容會直接回 500（非原本的 dict 內容）。本票合併時 `schemas.py` 的欄位
+   已逐一人工核對與 `get_summary()`/`get_period_comparison()` 完全吻合，
+   所以目前確實沒有可觀察的行為差異；但這是「目前恰好吻合」而非「這個機制
+   保證不變」。日後若修改 `cost_overview.py` 的回傳形狀卻忘了同步更新
+   `schemas.py`，後果是「靜默的回應內容改變或 500」，不是 TypeScript 的
+   編譯期錯誤——`bff/api/schemas.py` 的 docstring 已同步更正此說明。
 
 2. **離線 schema 匯出：`bff/openapi.json` 提交進版控，不是 `.gitignore`、
    不在 CI 重新產生。**
