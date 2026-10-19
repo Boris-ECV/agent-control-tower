@@ -13,7 +13,7 @@ import { useFetchOnce } from "@/lib/use-fetch-once";
 const SPARKLINE_WIDTH = 84;
 const SPARKLINE_HEIGHT = 28;
 
-function Sparkline({ trend }: { trend: AgentTrendPoint[] }) {
+export function Sparkline({ trend }: { trend: AgentTrendPoint[] }) {
   const defined = trend.filter((p): p is { date: string; value: number } => p.value !== null);
   if (defined.length === 0) {
     return <span className="text-xs text-text-secondary">—</span>;
