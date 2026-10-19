@@ -39,12 +39,14 @@ commands:
   bff_lint: "cd bff && uv run ruff check ."
   bff_coverage: "cd bff && uv run pytest --cov --cov-report=term-missing -q"
   bff_run: "cd bff && uv run uvicorn api.app:app --reload --port 8000"
+  bff_export_openapi: "cd bff && uv run python scripts/export_openapi.py"
   frontend_setup: "cd frontend && npm install"
   frontend_dev: "cd frontend && npm run dev"
   frontend_build: "cd frontend && npm run build"
   frontend_lint: "cd frontend && npm run lint"
   frontend_test: "cd frontend && npm run test"
   frontend_e2e: "cd frontend && npm run test:e2e"
+  frontend_generate_types: "cd frontend && npm run generate:types"
 
 quality:
   coverage_threshold: 60               # starting value; measured over seed/catalog.py and seed/generate.py only (see seed/pyproject.toml). Raise after the first stories land.

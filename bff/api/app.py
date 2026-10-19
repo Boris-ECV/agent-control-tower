@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .cost_overview import get_period_comparison, get_summary
+from .schemas import CostOverviewSummary, PeriodComparison
 
 _BFF_ROOT = Path(__file__).resolve().parent.parent
 if str(_BFF_ROOT) not in sys.path:
@@ -66,11 +67,11 @@ async def _missing_project_ids_error_handler(
     return JSONResponse(status_code=500, content={"error": {"message": str(exc)}})
 
 
-@app.get("/api/cost-overview/summary")
+@app.get("/api/cost-overview/summary", response_model=CostOverviewSummary)
 def cost_overview_summary() -> dict:
     return get_summary()
 
 
-@app.get("/api/cost-overview/period-comparison")
+@app.get("/api/cost-overview/period-comparison", response_model=PeriodComparison)
 def cost_overview_period_comparison() -> dict:
     return get_period_comparison()
