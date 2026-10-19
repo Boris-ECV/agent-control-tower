@@ -1,6 +1,6 @@
 "use client";
 
-import type { ApiError } from "@/lib/cost-overview-api";
+import type { ApiError } from "@/lib/api-client";
 import { t } from "@/lib/i18n/t";
 
 /**
