@@ -746,4 +746,34 @@ SDLCCT-51（後端彙整端點，本票的前置依賴，已 Done）
 **規模預估**
 <= 1 開發日
 
-**狀態**：Designing（G1 已通過，待 G1b）
+**狀態**：Ready（G1b 已通過，待認領開發）
+
+## SDLCCT-46 — Budget and savings simulation screen (Portal MVP, screen 6 of 6)
+
+**使用者故事**
+As an 部門主管/FinOps 使用者, I want 針對某個 agent 模擬「切換到另一個模型」後的預估每月花費與節省金額, so that 我能在真的切換模型前評估成本影響，做出有根據的決策。
+
+**驗收條件（Gherkin）**
+1. current_effective_rate = agent 窗口內 COST 總額 / SPAN_TOKEN_USAGE 總額（整個窗口合計，非逐日）。
+2. 以 TRACE_COUNT + Breakdown(TAGS) 的 dominant-tag 判定找出 target_model 的參考 agent（沿用 anomaly_model_switch.py 既有邏輯），計算其 target_effective_rate；多個候選取字典序最小者。
+3. projected_cost = SPAN_TOKEN_USAGE 總 token 數 \* target_effective_rate；estimated_monthly_savings = (current_effective_rate - target_effective_rate) \* 總 token 數。
+4. 查無可用參考 agent → 明確錯誤（NoReferenceAgentForModelError），絕不回傳 0 或空白。
+5. 底層查詢失敗（Opik\*Error）→ 例外原樣往上拋出，絕不吞掉或以 0/null 取代。
+6. target_model 與目前 dominant model 相同 → 兩個 rate 相等，estimated_monthly_savings = 0（非錯誤）。
+7. UI 必須明確標示結果為「估算」，並說明是以整體 blended per-token 有效費率推算、非逐筆 input/output 拆分計費。
+
+**範圍外**
+- 不拆分 input/output token 的真實計費
+- 不支援使用者自訂查詢窗口長度（固定 HISTORY_DAYS=30）
+- 不支援多 agent 批次模擬
+- 不新增任何告警/通知機制
+- 不處理同一天混用兩種以上 model tag 的情況
+- 不做跨窗口的趨勢預測或季節性調整
+
+**依賴**
+SDLCCT-50（HUMAN-INPUT，已回答選項 1）；SDLCCT-28（dominant-tag 判定邏輯重用來源，已 Done）
+
+**規模預估**
+<= 1 開發日
+
+**狀態**：Done（PR #148，reviewer APPROVE，G2 通過，分支因 housekeeping commits 落後 main 已 `gh pr update-branch` 後重新驗證 CI green）
