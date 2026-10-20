@@ -131,6 +131,25 @@ class AnomalyFeedResponse(BaseModel):
     anomalies: list[AnomalyRow]
 
 
+class SpanTreeNode(BaseModel):
+    id: str
+    parent_span_id: str | None
+    name: str | None
+    type: str | None
+    start_time: str | None
+    end_time: str | None
+    children: list["SpanTreeNode"]
+
+
+SpanTreeNode.model_rebuild()  # self-referencing type needs this to resolve the forward ref
+
+
+class TraceSpansResponse(BaseModel):
+    key: str
+    trace_id: str
+    spans: list[SpanTreeNode]
+
+
 class BudgetSimulationResult(BaseModel):
     agent_key: str
     target_model: str

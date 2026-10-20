@@ -27,7 +27,9 @@ from .schemas import (
     BudgetSimulationResult,
     CostOverviewSummary,
     PeriodComparison,
+    TraceSpansResponse,
 )
+from .trace_spans import get_trace_span_tree
 
 _BFF_ROOT = Path(__file__).resolve().parent.parent
 if str(_BFF_ROOT) not in sys.path:
@@ -102,6 +104,17 @@ def agents_list() -> dict:
 @app.get("/api/agents/{key}/cost-breakdown", response_model=AgentCostBreakdownResponse)
 def agent_cost_breakdown(key: str, top_n: int = DEFAULT_TOP_TRACES_SIZE) -> dict:
     result = get_agent_cost_breakdown(key, top_n=top_n)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"Agent '{key}' not found")
+    return result
+
+
+@app.get(
+    "/api/agents/{key}/traces/{trace_id}/spans",
+    response_model=TraceSpansResponse,
+)
+def agent_trace_spans(key: str, trace_id: str) -> dict:
+    result = get_trace_span_tree(key, trace_id)
     if result is None:
         raise HTTPException(status_code=404, detail=f"Agent '{key}' not found")
     return result
