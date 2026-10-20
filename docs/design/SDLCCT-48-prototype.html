@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>原型 — SDLCCT-48 Agent 明細畫面</title>
+<style>
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #4B5563;
+    --color-border: #E5E7EB;
+    --color-accent: #2563EB;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #F9FAFB;
+    color: var(--color-text-primary);
+  }
+  header.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg);
+    padding: 12px 24px;
+  }
+  header.topbar .brand { font-size: 18px; line-height: 26px; font-weight: 600; }
+  header.topbar .today { font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px; }
+  h1 { margin: 0 0 4px 0; font-size: 24px; line-height: 32px; font-weight: 700; text-align: left; }
+  p.subtitle { margin: 0 0 24px 0; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); text-align: left; }
+  h2 { margin: 0 0 12px 0; font-size: 18px; line-height: 26px; font-weight: 600; text-align: left; }
+  .note-box {
+    border: 1px dashed var(--color-accent);
+    background: #EFF6FF;
+    color: var(--color-text-primary);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    line-height: 18px;
+    margin-bottom: 24px;
+  }
+  section.block {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg);
+    padding: 16px;
+    margin-bottom: 24px;
+  }
+  .hint {
+    font-size: 11px;
+    line-height: 16px;
+    color: var(--color-text-secondary);
+    margin: 0 0 12px 0;
+    font-style: italic;
+  }
+
+  /* 清單頁可點擊列範例 */
+  .list-preview-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    cursor: pointer;
+  }
+  .list-preview-row:hover { background: #F9FAFB; }
+  .list-preview-row .name { font-weight: 600; }
+  .list-preview-row .arrow { color: var(--color-text-secondary); font-size: 12px; }
+
+  /* 折線圖 */
+  svg.chart { width: 100%; height: 160px; display: block; }
+  .legend { display: flex; gap: 16px; margin-bottom: 8px; font-size: 12px; color: var(--color-text-secondary); }
+  .legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+  thead th { text-align: left; font-size: 11px; color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border); padding: 6px 8px; }
+  tbody td { padding: 6px 8px; border-bottom: 1px solid var(--color-border); }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num { text-align: right; }
+  td.muted { color: var(--color-text-secondary); }
+
+  tr.clickable-trace { cursor: pointer; }
+  tr.clickable-trace:hover { background: #F9FAFB; }
+  code.metadata { font-size: 11px; word-break: break-all; color: var(--color-text-secondary); }
+
+  .error-card {
+    border: 1px solid #FCA5A5;
+    background: #FEF2F2;
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .error-card .err-title { font-size: 14px; font-weight: 600; color: #B91C1C; margin: 0 0 4px 0; }
+  .error-card .err-body { font-size: 12px; line-height: 18px; color: rgba(185, 28, 28, 0.85); margin: 0 0 12px 0; }
+  .error-card button {
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+
+  footer.page-footer {
+    margin-top: 48px;
+    border-top: 1px solid var(--color-border);
+    padding: 16px 0;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    text-align: left;
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="brand">Agent Control Tower</span>
+  <span class="today">今天（台灣時間）：2026 年 10 月 15 日</span>
+</header>
+
+<main>
+  <h1>設備維修助理 — Agent 明細</h1>
+  <p class="subtitle">版本成本跳增時間點、模型分解、最貴執行清單（示意資料，非真實查詢結果）。</p>
+
+  <div class="note-box">
+    本頁為設計原型（G1b 審核用），所有數字皆為示意資料，非真實查詢結果。
+    下方依序示範：(0) 清單頁列可點擊樣式、(1) 成功狀態三個區塊、(2) 整頁錯誤狀態。
+  </div>
+
+  <h2>0. 清單頁：列可點擊範例（AC1）</h2>
+  <section class="block">
+    <p class="hint">點擊整列導覽至本畫面；非目前頁面內容，示範清單頁的互動變更。</p>
+    <div class="list-preview-row">
+      <span class="name">設備維修助理（maintenance_copilot）</span>
+      <span class="arrow">點擊查看明細 →</span>
+    </div>
+  </section>
+
+  <h2>1. 版本成本序列：何時開始跳增（AC2）</h2>
+  <section class="block">
+    <div class="legend">
+      <span><span class="swatch" style="background:#2563EB"></span>v1.2.0</span>
+      <span><span class="swatch" style="background:#059669"></span>v1.3.0</span>
+      <span><span class="swatch" style="background:#D97706"></span>v1.4.0（10/13 起，成本明顯跳增）</span>
+    </div>
+    <svg class="chart" viewBox="0 0 600 160">
+      <!-- v1.2.0：平穩 -->
+      <polyline points="0,130 100,128 200,132" fill="none" stroke="#2563EB" stroke-width="2" />
+      <!-- v1.3.0：中段，含一個 null 斷點（10/11 無資料，不連線、不當 0） -->
+      <polyline points="200,120 300,118" fill="none" stroke="#059669" stroke-width="2" />
+      <polyline points="400,122" fill="none" stroke="#059669" stroke-width="2" />
+      <!-- v1.4.0：10/13 起明顯跳增 -->
+      <polyline points="400,60 500,30 600,10" fill="none" stroke="#D97706" stroke-width="2" />
+    </svg>
+    <p class="hint">灰色斷點處代表該日無資料（null），刻意不連線、不顯示為 0。</p>
+    <table>
+      <thead>
+        <tr><th>版本</th><th>10/09</th><th>10/10</th><th>10/11</th><th>10/12</th><th>10/13</th><th>10/14</th><th>10/15</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>v1.2.0</td><td class="num">NT$ 120</td><td class="num">NT$ 118</td><td class="num">NT$ 122</td><td class="num muted">—</td><td class="num muted">—</td><td class="num muted">—</td><td class="num muted">—</td></tr>
+        <tr><td>v1.3.0</td><td class="num muted">—</td><td class="num muted">—</td><td class="num">NT$ 180</td><td class="num muted">—</td><td class="num">NT$ 175</td><td class="num muted">—</td><td class="num muted">—</td></tr>
+        <tr><td>v1.4.0</td><td class="num muted">—</td><td class="num muted">—</td><td class="num muted">—</td><td class="num muted">—</td><td class="num">NT$ 420</td><td class="num">NT$ 510</td><td class="num">NT$ 680</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <h2>2. 模型成本分解（AC3）</h2>
+  <section class="block">
+    <table>
+      <thead><tr><th>模型</th><th>本月成本</th></tr></thead>
+      <tbody>
+        <tr><td>claude-sonnet-4-5</td><td class="num">NT$ 980</td></tr>
+        <tr><td>claude-haiku-4-5</td><td class="num">NT$ 210</td></tr>
+        <tr><td>gpt-4o-mini</td><td class="num muted">—</td></tr>
+      </tbody>
+    </table>
+    <p class="hint">「—」代表查無資料（null），絕不顯示為 0。</p>
+  </section>
+
+  <h2>3. 最貴執行清單（AC4）</h2>
+  <section class="block">
+    <p class="hint">每列視覺上可點擊（hover 變色、游標為手型），但點擊目前無任何動作——執行詳情畫面（span tree）為另一張未來故事，尚未實作。</p>
+    <table>
+      <thead><tr><th>Trace ID</th><th>預估成本</th><th>中繼資料</th></tr></thead>
+      <tbody>
+        <tr class="clickable-trace">
+          <td>trace_8f2a1c</td>
+          <td class="num">NT$ 42.10</td>
+          <td><code class="metadata">{"user_id":"u_221","retry_count":3}</code></td>
+        </tr>
+        <tr class="clickable-trace">
+          <td>trace_0bd77e</td>
+          <td class="num">NT$ 38.55</td>
+          <td><code class="metadata">{"user_id":"u_104"}</code></td>
+        </tr>
+        <tr class="clickable-trace">
+          <td>trace_c91f40</td>
+          <td class="num muted">—</td>
+          <td class="muted">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <h2>4. 錯誤狀態範例（AC5，取代整頁內容，不是逐區塊顯示）</h2>
+  <div class="error-card">
+    <p class="err-title">無法載入「設備維修助理 — Agent 明細」</p>
+    <p class="err-body">查詢失敗：/api/agents/maintenance_copilot/cost-breakdown 回應 404（Agent 'maintenance_copilot' not found）。</p>
+    <button type="button">重試</button>
+  </div>
+
+  <footer class="page-footer">
+    資料來源：Agent registry ＋ 觀測性後端成本/版本/trace 查詢。
+  </footer>
+</main>
+
+</body>
+</html>
