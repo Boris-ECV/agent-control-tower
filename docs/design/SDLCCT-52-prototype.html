@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>原型 — SDLCCT-52 異常與告警畫面</title>
+<style>
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #4B5563;
+    --color-border: #E5E7EB;
+    --color-accent: #2563EB;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #F9FAFB;
+    color: var(--color-text-primary);
+  }
+  header.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg);
+    padding: 12px 24px;
+  }
+  header.topbar .brand { font-size: 18px; line-height: 26px; font-weight: 600; }
+  header.topbar .today { font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  main { max-width: 1040px; margin: 0 auto; padding: 24px; }
+  h1 { margin: 0 0 4px 0; font-size: 24px; line-height: 32px; font-weight: 700; text-align: left; }
+  p.subtitle { margin: 0 0 24px 0; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); text-align: left; }
+  h2 { margin: 0 0 16px 0; font-size: 18px; line-height: 26px; font-weight: 600; text-align: left; }
+  .note-box {
+    border: 1px dashed var(--color-accent);
+    background: #EFF6FF;
+    color: var(--color-text-primary);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    line-height: 18px;
+    margin-bottom: 24px;
+  }
+  .error-banner {
+    border: 1px solid #FCA5A5;
+    background: #FEF2F2;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+  }
+  .error-banner .err-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #B91C1C;
+    margin: 0 0 4px 0;
+  }
+  .error-banner .err-body {
+    font-size: 12px;
+    line-height: 18px;
+    color: rgba(185, 28, 28, 0.85);
+    margin: 0;
+  }
+  .error-banner .err-meta {
+    font-size: 11px;
+    color: rgba(185, 28, 28, 0.7);
+    margin: 0 0 4px 0;
+  }
+  table.anomaly-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  table.anomaly-table thead tr {
+    text-align: left;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    border-bottom: 1px solid var(--color-border);
+    background: #F9FAFB;
+  }
+  table.anomaly-table th, table.anomaly-table td {
+    padding: 10px 12px;
+  }
+  table.anomaly-table tbody tr {
+    border-bottom: 1px solid var(--color-border);
+  }
+  table.anomaly-table tbody tr:last-child { border-bottom: none; }
+  .ongoing-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #F59E0B;
+    background: #FFFBEB;
+    color: #92400E;
+  }
+  .type-tag {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 500;
+    background: #EFF6FF;
+    color: var(--color-accent);
+  }
+  footer.page-footer {
+    margin-top: 48px;
+    border-top: 1px solid var(--color-border);
+    padding: 16px 0;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    text-align: left;
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="brand">Agent Control Tower</span>
+  <span class="today">今天（台灣時間）：2026 年 10 月 15 日</span>
+</header>
+
+<main>
+  <h1>異常與告警</h1>
+  <p class="subtitle">彙整全部已登錄與未登錄 Agent 的異常偵測結果（含持續中的治理缺口），協助分類處理。</p>
+
+  <div class="note-box">
+    本頁為設計原型（G1b 審核用），所有數字與文字皆為示意資料，非真實查詢結果。
+    下方依序示範：資料錯誤 banner（AC4）、異常資料表（AC1-3）。
+  </div>
+
+  <h2>資料錯誤（AC4：某條規則呼叫失敗，絕不悄悄省略受影響的 Agent）</h2>
+  <div class="error-banner">
+    <p class="err-meta">異常類型：治理缺口 ｜ Agent：不明（整批查詢失敗）</p>
+    <p class="err-title">無法取得這筆異常判定結果</p>
+    <p class="err-body">find_governance_gaps 呼叫失敗：OpikTimeoutError: request timed out (endpoint=/v1/private/workspaces/costs, status=None)</p>
+  </div>
+  <div class="error-banner">
+    <p class="err-meta">異常類型：工具重試迴圈 ｜ Agent：quality_rca</p>
+    <p class="err-body">detect_tool_retry_loop 呼叫失敗：MissingErrorRateDataError: no TRACE_ERROR_RATE data for target_date=2026-10-15</p>
+  </div>
+
+  <h2>異常資料表（AC1-3：agent／異常類型／日期／原因 各自一欄）</h2>
+  <table class="anomaly-table">
+    <thead>
+      <tr>
+        <th>Agent</th>
+        <th>異常類型</th>
+        <th>日期</th>
+        <th>原因</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>quality_rca</td>
+        <td><span class="type-tag">工具重試迴圈</span></td>
+        <td>2026 年 10 月 15 日</td>
+        <td>error_rate=0.42（閾值 0.15），較基準值偏差比 2.8x（閾值 2.0x）</td>
+      </tr>
+      <tr>
+        <td>maintenance_copilot</td>
+        <td><span class="type-tag">情境膨脹</span></td>
+        <td>2026 年 10 月 15 日</td>
+        <td>偏差比 3.1x（基準 1,200 tokens → 實際 3,720 tokens，閾值 2.5x）</td>
+      </tr>
+      <tr>
+        <td>procurement_rfq</td>
+        <td><span class="type-tag">非營業時段流量暴增</span></td>
+        <td>2026 年 10 月 15 日</td>
+        <td>UTC 17:00-19:00 流量為基準的 6.2x（600 筆），佐證 workflow：night_batch_rerun</td>
+      </tr>
+      <tr>
+        <td>qc_vision_agent</td>
+        <td><span class="type-tag">模型切換</span></td>
+        <td>2026 年 10 月 10 日</td>
+        <td>model:gpt-4o → model:gpt-4o-mini，切換後偏差比 2.4x（閾值 2.0x）</td>
+      </tr>
+      <tr>
+        <td>temp_supplier_scraper</td>
+        <td><span class="type-tag">治理缺口</span></td>
+        <td><span class="ongoing-badge">持續中</span></td>
+        <td>未登錄（registered=false），owner 為空，近期仍持續產生花費（首日 NT$120 → 末日 NT$340）</td>
+      </tr>
+      <tr>
+        <td>facilities_chatbot</td>
+        <td><span class="type-tag">治理缺口</span></td>
+        <td><span class="ongoing-badge">持續中</span></td>
+        <td>已登錄但無預算（budget=null），近期仍持續產生花費</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <footer class="page-footer">
+    資料來源：Agent registry ＋ 觀測性後端異常偵測彙整（近 30 天視窗）。
+  </footer>
+</main>
+
+</body>
+</html>
