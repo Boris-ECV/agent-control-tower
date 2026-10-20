@@ -746,7 +746,7 @@ SDLCCT-51（後端彙整端點，本票的前置依賴，已 Done）
 **規模預估**
 <= 1 開發日
 
-**狀態**：Ready（G1b 已通過，待認領開發）
+**狀態**：Done（PR #152，reviewer APPROVE，G2 通過；tester 補 4 個涵蓋缺口測試，含 mobile 卡片清單視圖獨立驗證）
 
 ## SDLCCT-46 — Budget and savings simulation screen (Portal MVP, screen 6 of 6)
 
@@ -777,3 +777,30 @@ SDLCCT-50（HUMAN-INPUT，已回答選項 1）；SDLCCT-28（dominant-tag 判定
 <= 1 開發日
 
 **狀態**：Done（PR #148，reviewer APPROVE，G2 通過，分支因 housekeeping commits 落後 main 已 `gh pr update-branch` 後重新驗證 CI green）
+
+## SDLCCT-48 — Agent detail screen (frontend)
+
+來源：由 SDLCCT-44「Agent detail screen (Portal MVP, screen 3 of 6)」依 docs/02 §6 拆分規則，拆出的前端切片。依賴 SDLCCT-47（後端端點，已 Done）。
+
+**使用者故事**
+As a FinOps reviewer, I want to click into an Agent from the registry list and see its cost-jump timeline, model breakdown, and most expensive executions, so that I can investigate cost spikes.
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. Given the Agent list page (/agents), When a row is clicked, Then the user navigates to that Agent's new dynamic-route detail page.
+2. Given the detail page loads successfully, Then it displays the version-split cost series (to show "when cost jumped"), in Traditional Chinese via existing i18n keys only.
+3. Given the detail page loads successfully, Then it displays the model-split cost breakdown.
+4. Given the detail page loads successfully, Then it displays the top-cost trace list with each row visually clickable but clicking triggers no navigation or API call (screen #4 is a separate future story).
+5. Given the backend endpoint returns an error for any section, Then that section shows an explicit error card (reusing the existing ErrorCard pattern) — never 0/blank.
+
+**範圍外**
+- 畫面 #4「執行詳情」（span 樹）——另立票
+- 任何寫入操作
+- 畫面上不得出現底層觀測後端（Opik）名稱或品牌字樣
+
+**依賴**
+SDLCCT-47（後端端點，已 Done）；SDLCCT-43（已 Done，提供清單頁可供串接點擊入口）
+
+**規模預估**
+<= 1 開發日
+
+**狀態**：Designing（G1 已通過，待 G1b）
