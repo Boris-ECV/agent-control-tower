@@ -833,3 +833,33 @@ SDLCCT-47（後端端點，已 Done）；SDLCCT-43（已 Done，提供清單頁�
 <= 1 開發日
 
 **狀態**：Done（PR #162，reviewer APPROVE，G2 通過；新增模組 bff/opik_spans.py，14 個測試全綠，opik_spans.py 覆蓋率 100%；不需要 e2e，純後端資料層故事——以上測試數與覆蓋率由 orchestrator 於開發/測試階段獨立重跑確認，非照抄 tester 回報）
+
+## SDLCCT-55 — Trace spans endpoint (BFF)
+
+來源：由 SDLCCT-54「Execution detail screen (Portal MVP, screen 4 of 6)」依 docs/02 §6 拆分規則拆出的後端切片。依賴 SDLCCT-53（已 Done）。
+
+**使用者故事**
+身為 Portal 前端開發者，我希望有一個 BFF 端點能用 agent key + trace_id 取得該筆執行的完整 span 樹狀結構，使前端執行詳情畫面（SDLCCT-56）能直接消費組裝好的資料，不需要自行呼叫 Opik 或組樹。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 有效 key 與 trace_id，查詢成功回傳樹狀結構（根節點 + 巢狀 children）
+2. key 不存在於 registry 時回傳 404，且未對 Opik 發出任何查詢
+3. trace_id 底下沒有任何 span 時回傳 200 空陣列，不是 404 也不是 502
+4. 底層 Opik 查詢失敗（逾時/非 2xx/格式不符）時回傳 502，沿用既有 exception handler
+5. 同名 span 在同一父節點下重複出現時，保留各自順序與完整資料，不去重折疊
+
+**範圍外**
+- 任何前端頁面、路由或元件（見 SDLCCT-56）
+- 依 metadata 篩選 trace 的搜尋功能（SDLCCT-20，無關）
+- 對 trace/span 的任何寫入或標註功能
+- 後端對同名 span 去重、折疊或計數彙總
+- 多頁（pagination）查詢迴圈
+- 對 span raw 內除 id/parent_span_id 外其餘欄位的逐位元組回應格式驗證
+
+**依賴**
+SDLCCT-53（已 Done，提供 get_trace_spans()/build_span_tree()）；SDLCCT-48（已 Done，提供「最貴的執行」清單進入點，實際串接由 SDLCCT-56 承接）
+
+**規模預估**
+<= 1 開發日
+
+**狀態**：Done（PR #166，reviewer APPROVE，G2 通過；新增路由 GET /api/agents/{key}/traces/{trace_id}/spans、新模組 bff/api/trace_spans.py、新 schema SpanTreeNode/TraceSpansResponse；9 個測試全綠，api/trace_spans.py 覆蓋率 100%；不需要 e2e，純後端 API 故事——以上測試數與覆蓋率由 orchestrator 獨立重跑確認，非照抄 tester 回報）
