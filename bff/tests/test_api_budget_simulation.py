@@ -421,3 +421,191 @@ def test_missing_required_query_params_returns_422():
     assert client.get("/api/budget-simulation").status_code == 422
     assert client.get(f"/api/budget-simulation?agent_key={AGENT_KEY}").status_code == 422
     assert client.get("/api/budget-simulation?target_model=gpt-4o").status_code == 422
+
+
+# -- Tester-added gap-filling tests below this line ------------------------
+# (not copied from the developer's tests above -- see SDLCCT-46 tester
+# report for the specific gaps each one closes.)
+
+
+# -- AC1 gap: "whole-window aggregate, not per-day" must actually be
+# exercised with multi-point series where the aggregate differs from an
+# average of daily ratios -- the developer's fixtures above only ever wrap
+# a single pre-summed float per key, so a bug that averaged daily rates
+# instead of summing totals first would not have been caught.
+
+
+def test_effective_rate_is_sum_of_totals_not_average_of_daily_ratios(monkeypatch):
+    """day1: cost=10/tokens=100 -> ratio 0.1; day2: cost=100/tokens=10 ->
+    ratio 10. Average-of-daily-ratios would give 5.05; the correct
+    whole-window aggregate is sum(cost)/sum(tokens) = 110/110 = 1.0."""
+
+    def fake(keys, metric_type, *, interval, breakdown=None, **kw):
+        if metric_type.value == "TRACE_COUNT":
+            return {AGENT_KEY: (_tag_series("claude-sonnet-4-5", [10.0] * 30),)}
+        if metric_type.value == "COST":
+            return {AGENT_KEY: (_plain_series([10.0, 100.0]),)}
+        if metric_type.value == "SPAN_TOKEN_USAGE":
+            return {AGENT_KEY: (_plain_series([100.0, 10.0]),)}
+        raise AssertionError(f"unexpected metric_type {metric_type}")
+
+    monkeypatch.setattr(budget_simulation_module, "get_project_metrics_cached", fake)
+
+    # target_model == own dominant model -> AC6 short-circuit, no reference
+    # search needed to isolate the aggregate-computation behavior itself.
+    resp = client.get(
+        f"/api/budget-simulation?agent_key={AGENT_KEY}&target_model=claude-sonnet-4-5"
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total_tokens"] == pytest.approx(110.0)
+    assert body["current_effective_rate"] == pytest.approx(1.0)
+    assert body["current_effective_rate"] != pytest.approx(5.05)
+
+
+# -- AC7 gap: the developer's test only checks explanation is a non-empty
+# string. AC7 requires the text actually convey "this is a blended/
+# approximate rate, not a precise per input/output calculation" -- a
+# response that set is_estimate=True but explanation="x" would pass the
+# existing test while violating the AC's intent.
+
+
+def test_explanation_text_conveys_blended_rate_is_not_precise_pricing(monkeypatch):
+    _simple_setup(monkeypatch)
+
+    resp = client.get(
+        f"/api/budget-simulation?agent_key={AGENT_KEY}&target_model=gemini-2.5-pro"
+    )
+    body = resp.json()
+    explanation = body["explanation"]
+    # Distinctive substrings straight from docs/design/SDLCCT-46.md's exact
+    # literal contract (checked individually, not as one hand-retyped CJK
+    # string, to avoid a transcription-typo false negative) -- together
+    # they assert the explanation names it as a blended/mixed single rate
+    # estimate, explicitly not a precise input/output-split calculation.
+    assert "混合" in explanation
+    assert "估算" in explanation
+    assert "input/output" in explanation
+    assert "精確" in explanation
+
+
+# -- AC5 gap: the developer's parametrized 502 test always fails on the
+# very first call made (own TRACE_COUNT), because the fake there replaces
+# the whole function unconditionally. AC5 requires ANY underlying query to
+# propagate -- including the COST/SPAN_TOKEN_USAGE calls that happen AFTER
+# TRACE_COUNT succeeds, and including the reference agent's own rate query
+# (a third call site, after the search's TRACE_COUNT call also succeeds).
+
+
+def test_own_cost_query_failure_after_trace_count_succeeds_maps_to_502(monkeypatch):
+    exc = OpikHTTPError("non-2xx response", endpoint="/v1/private/projects/p3/metrics", status_code=503)
+
+    def fake(keys, metric_type, *, interval, breakdown=None, **kw):
+        if metric_type.value == "TRACE_COUNT":
+            return {AGENT_KEY: (_tag_series("claude-sonnet-4-5", [10.0] * 30),)}
+        if metric_type.value == "COST":
+            raise exc
+        raise AssertionError("SPAN_TOKEN_USAGE should not be queried once COST already failed")
+
+    monkeypatch.setattr(budget_simulation_module, "get_project_metrics_cached", fake)
+
+    # target_model == own dominant model -> AC6 short-circuit path, so the
+    # only queries made are: own TRACE_COUNT (succeeds), own COST (fails).
+    resp = client.get(
+        f"/api/budget-simulation?agent_key={AGENT_KEY}&target_model=claude-sonnet-4-5"
+    )
+    assert resp.status_code == 502
+    body = resp.json()
+    assert body["error"]["message"] == str(exc)
+    assert body["error"]["endpoint"] == "/v1/private/projects/p3/metrics"
+
+
+def test_reference_agents_own_rate_query_failure_maps_to_502(monkeypatch):
+    """Failure occurs on the THIRD call site: after own TRACE_COUNT, own
+    COST/SPAN_TOKEN_USAGE, and the search TRACE_COUNT all succeed and a
+    reference agent is found, computing that reference agent's own
+    COST/SPAN_TOKEN_USAGE fails."""
+    exc = OpikHTTPError("non-2xx response", endpoint="/v1/private/projects/p4/metrics", status_code=503)
+
+    def fake(keys, metric_type, *, interval, breakdown=None, **kw):
+        if metric_type.value == "TRACE_COUNT":
+            if list(keys) == [AGENT_KEY]:
+                return {AGENT_KEY: (_tag_series("claude-sonnet-4-5", [10.0] * 30),)}
+            # search call across all registered agents
+            return {REFERENCE_AGENT_KEY: (_tag_series("gemini-2.5-pro", [5.0] * 30),)}
+        if metric_type.value == "COST":
+            if list(keys) == [AGENT_KEY]:
+                return {AGENT_KEY: (_plain_series([100.0]),)}
+            raise exc
+        if metric_type.value == "SPAN_TOKEN_USAGE":
+            if list(keys) == [AGENT_KEY]:
+                return {AGENT_KEY: (_plain_series([200000.0]),)}
+            raise AssertionError("COST should have raised before SPAN_TOKEN_USAGE for the reference agent")
+        raise AssertionError(f"unexpected metric_type {metric_type}")
+
+    monkeypatch.setattr(budget_simulation_module, "get_project_metrics_cached", fake)
+
+    resp = client.get(
+        f"/api/budget-simulation?agent_key={AGENT_KEY}&target_model=gemini-2.5-pro"
+    )
+    assert resp.status_code == 502
+    body = resp.json()
+    assert body["error"]["message"] == str(exc)
+    assert body["error"]["endpoint"] == "/v1/private/projects/p4/metrics"
+
+
+# -- Decision #3 gap: the zero-SPAN_TOKEN_USAGE division-by-zero guard is
+# only tested for the SUBJECT agent (test_agent_with_no_window_data_
+# returns_404 above). The same guard is exercised by _effective_rate()
+# being reused for the REFERENCE agent too -- untested path.
+
+
+def test_reference_agent_with_zero_token_window_data_returns_404(monkeypatch):
+    def fake(keys, metric_type, *, interval, breakdown=None, **kw):
+        if metric_type.value == "TRACE_COUNT":
+            if list(keys) == [AGENT_KEY]:
+                return {AGENT_KEY: (_tag_series("claude-sonnet-4-5", [10.0] * 30),)}
+            return {REFERENCE_AGENT_KEY: (_tag_series("gemini-2.5-pro", [5.0] * 30),)}
+        if metric_type.value == "COST":
+            if list(keys) == [AGENT_KEY]:
+                return {AGENT_KEY: (_plain_series([100.0]),)}
+            return {}  # reference agent: no COST data either
+        if metric_type.value == "SPAN_TOKEN_USAGE":
+            if list(keys) == [AGENT_KEY]:
+                return {AGENT_KEY: (_plain_series([200000.0]),)}
+            return {}  # reference agent: zero usable SPAN_TOKEN_USAGE data
+        raise AssertionError(f"unexpected metric_type {metric_type}")
+
+    monkeypatch.setattr(budget_simulation_module, "get_project_metrics_cached", fake)
+
+    resp = client.get(
+        f"/api/budget-simulation?agent_key={AGENT_KEY}&target_model=gemini-2.5-pro"
+    )
+    assert resp.status_code == 404
+    assert REFERENCE_AGENT_KEY in resp.json()["error"]["message"]
+
+
+# -- Design doc gap (介面/API 契約, agent_key paragraph): agent_key need
+# NOT be registered to be simulated -- only the reference-agent *search*
+# is restricted to registered=True agents (AC2). An implementation that
+# accidentally reused the registered-only filter for the subject agent
+# itself would wrongly 404 here.
+
+
+def test_unregistered_agent_can_still_be_simulated_as_the_subject(monkeypatch):
+    _patch_metrics(
+        monkeypatch,
+        trace_count_by_key={UNREGISTERED_KEY: (_tag_series("gpt-4o", [10.0] * 30),)},
+        cost_by_key={UNREGISTERED_KEY: 50.0},
+        tokens_by_key={UNREGISTERED_KEY: 100000.0},
+    )
+
+    # target_model == its own dominant model -> AC6 short-circuit, so the
+    # registered-only reference search is never even reached.
+    resp = client.get(
+        f"/api/budget-simulation?agent_key={UNREGISTERED_KEY}&target_model=gpt-4o"
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["agent_key"] == UNREGISTERED_KEY
+    assert body["reference_agent_key"] == UNREGISTERED_KEY
