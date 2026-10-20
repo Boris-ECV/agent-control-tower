@@ -125,6 +125,7 @@ Gate 是狀態轉換上的可切換閘門。定義於 `config/gates.yaml`。
 1. requirements-analyst 將其拆成多個子 Story（各自獨立可交付、各自完整需求規格），原 Story 轉為 Epic 或保留為追蹤用父單。
 2. 拆分後的依賴關係用 Jira link（`blocks` / `is blocked by`）表達；orchestrator 排程時遵守依賴序。
 3. **寧可拆太細，不可太粗**——小工單是 Sonnet 級執行可靠性的最大保障。
+4. **拆分後保留為追蹤用父單的原 Story，狀態維持 `Blocked`，即使所有子 Story 皆已 Done，也不要再轉成 `Done`。** 父單本身不是獨立交付單位（它沒有自己的 G1/G1b/G2 gate 紀錄、沒有自己的 PR），把它轉 Done 會讓完成數重複計入（子票已各自計一次），也會讓之後查「這張票當初為什麼存在」的人誤以為它本身有被驗收過的交付內容。子票全部完成後，在父單上留言記錄「子票 X/Y 皆已 Done，本追蹤單維持 Blocked」即可，不需要、也不應該再轉換狀態。此慣例已在 SDLCCT-44/45（子票完成後維持 Blocked）與一次誤將 SDLCCT-54 轉 Done、隨後發現不一致又改回 Blocked 的留言記錄中確立。
 
 ## 7. Escalation（升級到高階模型）
 
