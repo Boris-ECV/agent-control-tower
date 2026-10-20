@@ -721,3 +721,29 @@ As a Portal backend, I want a single endpoint that runs all 5 anomaly rules acro
 <= 1 開發日
 
 **狀態**：Done（PR #142，合併時與 SDLCCT-47 的 app.py/schemas.py 新增發生相鄰衝突，已手動解決並保留兩者共存，reviewer APPROVE，G2 通過）
+
+## SDLCCT-52 — Anomalies screen UI (frontend)
+
+來源：split from SDLCCT-45（Anomalies screen, Portal MVP screen 5 of 6）
+
+**使用者故事**
+As a Portal user, I want to see all anomaly rows from the aggregation endpoint in one table, so I can triage anomalies including ongoing governance gaps.
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. Given a row with a non-null date, When rendered, Then the date is shown as-is.
+2. Given a row with date=null（governance_gap type）, When rendered, Then the date cell shows「持續中」instead of blank/null/error.
+3. Given a row, When rendered, Then agent、anomaly_type（本地化標籤）、reason 都以各自欄位呈現。
+4. Given the endpoint reports a per-rule error entry, When rendered, Then the UI 明確呈現（例如 banner/row），不可靜默省略受影響的 agent。
+
+**範圍外**
+- client-side filtering/sorting
+- 即時刷新/輪詢（real-time refresh/polling）
+- 畫面上不得出現底層觀測後端（Opik）名稱或品牌字樣（沿用 E3 Epic 既有限制）
+
+**依賴**
+SDLCCT-51（後端彙整端點，本票的前置依賴，已 Done）
+
+**規模預估**
+<= 1 開發日
+
+**狀態**：Designing（G1 已通過，待 G1b）
