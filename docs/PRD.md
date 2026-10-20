@@ -804,3 +804,32 @@ SDLCCT-47（後端端點，已 Done）；SDLCCT-43（已 Done，提供清單頁�
 <= 1 開發日
 
 **狀態**：Done（PR #155，reviewer APPROVE，G2 通過；本票為本 repo 第一個動態路由，連帶需在 app/layout.tsx 加一層 Suspense 包裝既有 AppSidebar，純 build-time 要求、無執行期行為改變，reviewer 已獨立確認；tester 補 5 個涵蓋缺口測試，過程中遭遇主機磁碟/記憶體資源枯竭的基礎設施問題，已排除且與程式碼本身無關）
+
+## SDLCCT-53 — Opik read client: spans endpoint and trace tree assembly
+
+**使用者故事**
+身為畫面 #4「執行詳情」的後續開發者（下一張票 SDLCCT-54 的前置資料層），我希望有一個封裝 GET /v1/private/spans 的讀取端客戶端，並能把同一個 trace 下的扁平 span 清單組成樹狀結構，使下游可以呈現「一次執行內部發生了什麼」（例如同一工具被重複呼叫幾十次），而不必自己重新發明端點呼叫與父子關係組裝邏輯。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. project_name 缺失時不發送請求並拋出例外
+2. trace_id 缺失時不發送請求並拋出例外
+3. 正常呼叫回傳扁平 span 清單（長度 91，raw 逃生艙欄位保留，id/parent_span_id 已驗證可讀）
+4. 後端回傳非 2xx 狀態時拋出型別化例外
+5. 後端逾時或回應格式不符預期時拋出型別化例外
+6. 扁平 span 清單組成樹狀結構，子節點順序與輸入清單出現順序一致
+7. 孤兒 span（parent_span_id 指向清單中不存在的 id）不被靜默捨棄，視為額外頂層節點
+
+**範圍外**
+- 畫面本身（下一張票 SDLCCT-54）
+- metadata 篩選的 trace 搜尋（SDLCCT-20，無關）
+- span 層級以外的聚合指標（opik_metrics.py 已處理）
+- HTTP API 端點設計（純資料層／客戶端程式庫能力）
+- 個別 span 物件除 id/parent_span_id 以外欄位的完整形狀核對（留給 G1b 架構師處理，已在設計文件中解決：只對 AC 要求的欄位建立型別化保證，其餘透過 raw 保留）
+
+**依賴**
+無工單依賴；外部依賴 Opik 後端 /v1/private/spans 端點（版本固定 2.2.99）
+
+**規模預估**
+<= 1 開發日
+
+**狀態**：Done（PR #162，reviewer APPROVE，G2 通過；新增模組 bff/opik_spans.py，14 個測試全綠，opik_spans.py 覆蓋率 100%；不需要 e2e，純後端資料層故事——以上測試數與覆蓋率由 orchestrator 於開發/測試階段獨立重跑確認，非照抄 tester 回報）
