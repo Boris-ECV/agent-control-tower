@@ -92,3 +92,46 @@ test("AC1: clicking an agent row navigates to that agent's detail page", async (
 
   await expect(page).toHaveURL(/\/agents\/sales-copilot$/);
 });
+
+test("AC1: mobile viewport -- clicking an agent card also navigates to that agent's detail page", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  await page.route("**/api/agents", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        agents: [
+          {
+            key: "sales-copilot",
+            display: "Sales Copilot",
+            dept: "Sales",
+            owner: "alice",
+            budget: 1000,
+            current_period_spend: 500,
+            budget_consumed_pct: 50,
+            has_governance_gap: false,
+            registered: true,
+            trend: [{ date: "2026-10-18", value: 100 }],
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/agents");
+
+  // Mobile card list (<ul> wrapped in a real <Link>) is the code path used
+  // below the md breakpoint -- distinct from the desktop <tr onClick> path
+  // covered above, so it needs its own navigation assertion.
+  const card = page.getByRole("link", { name: "Sales Copilot" });
+  await expect(card).toBeVisible();
+
+  await card.click();
+
+  await expect(page).toHaveURL(/\/agents\/sales-copilot$/);
+});
