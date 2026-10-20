@@ -803,4 +803,4 @@ SDLCCT-47（後端端點，已 Done）；SDLCCT-43（已 Done，提供清單頁�
 **規模預估**
 <= 1 開發日
 
-**狀態**：Designing（G1 已通過，待 G1b）
+**狀態**：Done（PR #155，reviewer APPROVE，G2 通過；本票為本 repo 第一個動態路由，連帶需在 app/layout.tsx 加一層 Suspense 包裝既有 AppSidebar，純 build-time 要求、無執行期行為改變，reviewer 已獨立確認；tester 補 5 個涵蓋缺口測試，過程中遭遇主機磁碟/記憶體資源枯竭的基礎設施問題，已排除且與程式碼本身無關）
