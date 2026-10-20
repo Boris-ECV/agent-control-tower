@@ -40,7 +40,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: t("sidebar.groups.governance"),
     items: [
       { label: t("sidebar.items.agentList"), href: "/agents" },
-      { label: t("sidebar.items.anomalyAlerts") },
+      { label: t("sidebar.items.anomalyAlerts"), href: "/anomalies" },
       { label: t("sidebar.items.budgetSimulation") },
       { label: t("sidebar.items.policyEngine") },
       { label: t("sidebar.items.approvalFlow") },

@@ -21,6 +21,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/agents/{key}/cost-breakdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Agent Cost Breakdown */
+        get: operations["agent_cost_breakdown_api_agents__key__cost_breakdown_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/anomalies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Anomalies Feed */
+        get: operations["anomalies_feed_api_anomalies_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/cost-overview/period-comparison": {
         parameters: {
             query?: never;
@@ -59,6 +93,23 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AgentCostBreakdownResponse */
+        AgentCostBreakdownResponse: {
+            /** Anchor Date */
+            anchor_date: string;
+            /** Display */
+            display: string;
+            /** Key */
+            key: string;
+            /** Model Cost Breakdown */
+            model_cost_breakdown: components["schemas"]["ModelCostBreakdownEntry"][];
+            /** Period Start */
+            period_start: string;
+            /** Top Traces */
+            top_traces: components["schemas"]["TopTraceItem"][];
+            /** Version Cost Series */
+            version_cost_series: components["schemas"]["VersionCostSeriesEntry"][];
+        };
         /** AgentRegistryEntry */
         AgentRegistryEntry: {
             /** Budget */
@@ -98,6 +149,26 @@ export interface components {
             /** Period Start */
             period_start: string;
         };
+        /** AnomalyFeedResponse */
+        AnomalyFeedResponse: {
+            /** Anchor Date */
+            anchor_date: string;
+            /** Anomalies */
+            anomalies: components["schemas"]["AnomalyRow"][];
+        };
+        /** AnomalyRow */
+        AnomalyRow: {
+            /** Agent */
+            agent: string | null;
+            /** Anomaly Type */
+            anomaly_type: string;
+            /** Date */
+            date: string | null;
+            /** Reason */
+            reason: string;
+            /** Status */
+            status: string;
+        };
         /** CostOverviewSummary */
         CostOverviewSummary: {
             /** Anchor Date */
@@ -119,6 +190,18 @@ export interface components {
             /** Total Spend */
             total_spend: number;
             unregistered: components["schemas"]["Unregistered"];
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
+        /** ModelCostBreakdownEntry */
+        ModelCostBreakdownEntry: {
+            /** Cost */
+            cost: number | null;
+            /** Model */
+            model: string;
         };
         /** PeriodComparison */
         PeriodComparison: {
@@ -151,6 +234,17 @@ export interface components {
             /** Start */
             start: string;
         };
+        /** TopTraceItem */
+        TopTraceItem: {
+            /** Id */
+            id: string;
+            /** Metadata */
+            metadata: {
+                [key: string]: unknown;
+            } | null;
+            /** Total Estimated Cost */
+            total_estimated_cost: number | null;
+        };
         /** Unregistered */
         Unregistered: {
             /** Agents */
@@ -166,6 +260,33 @@ export interface components {
             key: string;
             /** Spend */
             spend: number;
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+        };
+        /** VersionCostPoint */
+        VersionCostPoint: {
+            /** Date */
+            date: string;
+            /** Value */
+            value: number | null;
+        };
+        /** VersionCostSeriesEntry */
+        VersionCostSeriesEntry: {
+            /** Points */
+            points: components["schemas"]["VersionCostPoint"][];
+            /** Version */
+            version: string;
         };
     };
     responses: never;
@@ -192,6 +313,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgentsListResponse"];
+                };
+            };
+        };
+    };
+    agent_cost_breakdown_api_agents__key__cost_breakdown_get: {
+        parameters: {
+            query?: {
+                top_n?: number;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentCostBreakdownResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    anomalies_feed_api_anomalies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnomalyFeedResponse"];
                 };
             };
         };
