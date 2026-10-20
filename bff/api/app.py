@@ -13,11 +13,18 @@ from fastapi.responses import JSONResponse
 from .agent_detail import get_agent_cost_breakdown
 from .agents import get_agent_registry
 from .anomalies import get_anomaly_feed
+from .budget_simulation import (
+    AgentNotFoundError,
+    NoReferenceAgentForModelError,
+    UnknownTargetModelError,
+    simulate_budget,
+)
 from .cost_overview import get_period_comparison, get_summary
 from .schemas import (
     AgentCostBreakdownResponse,
     AgentsListResponse,
     AnomalyFeedResponse,
+    BudgetSimulationResult,
     CostOverviewSummary,
     PeriodComparison,
 )
@@ -103,3 +110,27 @@ def agent_cost_breakdown(key: str, top_n: int = DEFAULT_TOP_TRACES_SIZE) -> dict
 @app.get("/api/anomalies", response_model=AnomalyFeedResponse)
 def anomalies_feed() -> dict:
     return get_anomaly_feed()
+
+
+@app.exception_handler(AgentNotFoundError)
+async def _agent_not_found_error_handler(request: Request, exc: AgentNotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"error": {"message": str(exc)}})
+
+
+@app.exception_handler(UnknownTargetModelError)
+async def _unknown_target_model_error_handler(
+    request: Request, exc: UnknownTargetModelError
+) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"error": {"message": str(exc)}})
+
+
+@app.exception_handler(NoReferenceAgentForModelError)
+async def _no_reference_agent_error_handler(
+    request: Request, exc: NoReferenceAgentForModelError
+) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"error": {"message": str(exc)}})
+
+
+@app.get("/api/budget-simulation", response_model=BudgetSimulationResult)
+def budget_simulation(agent_key: str, target_model: str) -> dict:
+    return simulate_budget(agent_key, target_model)
