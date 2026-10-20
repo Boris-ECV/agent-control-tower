@@ -863,3 +863,33 @@ SDLCCT-53（已 Done，提供 get_trace_spans()/build_span_tree()）；SDLCCT-48
 <= 1 開發日
 
 **狀態**：Done（PR #166，reviewer APPROVE，G2 通過；新增路由 GET /api/agents/{key}/traces/{trace_id}/spans、新模組 bff/api/trace_spans.py、新 schema SpanTreeNode/TraceSpansResponse；9 個測試全綠，api/trace_spans.py 覆蓋率 100%；不需要 e2e，純後端 API 故事——以上測試數與覆蓋率由 orchestrator 獨立重跑確認，非照抄 tester 回報）
+
+## SDLCCT-56 — Execution detail screen (frontend)
+
+來源：由 SDLCCT-54「Execution detail screen (Portal MVP, screen 4 of 6)」依 docs/02 §6 拆分規則拆出的前端切片。依賴 SDLCCT-55（已 Done）與 SDLCCT-48（已 Done）。
+
+**使用者故事**
+As a FinOps/品質審查人員, I want 從 Agent 詳情畫面的「最貴的執行」清單點進某一筆 trace，看到該次執行內部的 span 樹狀清單，尤其能一眼看出哪個工具被重複呼叫很多次, so that 我能快速定位像「同一工具被呼叫 45 次」這類異常重試迴圈，不需要自己逐筆數。
+
+**驗收條件（Gherkin 情境名稱摘要）**
+1. 點擊「最貴的執行」清單列，導覽至該筆 trace 的動態路由執行詳情頁。
+2. 以樹狀結構渲染 span，每列顯示名稱、類型、時間，並以縮排呈現父子關係。
+3. 同一父節點下的同名重複子 span 需標示重複次數（例如「× 45」）。
+4. trace 查無 span 資料時顯示明確的空狀態。
+5. 後端回傳 404 或 502 時顯示 ErrorCard。
+6. 畫面不得出現「Opik」等後端品牌字樣。
+
+**範圍外**
+- metadata 篩選搜尋（SDLCCT-20）
+- trace/span 寫入或標註
+- 展開以外的互動（例如時間軸縮放）
+- 新增 BFF 端點（由 SDLCCT-55 提供）
+- SDLCCT-48 其餘元件
+
+**依賴**
+SDLCCT-55（已 Done，提供 trace spans 端點）；SDLCCT-48（已 Done，「最貴的執行」清單需新增點擊互動）
+
+**規模預估**
+<= 1 開發日
+
+**狀態**：G1 已核准（auto pass），進入 Designing；尚未實作。
