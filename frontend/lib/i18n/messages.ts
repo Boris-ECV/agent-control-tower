@@ -127,4 +127,36 @@ export const messages = {
     footer: { dataSource: "資料來源：Agent registry ＋ 觀測性後端成本查詢。" },
     empty: "目前沒有異常",
   },
+  agentDetail: {
+    header: { title: "Agent 明細" },
+    versionSeries: {
+      title: "版本成本時間序列",
+      table: {
+        columns: {
+          version: "版本",
+        },
+      },
+    },
+    modelBreakdown: {
+      title: "模型成本分解",
+      table: {
+        columns: {
+          model: "模型",
+          cost: "成本",
+        },
+      },
+    },
+    topTraces: {
+      title: "最貴執行清單",
+      table: {
+        columns: {
+          id: "Trace ID",
+          cost: "預估成本",
+          metadata: "中繼資料",
+        },
+      },
+    },
+    footer: { dataSource: "資料來源：Agent registry ＋ 觀測性後端成本查詢。" },
+    unknown: "—",
+  },
 } as const;

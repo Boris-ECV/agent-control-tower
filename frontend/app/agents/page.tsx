@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
 import { ErrorCard } from "@/components/cost-overview/error-card";
 import type { AgentRegistryEntry, AgentTrendPoint } from "@/lib/agents-api";
 import { fetchAgentsList } from "@/lib/agents-api";
@@ -81,6 +84,8 @@ function GovernanceBadge({ hasGap }: { hasGap: boolean }) {
 }
 
 function AgentTable({ agents }: { agents: AgentRegistryEntry[] }) {
+  const router = useRouter();
+
   return (
     <table className="hidden w-full border-collapse text-sm md:table">
       <thead>
@@ -97,7 +102,19 @@ function AgentTable({ agents }: { agents: AgentRegistryEntry[] }) {
       </thead>
       <tbody>
         {agents.map((agent) => (
-          <tr key={agent.key} className="border-b border-border last:border-b-0">
+          <tr
+            key={agent.key}
+            className="cursor-pointer border-b border-border last:border-b-0 hover:bg-gray-50"
+            tabIndex={0}
+            role="link"
+            aria-label={agent.display}
+            onClick={() => router.push(`/agents/${agent.key}`)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                router.push(`/agents/${agent.key}`);
+              }
+            }}
+          >
             <td className="py-2 pr-3 font-medium text-text-primary">{agent.display}</td>
             <td className="py-2 pr-3">{agent.dept}</td>
             <td className="py-2 pr-3">{agent.owner ?? t("agents.unknownOwner")}</td>
@@ -124,34 +141,36 @@ function AgentCardList({ agents }: { agents: AgentRegistryEntry[] }) {
     <ul className="flex list-none flex-col gap-3 p-0 md:hidden">
       {agents.map((agent) => (
         <li key={agent.key} className="rounded-lg border border-border bg-bg p-4">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="font-semibold text-text-primary">{agent.display}</span>
-            <GovernanceBadge hasGap={agent.has_governance_gap} />
-          </div>
-          <dl className="grid grid-cols-2 gap-y-1 text-xs text-text-secondary">
-            <dt>{t("agents.table.columns.dept")}</dt>
-            <dd className="text-right text-text-primary">{agent.dept}</dd>
-            <dt>{t("agents.table.columns.owner")}</dt>
-            <dd className="text-right text-text-primary">
-              {agent.owner ?? t("agents.unknownOwner")}
-            </dd>
-            <dt>{t("agents.table.columns.budget")}</dt>
-            <dd className="text-right text-text-primary">
-              {agent.budget !== null ? formatCurrency(agent.budget) : t("agents.unknownBudget")}
-            </dd>
-            <dt>{t("agents.table.columns.currentPeriodSpend")}</dt>
-            <dd className="text-right text-text-primary">
-              {formatCurrency(agent.current_period_spend)}
-            </dd>
-            <dt>{t("agents.table.columns.budgetConsumedPct")}</dt>
-            <dd className="text-right text-text-primary">
-              {formatPercent(agent.budget_consumed_pct)}
-            </dd>
-            <dt>{t("agents.table.columns.trend")}</dt>
-            <dd className="text-right">
-              <Sparkline trend={agent.trend} />
-            </dd>
-          </dl>
+          <Link href={`/agents/${agent.key}`} className="block">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="font-semibold text-text-primary">{agent.display}</span>
+              <GovernanceBadge hasGap={agent.has_governance_gap} />
+            </div>
+            <dl className="grid grid-cols-2 gap-y-1 text-xs text-text-secondary">
+              <dt>{t("agents.table.columns.dept")}</dt>
+              <dd className="text-right text-text-primary">{agent.dept}</dd>
+              <dt>{t("agents.table.columns.owner")}</dt>
+              <dd className="text-right text-text-primary">
+                {agent.owner ?? t("agents.unknownOwner")}
+              </dd>
+              <dt>{t("agents.table.columns.budget")}</dt>
+              <dd className="text-right text-text-primary">
+                {agent.budget !== null ? formatCurrency(agent.budget) : t("agents.unknownBudget")}
+              </dd>
+              <dt>{t("agents.table.columns.currentPeriodSpend")}</dt>
+              <dd className="text-right text-text-primary">
+                {formatCurrency(agent.current_period_spend)}
+              </dd>
+              <dt>{t("agents.table.columns.budgetConsumedPct")}</dt>
+              <dd className="text-right text-text-primary">
+                {formatPercent(agent.budget_consumed_pct)}
+              </dd>
+              <dt>{t("agents.table.columns.trend")}</dt>
+              <dd className="text-right">
+                <Sparkline trend={agent.trend} />
+              </dd>
+            </dl>
+          </Link>
         </li>
       ))}
     </ul>
