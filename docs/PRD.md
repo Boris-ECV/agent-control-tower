@@ -892,4 +892,4 @@ SDLCCT-55（已 Done，提供 trace spans 端點）；SDLCCT-48（已 Done，「
 **規模預估**
 <= 1 開發日
 
-**狀態**：G1 已核准（auto pass），進入 Designing；尚未實作。
+**狀態**：Done（PR #171，reviewer APPROVE，G2 通過；新增動態路由 /agents/[key]/traces/[traceId]、trace-detail 元件群、TopTracesTable 新增點擊導覽；前端單元測試 13/13、e2e 31/31、bff 回歸 228/228 全綠——以上測試數由 orchestrator 獨立重跑確認，非照抄 tester/developer 回報。父票 SDLCCT-54 已隨兩張子票完成同步轉為 Done）
