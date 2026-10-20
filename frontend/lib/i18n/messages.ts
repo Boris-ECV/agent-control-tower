@@ -159,4 +159,12 @@ export const messages = {
     footer: { dataSource: "資料來源：Agent registry ＋ 觀測性後端成本查詢。" },
     unknown: "—",
   },
+  traceDetail: {
+    header: { title: "執行詳情" },
+    empty: "查無資料",
+    expand: "展開查看個別",
+    collapse: "收合",
+    repeatBadge: (count: number) => `× ${count}`,
+    footer: { dataSource: "資料來源：Agent registry ＋ 觀測性後端 trace/span 查詢。" },
+  },
 } as const;

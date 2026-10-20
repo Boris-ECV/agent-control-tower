@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/agents/{key}/traces/{trace_id}/spans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Agent Trace Spans */
+        get: operations["agent_trace_spans_api_agents__key__traces__trace_id__spans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/anomalies": {
         parameters: {
             query?: never;
@@ -278,6 +295,23 @@ export interface components {
             /** Start */
             start: string;
         };
+        /** SpanTreeNode */
+        SpanTreeNode: {
+            /** Children */
+            children: components["schemas"]["SpanTreeNode"][];
+            /** End Time */
+            end_time: string | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string | null;
+            /** Parent Span Id */
+            parent_span_id: string | null;
+            /** Start Time */
+            start_time: string | null;
+            /** Type */
+            type: string | null;
+        };
         /** TopTraceItem */
         TopTraceItem: {
             /** Id */
@@ -288,6 +322,15 @@ export interface components {
             } | null;
             /** Total Estimated Cost */
             total_estimated_cost: number | null;
+        };
+        /** TraceSpansResponse */
+        TraceSpansResponse: {
+            /** Key */
+            key: string;
+            /** Spans */
+            spans: components["schemas"]["SpanTreeNode"][];
+            /** Trace Id */
+            trace_id: string;
         };
         /** Unregistered */
         Unregistered: {
@@ -381,6 +424,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgentCostBreakdownResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    agent_trace_spans_api_agents__key__traces__trace_id__spans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                trace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceSpansResponse"];
                 };
             };
             /** @description Validation Error */
