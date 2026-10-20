@@ -55,6 +55,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/budget-simulation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Budget Simulation */
+        get: operations["budget_simulation_api_budget_simulation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/cost-overview/period-comparison": {
         parameters: {
             query?: never;
@@ -168,6 +185,33 @@ export interface components {
             reason: string;
             /** Status */
             status: string;
+        };
+        /** BudgetSimulationResult */
+        BudgetSimulationResult: {
+            /** Agent Key */
+            agent_key: string;
+            /** Current Effective Rate */
+            current_effective_rate: number;
+            /** Estimated Monthly Savings */
+            estimated_monthly_savings: number;
+            /** Explanation */
+            explanation: string;
+            /** Is Estimate */
+            is_estimate: boolean;
+            /** Projected Cost */
+            projected_cost: number;
+            /** Reference Agent Key */
+            reference_agent_key: string;
+            /** Target Effective Rate */
+            target_effective_rate: number;
+            /** Target Model */
+            target_model: string;
+            /** Total Tokens */
+            total_tokens: number;
+            /** Window End */
+            window_end: string;
+            /** Window Start */
+            window_start: string;
         };
         /** CostOverviewSummary */
         CostOverviewSummary: {
@@ -366,6 +410,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnomalyFeedResponse"];
+                };
+            };
+        };
+    };
+    budget_simulation_api_budget_simulation_get: {
+        parameters: {
+            query: {
+                agent_key: string;
+                target_model: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetSimulationResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

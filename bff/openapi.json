@@ -254,6 +254,74 @@
         "title": "AnomalyRow",
         "type": "object"
       },
+      "BudgetSimulationResult": {
+        "properties": {
+          "agent_key": {
+            "title": "Agent Key",
+            "type": "string"
+          },
+          "current_effective_rate": {
+            "title": "Current Effective Rate",
+            "type": "number"
+          },
+          "estimated_monthly_savings": {
+            "title": "Estimated Monthly Savings",
+            "type": "number"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "is_estimate": {
+            "title": "Is Estimate",
+            "type": "boolean"
+          },
+          "projected_cost": {
+            "title": "Projected Cost",
+            "type": "number"
+          },
+          "reference_agent_key": {
+            "title": "Reference Agent Key",
+            "type": "string"
+          },
+          "target_effective_rate": {
+            "title": "Target Effective Rate",
+            "type": "number"
+          },
+          "target_model": {
+            "title": "Target Model",
+            "type": "string"
+          },
+          "total_tokens": {
+            "title": "Total Tokens",
+            "type": "number"
+          },
+          "window_end": {
+            "title": "Window End",
+            "type": "string"
+          },
+          "window_start": {
+            "title": "Window Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_key",
+          "target_model",
+          "window_start",
+          "window_end",
+          "total_tokens",
+          "current_effective_rate",
+          "target_effective_rate",
+          "reference_agent_key",
+          "projected_cost",
+          "estimated_monthly_savings",
+          "is_estimate",
+          "explanation"
+        ],
+        "title": "BudgetSimulationResult",
+        "type": "object"
+      },
       "CostOverviewSummary": {
         "properties": {
           "anchor_date": {
@@ -721,6 +789,54 @@
           }
         },
         "summary": "Anomalies Feed"
+      }
+    },
+    "/api/budget-simulation": {
+      "get": {
+        "operationId": "budget_simulation_api_budget_simulation_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "agent_key",
+            "required": true,
+            "schema": {
+              "title": "Agent Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_model",
+            "required": true,
+            "schema": {
+              "title": "Target Model",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetSimulationResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Budget Simulation"
       }
     },
     "/api/cost-overview/period-comparison": {
