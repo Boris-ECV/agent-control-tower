@@ -1,6 +1,58 @@
 {
   "components": {
     "schemas": {
+      "AgentCostBreakdownResponse": {
+        "properties": {
+          "anchor_date": {
+            "title": "Anchor Date",
+            "type": "string"
+          },
+          "display": {
+            "title": "Display",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "model_cost_breakdown": {
+            "items": {
+              "$ref": "#/components/schemas/ModelCostBreakdownEntry"
+            },
+            "title": "Model Cost Breakdown",
+            "type": "array"
+          },
+          "period_start": {
+            "title": "Period Start",
+            "type": "string"
+          },
+          "top_traces": {
+            "items": {
+              "$ref": "#/components/schemas/TopTraceItem"
+            },
+            "title": "Top Traces",
+            "type": "array"
+          },
+          "version_cost_series": {
+            "items": {
+              "$ref": "#/components/schemas/VersionCostSeriesEntry"
+            },
+            "title": "Version Cost Series",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "display",
+          "anchor_date",
+          "period_start",
+          "version_cost_series",
+          "model_cost_breakdown",
+          "top_traces"
+        ],
+        "title": "AgentCostBreakdownResponse",
+        "type": "object"
+      },
       "AgentRegistryEntry": {
         "properties": {
           "budget": {
@@ -134,6 +186,142 @@
         "title": "AgentsListResponse",
         "type": "object"
       },
+      "AnomalyFeedResponse": {
+        "properties": {
+          "anchor_date": {
+            "title": "Anchor Date",
+            "type": "string"
+          },
+          "anomalies": {
+            "items": {
+              "$ref": "#/components/schemas/AnomalyRow"
+            },
+            "title": "Anomalies",
+            "type": "array"
+          }
+        },
+        "required": [
+          "anchor_date",
+          "anomalies"
+        ],
+        "title": "AnomalyFeedResponse",
+        "type": "object"
+      },
+      "AnomalyRow": {
+        "properties": {
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "anomaly_type": {
+            "title": "Anomaly Type",
+            "type": "string"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent",
+          "anomaly_type",
+          "date",
+          "status",
+          "reason"
+        ],
+        "title": "AnomalyRow",
+        "type": "object"
+      },
+      "BudgetSimulationResult": {
+        "properties": {
+          "agent_key": {
+            "title": "Agent Key",
+            "type": "string"
+          },
+          "current_effective_rate": {
+            "title": "Current Effective Rate",
+            "type": "number"
+          },
+          "estimated_monthly_savings": {
+            "title": "Estimated Monthly Savings",
+            "type": "number"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "is_estimate": {
+            "title": "Is Estimate",
+            "type": "boolean"
+          },
+          "projected_cost": {
+            "title": "Projected Cost",
+            "type": "number"
+          },
+          "reference_agent_key": {
+            "title": "Reference Agent Key",
+            "type": "string"
+          },
+          "target_effective_rate": {
+            "title": "Target Effective Rate",
+            "type": "number"
+          },
+          "target_model": {
+            "title": "Target Model",
+            "type": "string"
+          },
+          "total_tokens": {
+            "title": "Total Tokens",
+            "type": "number"
+          },
+          "window_end": {
+            "title": "Window End",
+            "type": "string"
+          },
+          "window_start": {
+            "title": "Window Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_key",
+          "target_model",
+          "window_start",
+          "window_end",
+          "total_tokens",
+          "current_effective_rate",
+          "target_effective_rate",
+          "reference_agent_key",
+          "projected_cost",
+          "estimated_monthly_savings",
+          "is_estimate",
+          "explanation"
+        ],
+        "title": "BudgetSimulationResult",
+        "type": "object"
+      },
       "CostOverviewSummary": {
         "properties": {
           "anchor_date": {
@@ -210,6 +398,44 @@
           "unregistered"
         ],
         "title": "CostOverviewSummary",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ModelCostBreakdownEntry": {
+        "properties": {
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model",
+          "cost"
+        ],
+        "title": "ModelCostBreakdownEntry",
         "type": "object"
       },
       "PeriodComparison": {
@@ -304,6 +530,44 @@
         "title": "PeriodRange",
         "type": "object"
       },
+      "TopTraceItem": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "total_estimated_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Estimated Cost"
+          }
+        },
+        "required": [
+          "id",
+          "total_estimated_cost",
+          "metadata"
+        ],
+        "title": "TopTraceItem",
+        "type": "object"
+      },
       "Unregistered": {
         "properties": {
           "agents": {
@@ -347,6 +611,92 @@
         ],
         "title": "UnregisteredAgentSpend",
         "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VersionCostPoint": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "date",
+          "value"
+        ],
+        "title": "VersionCostPoint",
+        "type": "object"
+      },
+      "VersionCostSeriesEntry": {
+        "properties": {
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/VersionCostPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "points"
+        ],
+        "title": "VersionCostSeriesEntry",
+        "type": "object"
       }
     }
   },
@@ -372,6 +722,121 @@
           }
         },
         "summary": "Agents List"
+      }
+    },
+    "/api/agents/{key}/cost-breakdown": {
+      "get": {
+        "operationId": "agent_cost_breakdown_api_agents__key__cost_breakdown_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "top_n",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "title": "Top N",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentCostBreakdownResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Cost Breakdown"
+      }
+    },
+    "/api/anomalies": {
+      "get": {
+        "operationId": "anomalies_feed_api_anomalies_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnomalyFeedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Anomalies Feed"
+      }
+    },
+    "/api/budget-simulation": {
+      "get": {
+        "operationId": "budget_simulation_api_budget_simulation_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "agent_key",
+            "required": true,
+            "schema": {
+              "title": "Agent Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_model",
+            "required": true,
+            "schema": {
+              "title": "Target Model",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetSimulationResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Budget Simulation"
       }
     },
     "/api/cost-overview/period-comparison": {

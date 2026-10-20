@@ -98,4 +98,33 @@ export const messages = {
       description: "本月成本 vs 預算總覽、預估月底超支、跨 Agent 期間比較。",
     },
   },
+  anomalies: {
+    header: {
+      title: "異常與告警",
+      subtitle: "彙整各規則偵測到的異常與治理缺口，包含持續中的治理缺口。",
+    },
+    table: {
+      columns: {
+        agent: "Agent",
+        anomalyType: "異常類型",
+        date: "日期",
+        reason: "原因",
+      },
+      ongoing: "持續中",
+      unknownAgent: "不明",
+    },
+    errorBanner: {
+      title: "資料錯誤",
+      unknownAgent: "不明",
+    },
+    anomalyTypes: {
+      toolRetryLoop: "工具重試迴圈",
+      contextBloat: "情境膨脹",
+      nightBatchBurst: "非營業時段流量暴增",
+      modelSwitch: "模型切換",
+      governanceGap: "治理缺口",
+    },
+    footer: { dataSource: "資料來源：Agent registry ＋ 觀測性後端成本查詢。" },
+    empty: "目前沒有異常",
+  },
 } as const;
