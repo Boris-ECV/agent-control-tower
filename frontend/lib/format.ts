@@ -33,6 +33,26 @@ export function formatTaiwanDate(isoDate: string): string {
   }).format(utcMidnight);
 }
 
+/** Sister function to formatTaiwanDate for span start_time/end_time, which
+ * are full ISO datetime strings (e.g. "2026-10-01T00:00:01Z"), not plain
+ * YYYY-MM-DD dates -- formatTaiwanDate's `${isoDate}T00:00:00Z` construction
+ * would malform them. null/missing renders as "—" (docs/design/SDLCCT-56.md
+ * decision 5), matching formatCurrency/formatPercent's "missing value is an
+ * em dash, never 0 or blank" convention. */
+export function formatTaiwanDateTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  return new Intl.DateTimeFormat("zh-TW", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date(iso));
+}
+
 export function formatDateRange(startIso: string, endIso: string): string {
   const fmt = (iso: string) => {
     const [, m, d] = iso.split("-");

@@ -259,7 +259,7 @@ test("mobile viewport: version series, model breakdown, and top traces sections 
   expect(overflowsHorizontally).toBe(false);
 });
 
-test("AC4: top_traces rows are visually clickable but clicking triggers no navigation or new network request", async ({
+test("SDLCCT-56: top_traces rows are visually clickable and clicking navigates to the trace's execution detail screen", async ({
   page,
 }) => {
   await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
@@ -279,27 +279,25 @@ test("AC4: top_traces rows are visually clickable but clicking triggers no navig
       }),
     });
   });
+  await page.route(`**/api/agents/${MOCK_KEY}/traces/trace-001/spans`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ key: MOCK_KEY, trace_id: "trace-001", spans: [] }),
+    });
+  });
 
   await page.goto(`/agents/${MOCK_KEY}`);
 
   const row = page.getByText("trace-001").locator("xpath=ancestor::tr");
   await expect(row).toHaveClass(/cursor-pointer/);
 
-  let requestCount = 0;
-  page.on("request", () => {
-    requestCount += 1;
-  });
-
-  const urlBefore = page.url();
-  // Let any in-flight requests settle before counting the baseline.
-  await page.waitForTimeout(200);
-  requestCount = 0;
-
+  // SDLCCT-56: clicking a row now navigates to the execution detail screen
+  // (this replaces SDLCCT-48's original "no navigation" assertion, which
+  // was explicitly flagged in docs/design/SDLCCT-56.md as expected to be
+  // superseded by this ticket's in-scope new interaction).
   await row.click();
-  await page.waitForTimeout(300);
-
-  expect(page.url()).toBe(urlBefore);
-  expect(requestCount).toBe(0);
+  await expect(page).toHaveURL(`/agents/${MOCK_KEY}/traces/trace-001`);
 });
 
 test("AC5: backend 404 shows an explicit error card, never blank", async ({ page }) => {
