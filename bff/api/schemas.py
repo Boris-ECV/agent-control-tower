@@ -129,3 +129,18 @@ class AnomalyRow(BaseModel):
 class AnomalyFeedResponse(BaseModel):
     anchor_date: str
     anomalies: list[AnomalyRow]
+
+
+class BudgetSimulationResult(BaseModel):
+    agent_key: str
+    target_model: str
+    window_start: str
+    window_end: str
+    total_tokens: float
+    current_effective_rate: float
+    target_effective_rate: float
+    reference_agent_key: str
+    projected_cost: float
+    estimated_monthly_savings: float
+    is_estimate: bool
+    explanation: str
