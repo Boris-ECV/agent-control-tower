@@ -1,0 +1,35 @@
+# Portal (frontend + bff) container definitions.
+#
+# OVERLAY vs STANDALONE: this file is STANDALONE — see
+# docs/design/SDLCCT-57.md 關鍵技術決策 #1 for the rationale. It is not
+# merged with (`-f base.yml -f this.yml`) the host's existing Opik
+# compose file, and defines no dependency on that file's internal
+# service/network names, none of which this repo can verify.
+#
+# Deploy alongside the existing Opik stack as a second, independent
+# `docker compose -f deploy/docker-compose.portal.yml up -d` on the same
+# host. All values below with no default are REQUIRED and MUST be
+# supplied by the human operator at deploy time (e.g. via a host-local
+# .env file that is never committed) — see "環境變數需求清單" below.
+services:
+  bff:
+    build:
+      context: ../bff
+      dockerfile: Dockerfile
+    environment:
+      OPIK_BASE_URL: ${OPIK_BASE_URL:?OPIK_BASE_URL must be set}
+    ports:
+      - "${BFF_HOST_PORT:?BFF_HOST_PORT must be set}:8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_BFF_URL: ${NEXT_PUBLIC_BFF_URL:?NEXT_PUBLIC_BFF_URL must be set}
+    ports:
+      - "${FRONTEND_HOST_PORT:?FRONTEND_HOST_PORT must be set}:3000"
+    restart: unless-stopped
+    depends_on:
+      - bff
