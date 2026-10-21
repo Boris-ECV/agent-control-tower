@@ -899,14 +899,14 @@ SDLCCT-55（已 Done，提供 trace spans 端點）；SDLCCT-48（已 Done，「
 **範圍**：frontend/ Dockerfile（Next.js production build）；bff/ Dockerfile（FastAPI，uv 管理）；docker-compose service 定義（standalone 或 overlay 現有 opik compose，由架構師決定）；容器環境變數需求清單（如 OPIK_BASE_URL、NEXT_PUBLIC_BFF_URL），標示人工於部署時提供。
 **範圍外**：不連線任何伺服器、不執行任何 docker 指令、不驗證容器實際跑起來；不含反向代理設定（SDLCCT-58）；不動 Opik 既有服務（含版本）。
 **驗收條件**：6 條 Gherkin 情境（Dockerfile build ×2、compose 語法驗證、overlay/standalone 聲明、env var 文件化、CONSTITUTION 衛生自檢）。
-**狀態**：G1 已核准（人工放行，needs-human-gate），進入 Designing；尚未實作。
+**狀態**：Done（PR #186，reviewer APPROVE，G2 通過；新增 frontend/Dockerfile、bff/Dockerfile、deploy/docker-compose.portal.yml（standalone 決策）、兩個 .dockerignore、next.config.ts 一行調整；過程中 1 次 reopen——測試發現 AC1/AC2 範例指令與 Dockerfile 的 build context 假設內部不一致，已修正指令文字與 Dockerfile 註解並重測通過；bff 測試 228/228、frontend 單元測試 13/13 全綠，皆由 orchestrator 獨立重跑確認）。
 
 ## SDLCCT-58 — Reverse proxy routing template (Caddy): Portal public, Opik internal-only
 **使用者故事**：As an operator applying this project's production routing config, I want a Caddyfile template that routes the public domain to Portal and documents BFF's internal-only connection to Opik, so that Portal becomes the sole publicly reachable surface while Opik's frontend/API are no longer exposed to the public domain, with zero real host-specific values committed to the public repo.
 **範圍**：一份 Caddyfile 設定範本，示範對外網域導向 Portal、BFF 走主機內部位址連線 Opik、Opik 原本前端/API 不再對外曝露；所有主機特定值皆為明顯佔位符。
 **範圍外**：不連線主機、不修改實際 Caddyfile、不重載 Caddy；不處理 TLS 憑證申請；不涉及容器化本身（SDLCCT-57）。
 **驗收條件**：5 條 Gherkin 情境（對外網域導 Portal、BFF 內部連線 Opik、Opik 不再對外曝露、範本無真實值、CONSTITUTION 衛生自檢）。
-**狀態**：G1 已核准（人工放行，needs-human-gate），進入 Designing；尚未實作。
+**狀態**：Done（PR #184，reviewer APPROVE，G2 通過；新增 deploy/Caddyfile.template，單一對外 site block 僅導向 Portal、Opik 無任何對外 site block（含未註解掉的版本）；tester 獨立驗證 5/5 AC 一次通過，無 reopen）。
 
 ## SDLCCT-59 — Deployment, verification, and rollback runbook (human-executed)
 **使用者故事**：As a 維運人員（operator）, I want 一份完整、按順序可照做的部署／驗證／回復 runbook 文件, so that 我可以在沒有開發 AI 陪同的情況下，獨立把 Portal/BFF 部署到 Opik 主機、確認部署結果是真實資料且 Opik 已不再對外暴露，並在出問題時安全退回部署前狀態。
