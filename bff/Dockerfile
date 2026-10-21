@@ -1,0 +1,20 @@
+# syntax=docker/dockerfile:1
+# Build with: docker build -f bff/Dockerfile bff   (context = this file's own directory, matching deploy/docker-compose.portal.yml's build.context)
+
+FROM python:3.12-slim AS builder
+WORKDIR /app
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+COPY . .
+RUN uv sync --frozen --no-dev
+
+FROM python:3.12-slim AS runner
+WORKDIR /app
+COPY --from=builder /app /app
+ENV PATH="/app/.venv/bin:$PATH"
+EXPOSE 8000
+# OPIK_BASE_URL has no default anywhere in this image or in api/app.py
+# (CONSTITUTION: "missing value is an error, not a fallback") — the
+# process fails fast at startup if the human has not supplied it.
+CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000"]
