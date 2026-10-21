@@ -7,10 +7,13 @@
 docker-compose service 定義、以及容器環境變數需求清單，供維運人員在與
 Opik 相同的 AWS Lightsail host 上手動部署。6 條 AC 對應範圍：
 
-1. `docker build -f frontend/Dockerfile .` 可在隔離環境成功（無連線、
-   無 runtime 注入的預設值）。
-2. `docker build -f bff/Dockerfile .` 以 uv 管理依賴，可在隔離環境成功
-   （無寫死的機密/主機位址）。
+1. `docker build -f frontend/Dockerfile frontend`（context 為
+   `frontend/` 自己子目錄，2026-10-21 測試階段勘誤修正，見下方
+   Dockerfile 區塊的 Build with 註解）可在隔離環境成功（無連線、無
+   runtime 注入的預設值）。
+2. `docker build -f bff/Dockerfile bff`（context 為 `bff/` 自己子目錄，
+   同一次勘誤修正）以 uv 管理依賴，可在隔離環境成功（無寫死的機密/
+   主機位址）。
 3. docker-compose 檔案語法正確（`docker compose -f <file> config` 成功，
    不實際啟動容器）。
 4. compose 檔案明確記載 overlay-vs-standalone 的選擇與理由（本文件
@@ -45,6 +48,9 @@ docker-compose 檔案在結構上必然具備的形狀」（即：某個 compose
 
 ```dockerfile
 # syntax=docker/dockerfile:1
+# Build with: docker build -f frontend/Dockerfile frontend
+#   (context = this file's own directory, matching
+#   deploy/docker-compose.portal.yml's build.context: ../frontend)
 
 FROM node:20-alpine AS deps
 WORKDIR /app
@@ -85,6 +91,9 @@ CMD ["node", "server.js"]
 
 ```dockerfile
 # syntax=docker/dockerfile:1
+# Build with: docker build -f bff/Dockerfile bff
+#   (context = this file's own directory, matching
+#   deploy/docker-compose.portal.yml's build.context: ../bff)
 
 FROM python:3.12-slim AS builder
 WORKDIR /app
