@@ -1,4 +1,5 @@
 # syntax=docker/dockerfile:1
+# Build with: docker build -f frontend/Dockerfile frontend   (context = this file's own directory, matching deploy/docker-compose.portal.yml's build.context)
 
 FROM node:20-alpine AS deps
 WORKDIR /app
