@@ -893,3 +893,31 @@ SDLCCT-55（已 Done，提供 trace spans 端點）；SDLCCT-48（已 Done，「
 <= 1 開發日
 
 **狀態**：Done（PR #171，reviewer APPROVE，G2 通過；新增動態路由 /agents/[key]/traces/[traceId]、trace-detail 元件群、TopTracesTable 新增點擊導覽；前端單元測試 13/13、e2e 31/31、bff 回歸 228/228 全綠——以上測試數由 orchestrator 獨立重跑確認，非照抄 tester/developer 回報。父票 SDLCCT-54 已隨兩張子票完成同步轉為 Done）
+
+## SDLCCT-57 — Containerize Portal frontend and BFF (Docker)
+**使用者故事**：As a 維運人員（deploy 執行者）, I want Portal frontend 與 BFF 的 Docker 化設定檔（Dockerfiles + docker-compose 服務定義 + 必要環境變數清單), so that 我可以在與 Opik 相同的 AWS Lightsail host 上，依照清楚文件化的設定手動部署，而不需臨時拼湊容器設定或冒意外動到 Opik 既有服務的風險。
+**範圍**：frontend/ Dockerfile（Next.js production build）；bff/ Dockerfile（FastAPI，uv 管理）；docker-compose service 定義（standalone 或 overlay 現有 opik compose，由架構師決定）；容器環境變數需求清單（如 OPIK_BASE_URL、NEXT_PUBLIC_BFF_URL），標示人工於部署時提供。
+**範圍外**：不連線任何伺服器、不執行任何 docker 指令、不驗證容器實際跑起來；不含反向代理設定（SDLCCT-58）；不動 Opik 既有服務（含版本）。
+**驗收條件**：6 條 Gherkin 情境（Dockerfile build ×2、compose 語法驗證、overlay/standalone 聲明、env var 文件化、CONSTITUTION 衛生自檢）。
+**狀態**：G1 已核准（人工放行，needs-human-gate），進入 Designing；尚未實作。
+
+## SDLCCT-58 — Reverse proxy routing template (Caddy): Portal public, Opik internal-only
+**使用者故事**：As an operator applying this project's production routing config, I want a Caddyfile template that routes the public domain to Portal and documents BFF's internal-only connection to Opik, so that Portal becomes the sole publicly reachable surface while Opik's frontend/API are no longer exposed to the public domain, with zero real host-specific values committed to the public repo.
+**範圍**：一份 Caddyfile 設定範本，示範對外網域導向 Portal、BFF 走主機內部位址連線 Opik、Opik 原本前端/API 不再對外曝露；所有主機特定值皆為明顯佔位符。
+**範圍外**：不連線主機、不修改實際 Caddyfile、不重載 Caddy；不處理 TLS 憑證申請；不涉及容器化本身（SDLCCT-57）。
+**驗收條件**：5 條 Gherkin 情境（對外網域導 Portal、BFF 內部連線 Opik、Opik 不再對外曝露、範本無真實值、CONSTITUTION 衛生自檢）。
+**狀態**：G1 已核准（人工放行，needs-human-gate），進入 Designing；尚未實作。
+
+## SDLCCT-59 — Deployment, verification, and rollback runbook (human-executed)
+**使用者故事**：As a 維運人員（operator）, I want 一份完整、按順序可照做的部署／驗證／回復 runbook 文件, so that 我可以在沒有開發 AI 陪同的情況下，獨立把 Portal/BFF 部署到 Opik 主機、確認部署結果是真實資料且 Opik 已不再對外暴露，並在出問題時安全退回部署前狀態。
+**範圍**：部署步驟（串接 SDLCCT-57/58 產出物，以佔位符引用）；驗證步驟（真實資料核對、Opik 不可公開存取確認）；兩種層級的回復步驟（Caddyfile-only / 停容器）；明確標示主機無備份的風險。
+**範圍外**：不執行文件裡的任何步驟；不包含容器化或反向代理範本的具體內容；不包含主機快照/備份機制建立。
+**驗收條件**：6 條 Gherkin 情境（有序部署步驟＋佔位符引用、真實資料驗證訊號、Opik 存取限制驗證、兩種回復路徑、無備份風險標示、無真實主機資訊＋繁中）。
+**狀態**：G1 已核准（人工放行，needs-human-gate），進入 Designing；尚未實作。
+
+## SDLCCT-60 — Checklist: close off Opik's direct public exposure
+**使用者故事**：As a 負責 Portal 上線後把關維運／安全的人員, I want 一份可直接照做的檢查清單文件，列出 Portal 上線後必須確認「Opik 不再被公開網域直接存取」的所有檢查項目與明確的 PASS/FAIL 判斷標準, so that 我能在上線後快速、一致地驗證 HANDOFF 架構原則確實落實。
+**範圍**：檢查 Opik 前端不可直接存取、Opik API 不可直接呼叫、對外僅開放 443（對照 HANDOFF 14.1）。
+**範圍外**：不執行檢查清單裡的任何項目；不含實際防火牆/網路設定變更；不含 SDLCCT-58 本身的撰寫/修改。
+**驗收條件**：5 條 Gherkin 情境（前端/API 不可直接存取、僅開放 443、每項目含 PASS/FAIL 具體判準、文件無真實主機資訊＋繁中）。
+**狀態**：G1 已核准（人工放行，needs-human-gate），進入 Designing；尚未實作。
