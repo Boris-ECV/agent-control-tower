@@ -7,9 +7,9 @@
   不負責修正，只負責判定）。
 - 執行者：人類維運人員。AI 不得代為執行本清單的任何項目，也不得連線
   主機進行任何檢查（沿用 SDLCCT-57/58/59 已確立的 E6 epic 限制）。
-- 執行時機：SDLCCT-58 的 `deploy/Caddyfile.template` 已依
-  SDLCCT-59 `deploy/RUNBOOK.md` 套用到主機之後，可隨時重複執行本清單
-  作稽核（與 RUNBOOK 的一次性部署驗證不同用途——本清單設計為上線後
+- 執行時機：待 SDLCCT-58 的 `deploy/Caddyfile.template` 依
+  SDLCCT-59 `deploy/RUNBOOK.md`（部署 runbook）套用到主機之後，可隨時
+  重複執行本清單作稽核（與 RUNBOOK 的一次性部署驗證不同用途——本清單設計為上線後
   可反覆執行的獨立稽核工具，例如定期複查、換人接手維運時的快速
   上手文件）。
 - 佔位符總表（沿用 SDLCCT-58 的三個佔位符，人類執行時以自己持有的
@@ -48,10 +48,11 @@ site block。
 內部連線完成，從未經過對外網域的 Caddy site block。
 
 **PASS 代表**：公開網域呼叫 Opik API 路徑得到連線失敗、404，或被
-導向 Portal 內容（三者皆算通過，判準同 SDLCCT-59 RUNBOOK 第 4 節
-「驗證步驟 B」——差異只在於 Caddy 層是否認得該路徑，不是「Opik
-有沒有回應」），且 `OPIK_BASE_URL` 的實際值可確認是主機內部位址而非
-公開網域。
+導向 Portal 內容（三者皆算通過，判準概念與 SDLCCT-59
+`deploy/RUNBOOK.md` 第 4 節「驗證步驟 B」一致——兩份文件描述同一件事：
+Opik 是否曝露在公開網域，以避免各自定義不一致；差異只在於 Caddy
+層是否認得該路徑，不是「Opik 有沒有回應」），且 `OPIK_BASE_URL` 的
+實際值可確認是主機內部位址而非公開網域。
 
 **FAIL 代表**：公開網域直接回應可辨識為 Opik API 的內容（例如 Opik
 特有的 JSON 錯誤格式、版本號字串），或 `OPIK_BASE_URL` 的實際值等於
