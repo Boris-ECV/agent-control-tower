@@ -913,11 +913,13 @@ SDLCCT-55（已 Done，提供 trace spans 端點）；SDLCCT-48（已 Done，「
 **範圍**：部署步驟（串接 SDLCCT-57/58 產出物，以佔位符引用）；驗證步驟（真實資料核對、Opik 不可公開存取確認）；兩種層級的回復步驟（Caddyfile-only / 停容器）；明確標示主機無備份的風險。
 **範圍外**：不執行文件裡的任何步驟；不包含容器化或反向代理範本的具體內容；不包含主機快照/備份機制建立。
 **驗收條件**：6 條 Gherkin 情境（有序部署步驟＋佔位符引用、真實資料驗證訊號、Opik 存取限制驗證、兩種回復路徑、無備份風險標示、無真實主機資訊＋繁中）。
-**狀態**：G1 已核准（人工放行，needs-human-gate），進入 Designing；尚未實作。
+**狀態**：Done（PR #189，reviewer APPROVE，G2 通過；新增 `deploy/RUNBOOK.md`，7 節結構涵蓋部署步驟、真實資料驗證、Opik 不可公開存取驗證、兩層回復；無 reopen）。
 
 ## SDLCCT-60 — Checklist: close off Opik's direct public exposure
 **使用者故事**：As a 負責 Portal 上線後把關維運／安全的人員, I want 一份可直接照做的檢查清單文件，列出 Portal 上線後必須確認「Opik 不再被公開網域直接存取」的所有檢查項目與明確的 PASS/FAIL 判斷標準, so that 我能在上線後快速、一致地驗證 HANDOFF 架構原則確實落實。
 **範圍**：檢查 Opik 前端不可直接存取、Opik API 不可直接呼叫、對外僅開放 443（對照 HANDOFF 14.1）。
 **範圍外**：不執行檢查清單裡的任何項目；不含實際防火牆/網路設定變更；不含 SDLCCT-58 本身的撰寫/修改。
 **驗收條件**：5 條 Gherkin 情境（前端/API 不可直接存取、僅開放 443、每項目含 PASS/FAIL 具體判準、文件無真實主機資訊＋繁中）。
-**狀態**：G1 已核准（人工放行，needs-human-gate），進入 Designing；尚未實作。
+**狀態**：Done（PR #190，reviewer APPROVE，G2 通過；新增 `deploy/OPIK-EXPOSURE-CHECKLIST.md`，獨立可重複執行的稽核清單；1 次 reopen——review 發現文件以現在式斷言姊妹票 SDLCCT-59 的 RUNBOOK.md 已存在，已修正為條件式措辭並重測+重新 review 通過）。
+
+E6（部署）Epic 四張票（SDLCCT-57/58/59/60）至此全數 Done。
