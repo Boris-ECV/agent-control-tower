@@ -1,0 +1,55 @@
+# Caddyfile TEMPLATE — Portal public, Opik internal-only.
+#
+# This is a TEMPLATE, not a file ready to apply. Every value in angle
+# brackets below is a placeholder; this repo contains no real hostname,
+# IP, or port (CONSTITUTION: public repository hygiene). A human
+# operator must replace every placeholder with the real value when
+# applying this to the actual host's /etc/caddy/Caddyfile — see
+# docs/design/SDLCCT-59.md (deployment runbook) for the applying
+# procedure. This file is never connected to a live host, never
+# reloaded, by any AI in this project (E6 epic constraint).
+#
+# Naming of the Portal-side port placeholder matches
+# docs/design/SDLCCT-57.md's FRONTEND_HOST_PORT env var (the host port
+# the frontend container publishes) — same concept, same number, just
+# expressed here as a Caddy-side placeholder instead of a compose env
+# var, so a human operator can cross-reference the two documents.
+
+# --- PUBLIC site block: the ONLY publicly reachable surface ---
+# <PUBLIC_DOMAIN> keeps the existing sslip.io domain-name FORMAT already
+# in use on the host (human decision: reuse sslip.io, do not wait for
+# branding/a real domain) — e.g. it resolves to something shaped like
+# <PORTAL_PUBLIC_IP>.sslip.io, but the actual IP/domain is never written
+# here.
+<PUBLIC_DOMAIN> {
+	# Routes to Portal's frontend container, published on the host at
+	# <PORTAL_PUBLIC_PORT> (== SDLCCT-57's FRONTEND_HOST_PORT value, once
+	# a human has assigned it on the real host).
+	reverse_proxy localhost:<PORTAL_PUBLIC_PORT>
+
+	# Caddy's automatic TLS (existing mechanism, reused as-is — no new
+	# logic needed; see 範圍外 above and 關鍵技術決策 #3 below).
+}
+
+# --- NOTE: no site block below routes any public domain to Opik. ---
+# Opik's own frontend/API are NOT given a public site block by this
+# template (AC3). They remain reachable ONLY from inside the host, via
+# the internal addresses documented below — never through a Caddy site
+# block bound to a public domain.
+
+# =====================================================================
+# INFORMATIONAL ONLY — not a Caddy site block, not applied by Caddy.
+# Documents how BFF reaches Opik: entirely through host-internal
+# addresses, never through the public-domain site block above (AC2).
+# =====================================================================
+#
+#   BFF  --(host-internal, e.g. localhost:<OPIK_INTERNAL_PORT>)-->  Opik
+#
+# <OPIK_INTERNAL_PORT>: the port Opik's own frontend/API are published
+# on, on the SAME host, for host-internal callers only (loopback/internal
+# interface — not bound to <PUBLIC_DOMAIN>, not in any public site block
+# above). This matches the existing BFF env var OPIK_BASE_URL from
+# docs/design/SDLCCT-57.md — e.g. a human-supplied value shaped like
+# `http://localhost:<OPIK_INTERNAL_PORT>` — this template does not
+# redefine that variable, only documents that whatever host-internal
+# value the human assigns it, it must stay off the public site block.
