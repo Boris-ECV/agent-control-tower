@@ -498,6 +498,30 @@ Do NOT read docs/03/04/05/07 at bootstrap; read them only when needed.
   named. Rule 4c's file-path checklist does not catch this, because the
   PRD is an allowed self-merge path — the damage would have merged
   unreviewed.
+- **The requirements-analyst subagent (and any other subagent whose tool
+  list is Read/Grep/Glob only — check the agent-type listing, don't
+  assume) has no Jira access and no Bash/Write/Edit.** It cannot fetch a
+  ticket's current description itself, and it cannot write a finalized
+  spec back to Jira even if told to. Delegating to it with instructions
+  like "read SDLCCT-NN from Jira and update its description" produces
+  either a refusal or, worse, a plausible-looking spec fabricated without
+  the ticket's actual current content. **Rule:** when delegating
+  refinement to requirements-analyst, paste the ticket's full current
+  description verbatim into the prompt yourself, and have it return the
+  complete finalized text in its response for you to paste back into
+  Jira — never ask it to touch Jira directly. Before delegating any
+  subagent, check its listed tools in the Agent-type listing for exactly
+  this gap (Jira/Bash/Write/Edit access), not just its stated role.
+  Observed in this framework's pilot: a requirements-analyst delegation
+  for SDLCCT-57 was given this exact "read from Jira / write to Jira"
+  instruction despite its tool list being Read/Grep/Glob-only; it caught
+  its own limitation and handed back a spec built only from the facts
+  restated in the delegation prompt rather than fabricating ticket
+  content, but flagged that the orchestrator must diff/merge manually —
+  the task succeeded only because the delegation prompt happened to
+  restate enough of the ticket's content for the analyst to work from,
+  which is not a given. The immediate fix applied was to resend the next
+  delegation (SDLCCT-58) with the ticket text pasted in up front.
 
 ## Escalation
 
