@@ -923,3 +923,8 @@ SDLCCT-55（已 Done，提供 trace spans 端點）；SDLCCT-48（已 Done，「
 **狀態**：Done（PR #190，reviewer APPROVE，G2 通過；新增 `deploy/OPIK-EXPOSURE-CHECKLIST.md`，獨立可重複執行的稽核清單；1 次 reopen——review 發現文件以現在式斷言姊妹票 SDLCCT-59 的 RUNBOOK.md 已存在，已修正為條件式措辭並重測+重新 review 通過）。
 
 E6（部署）Epic 四張票（SDLCCT-57/58/59/60）至此全數 Done。
+
+## SDLCCT-61 — Verify the browser can actually reach the BFF once deployed per SDLCCT-57/58/60
+**票型**：Bug
+**狀態**：G1 已核准（2026-10-22）；進入 Designing；尚未實作
+**背景**：人類審閱 E6 Epic（SDLCCT-57/58/60）產出物後發現瀏覽器端無法同時滿足「連到 BFF」與「對外僅開放 443」，經 orchestrator 逐檔確認缺口存在（deploy/Caddyfile.template 缺少通往 BFF 的對外路由）。修正方向：在既有公開 site block 下新增 path-based 路由（建議 /api/*）到 BFF，並修正 SDLCCT-57 設計文件中 NEXT_PUBLIC_BFF_URL 建議值。
