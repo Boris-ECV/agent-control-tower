@@ -14,6 +14,11 @@
 # the frontend container publishes) — same concept, same number, just
 # expressed here as a Caddy-side placeholder instead of a compose env
 # var, so a human operator can cross-reference the two documents.
+#
+# <BFF_HOST_PORT> below matches docs/design/SDLCCT-57.md's /
+# deploy/docker-compose.portal.yml's BFF_HOST_PORT env var directly (same
+# name, not renamed like <PORTAL_PUBLIC_PORT> above — see
+# docs/design/SDLCCT-61.md for why).
 
 # --- PUBLIC site block: the ONLY publicly reachable surface ---
 # <PUBLIC_DOMAIN> keeps the existing sslip.io domain-name FORMAT already
@@ -22,10 +27,34 @@
 # <PORTAL_PUBLIC_IP>.sslip.io, but the actual IP/domain is never written
 # here.
 <PUBLIC_DOMAIN> {
-	# Routes to Portal's frontend container, published on the host at
-	# <PORTAL_PUBLIC_PORT> (== SDLCCT-57's FRONTEND_HOST_PORT value, once
-	# a human has assigned it on the real host).
-	reverse_proxy localhost:<PORTAL_PUBLIC_PORT>
+	# BFF route (AC1/AC2, SDLCCT-61): "/api/*" is a literal URL PATH
+	# PREFIX, not a host-specific placeholder like <PUBLIC_DOMAIN> or
+	# <PORTAL_PUBLIC_PORT> below. A path is part of the HTTP request
+	# line, not an identifier of this particular host — it carries no
+	# real hostname/IP/port, so CONSTITUTION's "no real host-specific
+	# value in this repo" does not apply to it, and it stays a literal
+	# string instead of an <ANGLE_BRACKET> placeholder. The literal
+	# "/api" also matches bff/api/app.py's own existing route prefix —
+	# every BFF endpoint is already registered under /api/... (e.g.
+	# /api/cost-overview/summary, /api/agents) — so Caddy forwards the
+	# matched path to BFF completely unchanged, with no rewrite/
+	# strip_prefix directive needed (see 關鍵技術決策 #1 below).
+	handle /api/* {
+		# Routes to Portal's bff container, published on the host at
+		# <BFF_HOST_PORT> (== SDLCCT-57's BFF_HOST_PORT compose env var
+		# value, once a human has assigned it on the real host). This
+		# stays localhost-bound/firewalled exactly like
+		# <PORTAL_PUBLIC_PORT> below — reachable from outside only
+		# through this reverse_proxy hop inside the single public site
+		# block, never a second public port (AC3).
+		reverse_proxy localhost:<BFF_HOST_PORT>
+	}
+
+	# All other paths (AC1): unchanged from SDLCCT-58 -- Portal's
+	# frontend container.
+	handle {
+		reverse_proxy localhost:<PORTAL_PUBLIC_PORT>
+	}
 
 	# Caddy's automatic TLS (existing mechanism, reused as-is — no new
 	# logic needed; see 範圍外 above and 關鍵技術決策 #3 below).
