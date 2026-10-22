@@ -935,4 +935,4 @@ E6（部署）Epic 四張票（SDLCCT-57/58/59/60）至此全數 Done。
 **範圍**：修正 bff image 建置/組裝方式，使上述六個模組在容器內可成功匯入 registry/anchor；具體機制（build context 變更、Dockerfile COPY 路徑變更等）留給 G1b 架構師決定。須維持 bff_test/bff_lint 綠燈，且不破壞 SDLCCT-57/58/60 既有約束（standalone compose、無硬編碼機密/主機、.dockerignore 規則維持有效）。
 **範圍外**：不連線任何伺服器、不在伺服器上執行任何指令；不改變任何 API 業務邏輯/回應內容；不處理 frontend/ 容器（已確認不受影響）；除非必要不重新設計 seed/bff 套件邊界。
 **驗收條件**：5 條 Gherkin 情境（容器內可 import 全部四個模組、六個受影響 API 模組皆成功載入、本機測試/lint 仍全綠、docker-compose 設定語法正確、CONSTITUTION 衛生自檢）。
-**狀態**：G1 核准（auto gate），轉入 Designing，等待 G1b 設計文件。
+**狀態**：Done（PR #206，reviewer APPROVE，G2 通過；修正方式為將 bff image 的 build context 改為 repo 根目錄，`WORKDIR /app/bff` 搭配明確 `COPY bff/...`、`COPY seed/<四個檔案> /app/seed/`，新增 `bff/Dockerfile.dockerignore` 取代語意失效的 `bff/.dockerignore`；六個受影響模組零程式碼異動；無 reopen）。
