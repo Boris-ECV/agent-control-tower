@@ -244,7 +244,7 @@ image）意外被 `COPY . .` 帶進 build context。這是 AC6 衛生檢查的
 | 變數 | 用途 | 由誰/何時提供 |
 |---|---|---|
 | `OPIK_BASE_URL` | bff 連線 Opik 觀測後端的 base URL | 人類在主機部署時設定（環境變數或主機本機 `.env`，**不提交**） |
-| `NEXT_PUBLIC_BFF_URL` | frontend 連 bff 的 base URL，**build-time** 內嵌 | 人類在 `docker build`/`docker compose build` 時以 `--build-arg`/`.env` 提供 |
+| `NEXT_PUBLIC_BFF_URL` | frontend 連 bff 的 base URL，**build-time** 內嵌。建議值為同源 origin（例如 `https://<PUBLIC_DOMAIN>`，**不含** `/api` 後綴——理由與具體路由見 docs/design/SDLCCT-61.md 關鍵技術決策 #1） | 人類在 `docker build`/`docker compose build` 時以 `--build-arg`/`.env` 提供 |
 | `BFF_HOST_PORT` | bff 容器對主機發布的連接埠 | 人類依主機既有連接埠配置決定（避免與 Opik 現有服務衝突） |
 | `FRONTEND_HOST_PORT` | frontend 容器對主機發布的連接埠 | 人類依主機既有連接埠配置決定 |
 
