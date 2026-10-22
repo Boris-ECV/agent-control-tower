@@ -926,5 +926,5 @@ E6（部署）Epic 四張票（SDLCCT-57/58/59/60）至此全數 Done。
 
 ## SDLCCT-61 — Verify the browser can actually reach the BFF once deployed per SDLCCT-57/58/60
 **票型**：Bug
-**狀態**：G1 已核准（2026-10-22）；進入 Designing；尚未實作
-**背景**：人類審閱 E6 Epic（SDLCCT-57/58/60）產出物後發現瀏覽器端無法同時滿足「連到 BFF」與「對外僅開放 443」，經 orchestrator 逐檔確認缺口存在（deploy/Caddyfile.template 缺少通往 BFF 的對外路由）。修正方向：在既有公開 site block 下新增 path-based 路由（建議 /api/*）到 BFF，並修正 SDLCCT-57 設計文件中 NEXT_PUBLIC_BFF_URL 建議值。
+**狀態**：Done（PR #198，reviewer APPROVE，G2 通過；`deploy/Caddyfile.template` 新增 `handle /api/*` 路徑式路由到 BFF，`docs/design/SDLCCT-57.md` 同步修正 `NEXT_PUBLIC_BFF_URL` 建議值為同源 origin；無 reopen）。
+**背景**：人類審閱 E6 Epic（SDLCCT-57/58/60）產出物後發現瀏覽器端無法同時滿足「連到 BFF」與「對外僅開放 443」，經 orchestrator 逐檔確認缺口存在（deploy/Caddyfile.template 缺少通往 BFF 的對外路由）。修正方向：在既有公開 site block 下新增 path-based 路由（/api/*）到 BFF，並修正 SDLCCT-57 設計文件中 NEXT_PUBLIC_BFF_URL 建議值。
