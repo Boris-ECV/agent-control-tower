@@ -1,0 +1,12 @@
+bff/.venv
+bff/__pycache__
+bff/.env*
+bff/tests/
+seed/.venv
+seed/__pycache__
+seed/tests/
+seed/.env*
+seed/out/
+.git/
+frontend/
+docs/

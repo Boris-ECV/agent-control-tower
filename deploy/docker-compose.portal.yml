@@ -14,8 +14,8 @@
 services:
   bff:
     build:
-      context: ../bff
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: bff/Dockerfile
     environment:
       OPIK_BASE_URL: ${OPIK_BASE_URL:?OPIK_BASE_URL must be set}
     ports:
