@@ -928,3 +928,11 @@ E6（部署）Epic 四張票（SDLCCT-57/58/59/60）至此全數 Done。
 **票型**：Bug
 **狀態**：Done（PR #198，reviewer APPROVE，G2 通過；`deploy/Caddyfile.template` 新增 `handle /api/*` 路徑式路由到 BFF，`docs/design/SDLCCT-57.md` 同步修正 `NEXT_PUBLIC_BFF_URL` 建議值為同源 origin；無 reopen）。
 **背景**：人類審閱 E6 Epic（SDLCCT-57/58/60）產出物後發現瀏覽器端無法同時滿足「連到 BFF」與「對外僅開放 443」，經 orchestrator 逐檔確認缺口存在（deploy/Caddyfile.template 缺少通往 BFF 的對外路由）。修正方向：在既有公開 site block 下新增 path-based 路由（/api/*）到 BFF，並修正 SDLCCT-57 設計文件中 NEXT_PUBLIC_BFF_URL 建議值。
+
+## SDLCCT-62 — BFF container crash-loops on deploy: ModuleNotFoundError: No module named 'registry'
+**票型**：Bug
+**根因**：`bff/Dockerfile` 的 build context 為 `bff/` 本身（`deploy/docker-compose.portal.yml` 的 `build.context: ../bff`），因此 `COPY . .` 不包含 `seed/registry.py`、`seed/anchor.py`，也不包含其相依的 `seed/catalog.py`、`seed/client.py`。`bff/api/` 下六個模組（agent_detail.py、agents.py、anomalies.py、budget_simulation.py、cost_overview.py、trace_spans.py）透過 `sys.path.insert(..., "../seed")` 匯入這些模組，此寫法僅在本機開發 checkout（`bff/pyproject.toml` 的 `pythonpath = [".", "../seed"]`）有效，容器內無效。
+**範圍**：修正 bff image 建置/組裝方式，使上述六個模組在容器內可成功匯入 registry/anchor；具體機制（build context 變更、Dockerfile COPY 路徑變更等）留給 G1b 架構師決定。須維持 bff_test/bff_lint 綠燈，且不破壞 SDLCCT-57/58/60 既有約束（standalone compose、無硬編碼機密/主機、.dockerignore 規則維持有效）。
+**範圍外**：不連線任何伺服器、不在伺服器上執行任何指令；不改變任何 API 業務邏輯/回應內容；不處理 frontend/ 容器（已確認不受影響）；除非必要不重新設計 seed/bff 套件邊界。
+**驗收條件**：5 條 Gherkin 情境（容器內可 import 全部四個模組、六個受影響 API 模組皆成功載入、本機測試/lint 仍全綠、docker-compose 設定語法正確、CONSTITUTION 衛生自檢）。
+**狀態**：G1 核准（auto gate），轉入 Designing，等待 G1b 設計文件。
