@@ -936,3 +936,11 @@ E6（部署）Epic 四張票（SDLCCT-57/58/59/60）至此全數 Done。
 **範圍外**：不連線任何伺服器、不在伺服器上執行任何指令；不改變任何 API 業務邏輯/回應內容；不處理 frontend/ 容器（已確認不受影響）；除非必要不重新設計 seed/bff 套件邊界。
 **驗收條件**：5 條 Gherkin 情境（容器內可 import 全部四個模組、六個受影響 API 模組皆成功載入、本機測試/lint 仍全綠、docker-compose 設定語法正確、CONSTITUTION 衛生自檢）。
 **狀態**：Done（PR #206，reviewer APPROVE，G2 通過；修正方式為將 bff image 的 build context 改為 repo 根目錄，`WORKDIR /app/bff` 搭配明確 `COPY bff/...`、`COPY seed/<四個檔案> /app/seed/`，新增 `bff/Dockerfile.dockerignore` 取代語意失效的 `bff/.dockerignore`；六個受影響模組零程式碼異動；無 reopen）。
+
+## SDLCCT-63 — BFF 對 Opik /metrics 等端點傳入 project 名稱而非真實 id
+**票型**：Bug
+**根因**：`bff/opik_metrics.py::get_project_metrics()` 把呼叫端傳入的 `project_ids` 原樣接到 `/v1/private/projects/{pid}/metrics` 路徑上，從未解析成 Opik 真實配發的 project UUID；所有呼叫端一律傳入 `seed/registry.py` 的 `key` 字串（如 `"maintenance_copilot"`）。已用真實 curl 證據驗證：名稱字串路徑 404、真實 UUID 路徑 200。同一模式也存在於 `bff/opik_workspace.py::get_workspace_daily_costs()`／`get_project_stats()`。`bff/opik_spans.py`、`bff/opik_traces.py` 確認不受影響（查詢參數本就是 `project_name`）。
+**範圍**：在 `bff/opik_metrics.py`／`bff/opik_workspace.py` 內新增 name→id 解析機制（沿用 `seed/client.py::project_ids()` 已驗證過的 `GET /v1/private/projects` 模式），修正這兩個檔案的 4 個函式，呼叫端介面（傳入 registry key）維持不變。初次需求分析估計「超過 1 日、需拆票」，orchestrator 複核後確認呼叫這兩個函式的 9 個下游模組（cost_overview/agents/agent_detail/budget_simulation 四個 API 檔案 + context_bloat/tool_retry_loop/night_batch_burst/model_switch/governance_gap 五個異常規則檔案）的既有測試全部在模組 namespace 直接 monkeypatch 整個函式、不碰 HTTP 層，故修正範圍侷限於核心兩檔與其 3 份直接測試檔，不需拆票。
+**範圍外**：不連線任何真實伺服器；不修改 `opik_spans.py`／`opik_traces.py`；不修改 9 個下游呼叫模組與 `anomalies.py`（純串接層）；不決定快取等具體實作細節（留給 G1b）。
+**驗收條件**：6 條 Gherkin 情境（/metrics 請求前必解析成真實 id、已知真實後端形狀納入 mock 測試、workspaces/costs 與 projects/stats 同樣修正、9 個下游模組無需修改、project_name 端點維持不變、既有 228 測試全數維持通過）。
+**狀態**：G1 核准（auto gate），轉入 Designing，等待 G1b 設計文件。
