@@ -24,12 +24,25 @@ from opik_metrics import (
     OpikHTTPError,
     OpikResponseFormatError,
     OpikTimeoutError,
+    UnknownProjectKeyError,
     base_url,
     get_project_metrics,
+    invalidate_project_ids_cache,
 )
 
 START = datetime(2026, 10, 1, tzinfo=UTC)
 END = datetime(2026, 10, 15, tzinfo=UTC)
+
+# Default name->id listing used by FakeClient.get() when a test doesn't
+# supply its own "/v1/private/projects" response: identity mapping so that
+# existing tests written against raw "p1"/"p2" strings keep working
+# unchanged (the resolved id happens to equal the name).
+DEFAULT_PROJECT_LISTING = {
+    "content": [
+        {"name": "p1", "id": "p1"},
+        {"name": "p2", "id": "p2"},
+    ]
+}
 
 
 class FakeResponse:
@@ -63,11 +76,22 @@ class FakeClient:
             raise self.raise_for[endpoint]
         return self.responses.get(endpoint, FakeResponse())
 
+    def get(self, endpoint, params):
+        self.calls.append((endpoint, params))
+        if endpoint in self.raise_for:
+            raise self.raise_for[endpoint]
+        if endpoint == "/v1/private/projects":
+            return self.responses.get(endpoint, FakeResponse(payload=DEFAULT_PROJECT_LISTING))
+        return self.responses.get(endpoint, FakeResponse())
+
 
 @pytest.fixture(autouse=True)
 def opik_base_url(monkeypatch):
     monkeypatch.setenv(BASE_URL_ENV_VAR, "https://opik.example.com/api")
     monkeypatch.delenv(WORKSPACE_ENV_VAR, raising=False)
+    invalidate_project_ids_cache()
+    yield
+    invalidate_project_ids_cache()
 
 
 def test_empty_project_ids_raises_missing_project_ids_error(monkeypatch):
@@ -98,7 +122,7 @@ def test_all_five_metric_types_sent_in_request_body(monkeypatch, metric_type):
 
     get_project_metrics(["p1"], metric_type, interval=Interval.DAILY, interval_start=START, interval_end=END)
 
-    endpoint, body = fake.calls[0]
+    endpoint, body = [c for c in fake.calls if c[0] != "/v1/private/projects"][0]
     assert endpoint == "/v1/private/projects/p1/metrics"
     assert body["metric_type"] == metric_type.value
 
@@ -120,7 +144,7 @@ def test_breakdown_field_included_in_request_body(monkeypatch, breakdown, expect
         ["p1"], MetricType.COST, interval=Interval.DAILY, interval_start=START, interval_end=END, breakdown=breakdown
     )
 
-    _, body = fake.calls[0]
+    _, body = [c for c in fake.calls if c[0] != "/v1/private/projects"][0]
     assert body["breakdown"] == expected
 
 
@@ -223,7 +247,7 @@ def test_interval_start_and_end_are_required_and_sent_as_iso(monkeypatch):
 
     get_project_metrics(["p1"], MetricType.COST, interval=Interval.DAILY, interval_start=START, interval_end=END)
 
-    _, body = fake.calls[0]
+    _, body = [c for c in fake.calls if c[0] != "/v1/private/projects"][0]
     assert body["interval_start"] == "2026-10-01T00:00:00.000Z"
     assert body["interval_end"] == "2026-10-15T00:00:00.000Z"
 
@@ -288,7 +312,63 @@ def test_multiple_project_ids_each_queried_and_keyed_by_project_id(monkeypatch):
     )
 
     assert set(result.keys()) == {"p1", "p2"}
-    assert {endpoint for endpoint, _ in fake.calls} == {
+    assert {endpoint for endpoint, _ in fake.calls if endpoint != "/v1/private/projects"} == {
         "/v1/private/projects/p1/metrics",
         "/v1/private/projects/p2/metrics",
     }
+
+
+def test_registry_key_is_resolved_to_real_opik_project_id_not_sent_as_name(monkeypatch):
+    """Bug SDLCCT-63: the registry key string (e.g. "maintenance_copilot")
+    must never be sent verbatim as the Opik project id in the request
+    path -- it must first be resolved via GET /v1/private/projects to the
+    real UUID Opik assigned to that project name."""
+    real_uuid = "0ddba11-c0ffee-feedface-deadbeef-abc123"
+    fake = FakeClient(
+        responses={
+            "/v1/private/projects": FakeResponse(
+                payload={"content": [{"name": "maintenance_copilot", "id": real_uuid}]}
+            ),
+            f"/v1/private/projects/{real_uuid}/metrics": FakeResponse(payload={"results": []}),
+        }
+    )
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
+
+    result = get_project_metrics(
+        ["maintenance_copilot"],
+        MetricType.COST,
+        interval=Interval.DAILY,
+        interval_start=START,
+        interval_end=END,
+    )
+
+    post_endpoints = {endpoint for endpoint, _ in fake.calls if endpoint != "/v1/private/projects"}
+    assert post_endpoints == {f"/v1/private/projects/{real_uuid}/metrics"}
+    assert "/v1/private/projects/maintenance_copilot/metrics" not in post_endpoints
+    # output dict is still keyed by the original registry key, not the uuid.
+    assert set(result.keys()) == {"maintenance_copilot"}
+
+
+def test_unknown_project_key_raises_unknown_project_key_error(monkeypatch):
+    """A key with no matching entry in the GET /v1/private/projects listing
+    raises UnknownProjectKeyError carrying the offending key, instead of
+    being sent to the backend as if it were already a valid id."""
+    fake = FakeClient(
+        responses={
+            "/v1/private/projects": FakeResponse(payload={"content": [{"name": "p1", "id": "p1"}]}),
+        }
+    )
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
+
+    with pytest.raises(UnknownProjectKeyError) as exc_info:
+        get_project_metrics(
+            ["does-not-exist"],
+            MetricType.COST,
+            interval=Interval.DAILY,
+            interval_start=START,
+            interval_end=END,
+        )
+
+    assert exc_info.value.missing_key == "does-not-exist"
+    # no metrics POST was ever attempted for the unresolved key.
+    assert all(not endpoint.endswith("/metrics") for endpoint, _ in fake.calls)

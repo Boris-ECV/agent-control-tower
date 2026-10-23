@@ -107,6 +107,18 @@ class OpikResponseFormatError(OpikClientError):
     (missing "results" key, "data" not a list, etc.)."""
 
 
+class UnknownProjectKeyError(OpikClientError):
+    """Raised by resolve_project_ids() when a name in project_ids has no
+    matching entry in Opik's GET /v1/private/projects listing. The list
+    request itself succeeded (status 200) -- this is a data mismatch
+    (caller passed a name Opik doesn't know), not a transport failure,
+    so it is kept distinct from OpikHTTPError/OpikResponseFormatError."""
+
+    def __init__(self, message: str, *, endpoint: str, missing_key: str):
+        super().__init__(message, endpoint=endpoint, status_code=200)
+        self.missing_key = missing_key
+
+
 def base_url() -> str:
     """The Opik backend address. Required: there is deliberately no default."""
     value = os.environ.get(BASE_URL_ENV_VAR, "").strip()
@@ -159,9 +171,12 @@ def get_project_metrics(
             else {"field": breakdown.field.value}
         )
 
+    name_to_id = resolve_project_ids(project_ids)
+
     out: dict[str, tuple[MetricSeries, ...]] = {}
     with _client() as c:
-        for pid in project_ids:
+        for name in project_ids:
+            pid = name_to_id[name]
             endpoint = f"/v1/private/projects/{pid}/metrics"
             try:
                 r = c.post(endpoint, json=body_base)
@@ -173,7 +188,7 @@ def get_project_metrics(
                 raise OpikHTTPError(
                     "non-2xx response", endpoint=endpoint, status_code=r.status_code
                 )
-            out[pid] = _parse_metric_response(r, endpoint)
+            out[name] = _parse_metric_response(r, endpoint)
     return out
 
 
@@ -200,6 +215,88 @@ def _iso(ts: datetime) -> str:
     from datetime import UTC
 
     return ts.astimezone(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+_PROJECT_IDS_LIST_PAGE_SIZE = 200  # matches seed/client.py::project_ids(), verified by seed/verify.py
+_PROJECT_IDS_CACHE_TTL_SECONDS = 60.0  # same TTL/rationale as _metrics_cache (decision 3)
+_project_ids_cache = TTLCache(ttl_seconds=_PROJECT_IDS_CACHE_TTL_SECONDS)
+_PROJECT_IDS_CACHE_KEY = "name_to_id"  # single entry: one GET returns the whole list, not scoped per name
+
+
+def _fetch_project_name_to_id() -> dict[str, str]:
+    """GET /v1/private/projects?size=200 -> {name: id}. Same request shape
+    and same {"content": [{"name", "id", ...}]} response shape as
+    seed/client.py::project_ids() (not imported from seed/ -- bff/ has no
+    dependency on seed/, same vendoring stance as anchor.py, see
+    docs/design/SDLCCT-10.md decision #3)."""
+    endpoint = "/v1/private/projects"
+    with _client() as c:
+        try:
+            r = c.get(endpoint, params={"size": _PROJECT_IDS_LIST_PAGE_SIZE})
+        except httpx.TimeoutException as exc:
+            raise OpikTimeoutError("request timed out", endpoint=endpoint) from exc
+        except httpx.HTTPError as exc:
+            raise OpikHTTPError(f"request failed: {exc}", endpoint=endpoint) from exc
+        if r.status_code != 200:
+            raise OpikHTTPError("non-2xx response", endpoint=endpoint, status_code=r.status_code)
+        try:
+            payload = r.json()
+            return {p["name"]: p["id"] for p in payload["content"]}
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
+            raise OpikResponseFormatError(
+                f"unexpected response shape: {exc}", endpoint=endpoint, status_code=r.status_code
+            ) from exc
+
+
+def resolve_project_ids(keys: Sequence[str]) -> dict[str, str]:
+    """Resolve each name in `keys` (registry key strings, e.g.
+    "maintenance_copilot") to its real Opik project UUID, via the cached
+    GET /v1/private/projects listing. Returns {name: id} -- not a parallel
+    list -- so a caller can both look up by original name and build the
+    reverse {id: name} map in one line.
+
+    - Backed by a 60s TTL cache of the FULL listing: cache read/write
+      failures are isolated exactly like get_project_metrics_cached()'s
+      existing pattern -- read failure is treated as a miss, write
+      failure is swallowed; the actual GET call itself is never inside a
+      try/except, so OpikHTTPError/OpikTimeoutError/OpikResponseFormatError
+      from it propagate unchanged.
+    - Does NOT check for empty `keys` -- every call site already checks
+      `project_ids` non-empty (-> MissingProjectIdsError) before calling
+      this, per existing convention; this function assumes that contract.
+    - Raises UnknownProjectKeyError (carrying the offending name in
+      .missing_key) the first time a key has no match. Never silently
+      drops the key, and never falls back to treating the name as if it
+      were already a valid id.
+    """
+    try:
+        hit, cached = _project_ids_cache.get(_PROJECT_IDS_CACHE_KEY)
+    except Exception:
+        hit, cached = False, None
+
+    name_to_id = cached if hit else _fetch_project_name_to_id()
+
+    if not hit:
+        try:
+            _project_ids_cache.set(_PROJECT_IDS_CACHE_KEY, name_to_id)
+        except Exception:
+            pass
+
+    resolved: dict[str, str] = {}
+    for key in keys:
+        if key not in name_to_id:
+            raise UnknownProjectKeyError(
+                f"no Opik project found with name '{key}'",
+                endpoint="/v1/private/projects",
+                missing_key=key,
+            )
+        resolved[key] = name_to_id[key]
+    return resolved
+
+
+def invalidate_project_ids_cache() -> None:
+    """Manual invalidation hook, mirrors invalidate_project_metrics_cache()."""
+    _project_ids_cache.invalidate_all()
 
 
 _METRICS_CACHE_TTL_SECONDS = 60.0

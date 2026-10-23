@@ -20,6 +20,7 @@ from opik_metrics import (
     OpikTimeoutError,
     _client,
     _iso,
+    resolve_project_ids,
 )
 
 DEFAULT_PROJECTS_STATS_PAGE_SIZE = 100  # see decision below
@@ -59,9 +60,12 @@ def get_workspace_daily_costs(
         raise MissingProjectIdsError(
             "project_ids must be non-empty: explicit project id(s) are required"
         )
+    name_to_id = resolve_project_ids(project_ids)
+    id_to_name = {v: k for k, v in name_to_id.items()}
+
     endpoint = "/v1/private/workspaces/costs"
     body = {
-        "project_ids": list(project_ids),
+        "project_ids": list(name_to_id.values()),
         "interval_start": _iso(interval_start),
         "interval_end": _iso(interval_end),
     }
@@ -74,17 +78,24 @@ def get_workspace_daily_costs(
             raise OpikHTTPError(f"request failed: {exc}", endpoint=endpoint) from exc
         if r.status_code != 200:
             raise OpikHTTPError("non-2xx response", endpoint=endpoint, status_code=r.status_code)
-        return _parse_workspace_costs_response(r, endpoint)
+        return _parse_workspace_costs_response(r, endpoint, id_to_name)
 
 
 def _parse_workspace_costs_response(
-    r: httpx.Response, endpoint: str
+    r: httpx.Response, endpoint: str, id_to_name: dict[str, str]
 ) -> dict[str, tuple[MetricPoint, ...]]:
     try:
         payload = r.json()
         out: dict[str, tuple[MetricPoint, ...]] = {}
         for res in payload["results"]:
             pid = res["project_id"]
+            if pid not in id_to_name:
+                raise OpikResponseFormatError(
+                    f"backend returned project_id '{pid}' not among the requested ids",
+                    endpoint=endpoint,
+                    status_code=r.status_code,
+                )
+            name = id_to_name[pid]
             points = tuple(
                 MetricPoint(
                     time=datetime.fromisoformat(p["time"].replace("Z", "+00:00")),
@@ -92,7 +103,7 @@ def _parse_workspace_costs_response(
                 )
                 for p in res["data"]
             )
-            out[pid] = points
+            out[name] = points
         return out
     except (KeyError, TypeError, ValueError, AttributeError) as exc:
         raise OpikResponseFormatError(
@@ -126,6 +137,9 @@ def get_project_stats(
         raise MissingProjectIdsError(
             "project_ids must be non-empty: explicit project id(s) are required"
         )
+    name_to_id = resolve_project_ids(project_ids)
+    id_to_name = {v: k for k, v in name_to_id.items()}
+
     endpoint = "/v1/private/projects/stats"
     params = {
         "size": page_size,
@@ -143,8 +157,8 @@ def get_project_stats(
             raise OpikHTTPError("non-2xx response", endpoint=endpoint, status_code=r.status_code)
         all_stats = _parse_projects_stats_response(r, endpoint)
 
-    wanted = set(project_ids)
-    return {pid: s for pid, s in all_stats.items() if pid in wanted}
+    wanted_ids = set(name_to_id.values())
+    return {id_to_name[pid]: s for pid, s in all_stats.items() if pid in wanted_ids}
 
 
 def _parse_projects_stats_response(r: httpx.Response, endpoint: str) -> dict[str, ProjectStats]:
