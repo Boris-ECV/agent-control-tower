@@ -13,8 +13,9 @@ from datetime import UTC, datetime
 import httpx
 import pytest
 
+import opik_metrics
 import opik_workspace
-from opik_metrics import BASE_URL_ENV_VAR, WORKSPACE_ENV_VAR
+from opik_metrics import BASE_URL_ENV_VAR, WORKSPACE_ENV_VAR, invalidate_project_ids_cache
 from opik_workspace import (
     MissingProjectIdsError,
     OpikHTTPError,
@@ -26,6 +27,21 @@ from opik_workspace import (
 
 START = datetime(2026, 10, 1, tzinfo=UTC)
 END = datetime(2026, 10, 15, tzinfo=UTC)
+
+# Default name->id listing used by FakeClient.get() when a test doesn't
+# supply its own "/v1/private/projects" response: identity mapping so that
+# existing tests written against raw "p1"/"p2"/"unrequested"/"other-a"/
+# "other-b" strings keep working unchanged (the resolved id happens to
+# equal the name).
+DEFAULT_PROJECT_LISTING = {
+    "content": [
+        {"name": "p1", "id": "p1"},
+        {"name": "p2", "id": "p2"},
+        {"name": "unrequested", "id": "unrequested"},
+        {"name": "other-a", "id": "other-a"},
+        {"name": "other-b", "id": "other-b"},
+    ]
+}
 
 
 class FakeResponse:
@@ -62,6 +78,8 @@ class FakeClient:
         self.calls.append((endpoint, "GET", params))
         if endpoint in self.raise_for:
             raise self.raise_for[endpoint]
+        if endpoint == "/v1/private/projects":
+            return self.responses.get(endpoint, FakeResponse(payload=DEFAULT_PROJECT_LISTING))
         return self.responses.get(endpoint, FakeResponse())
 
 
@@ -69,6 +87,9 @@ class FakeClient:
 def opik_base_url(monkeypatch):
     monkeypatch.setenv(BASE_URL_ENV_VAR, "https://opik.example.com/api")
     monkeypatch.delenv(WORKSPACE_ENV_VAR, raising=False)
+    invalidate_project_ids_cache()
+    yield
+    invalidate_project_ids_cache()
 
 
 # --- /v1/private/workspaces/costs ------------------------------------------
@@ -78,6 +99,7 @@ def test_workspace_costs_empty_project_ids_raises_before_any_http_call(monkeypat
     """AC 1: no explicit project id(s) -> reject, no HTTP request sent."""
     fake = FakeClient()
     monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
 
     with pytest.raises(MissingProjectIdsError):
         get_workspace_daily_costs([], interval_start=START, interval_end=END)
@@ -102,6 +124,7 @@ def test_workspace_costs_successful_fetch_scoped_to_backend_response(monkeypatch
     }
     fake = FakeClient(responses={"/v1/private/workspaces/costs": FakeResponse(payload=payload)})
     monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
 
     result = get_workspace_daily_costs(["p1", "p2"], interval_start=START, interval_end=END)
 
@@ -109,7 +132,7 @@ def test_workspace_costs_successful_fetch_scoped_to_backend_response(monkeypatch
     assert result["p1"][0].value == 1.5
     assert result["p2"][0].value is None  # never coerced to 0.0
 
-    endpoint, method, body = fake.calls[0]
+    endpoint, method, body = [c for c in fake.calls if c[0] != "/v1/private/projects"][0]
     assert endpoint == "/v1/private/workspaces/costs"
     assert method == "POST"
     assert body["project_ids"] == ["p1", "p2"]
@@ -119,6 +142,7 @@ def test_workspace_costs_http_error_raises_opik_http_error(monkeypatch):
     """AC 3 (http): non-2xx response is an explicit error, never 0/empty."""
     fake = FakeClient(responses={"/v1/private/workspaces/costs": FakeResponse(status_code=500)})
     monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
 
     with pytest.raises(OpikHTTPError) as exc_info:
         get_workspace_daily_costs(["p1"], interval_start=START, interval_end=END)
@@ -132,6 +156,7 @@ def test_workspace_costs_transport_error_raises_opik_http_error(monkeypatch):
     OpikHTTPError, never a silent empty/0 result."""
     fake = FakeClient(raise_for={"/v1/private/workspaces/costs": httpx.ConnectError("boom")})
     monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
 
     with pytest.raises(OpikHTTPError) as exc_info:
         get_workspace_daily_costs(["p1"], interval_start=START, interval_end=END)
@@ -143,6 +168,7 @@ def test_workspace_costs_timeout_raises_opik_timeout_error(monkeypatch):
     """AC 3 (timeout): explicit error with status_code=None, never silent."""
     fake = FakeClient(raise_for={"/v1/private/workspaces/costs": httpx.TimeoutException("timed out")})
     monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
 
     with pytest.raises(OpikTimeoutError) as exc_info:
         get_workspace_daily_costs(["p1"], interval_start=START, interval_end=END)
@@ -163,6 +189,7 @@ def test_workspace_costs_malformed_response_raises_opik_response_format_error(mo
     """AC 3 (malformed): unexpected shape is an explicit error, never 0/empty."""
     fake = FakeClient(responses={"/v1/private/workspaces/costs": FakeResponse(payload=bad_payload)})
     monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
 
     with pytest.raises(OpikResponseFormatError) as exc_info:
         get_workspace_daily_costs(["p1"], interval_start=START, interval_end=END)
@@ -189,10 +216,11 @@ def test_workspace_costs_interval_params_use_caller_supplied_anchor_window(monke
     (anchor-date style), never derived from the system clock."""
     fake = FakeClient(responses={"/v1/private/workspaces/costs": FakeResponse(payload={"results": []})})
     monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
 
     get_workspace_daily_costs(["p1"], interval_start=START, interval_end=END)
 
-    _, _, body = fake.calls[0]
+    _, _, body = [c for c in fake.calls if c[0] != "/v1/private/projects"][0]
     assert body["interval_start"] == "2026-10-01T00:00:00.000Z"
     assert body["interval_end"] == "2026-10-15T00:00:00.000Z"
 
@@ -204,6 +232,7 @@ def test_project_stats_empty_project_ids_raises_before_any_http_call(monkeypatch
     """AC 1: no explicit project id(s) -> reject, no HTTP request sent."""
     fake = FakeClient()
     monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
 
     with pytest.raises(MissingProjectIdsError):
         get_project_stats([], from_time=START, to_time=END)
@@ -223,6 +252,7 @@ def test_project_stats_successful_fetch_filtered_to_requested_ids(monkeypatch):
     }
     fake = FakeClient(responses={"/v1/private/projects/stats": FakeResponse(payload=payload)})
     monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
 
     result = get_project_stats(["p1", "p2"], from_time=START, to_time=END)
 
@@ -243,6 +273,7 @@ def test_project_stats_client_side_filtering_drops_unrequested_projects(monkeypa
     }
     fake = FakeClient(responses={"/v1/private/projects/stats": FakeResponse(payload=payload)})
     monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
 
     result = get_project_stats(["p1"], from_time=START, to_time=END)
 
@@ -255,6 +286,7 @@ def test_project_stats_http_error_raises_opik_http_error(monkeypatch):
     """AC 3 (http): non-2xx response is an explicit error."""
     fake = FakeClient(responses={"/v1/private/projects/stats": FakeResponse(status_code=503)})
     monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
 
     with pytest.raises(OpikHTTPError) as exc_info:
         get_project_stats(["p1"], from_time=START, to_time=END)
@@ -268,6 +300,7 @@ def test_project_stats_transport_error_raises_opik_http_error(monkeypatch):
     OpikHTTPError, never a silent empty/0 result."""
     fake = FakeClient(raise_for={"/v1/private/projects/stats": httpx.ConnectError("boom")})
     monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
 
     with pytest.raises(OpikHTTPError) as exc_info:
         get_project_stats(["p1"], from_time=START, to_time=END)
@@ -279,6 +312,7 @@ def test_project_stats_timeout_raises_opik_timeout_error(monkeypatch):
     """AC 3 (timeout): explicit error with status_code=None."""
     fake = FakeClient(raise_for={"/v1/private/projects/stats": httpx.TimeoutException("timed out")})
     monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
 
     with pytest.raises(OpikTimeoutError) as exc_info:
         get_project_stats(["p1"], from_time=START, to_time=END)
@@ -299,6 +333,7 @@ def test_project_stats_malformed_response_raises_opik_response_format_error(monk
     """AC 3 (malformed): unexpected shape is an explicit error."""
     fake = FakeClient(responses={"/v1/private/projects/stats": FakeResponse(payload=bad_payload)})
     monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
 
     with pytest.raises(OpikResponseFormatError) as exc_info:
         get_project_stats(["p1"], from_time=START, to_time=END)
@@ -326,11 +361,13 @@ def test_project_stats_time_window_params_use_caller_supplied_anchor_window_and_
     page_size=100 by default, no pagination loop."""
     fake = FakeClient(responses={"/v1/private/projects/stats": FakeResponse(payload={"content": []})})
     monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
 
     get_project_stats(["p1"], from_time=START, to_time=END)
 
-    assert len(fake.calls) == 1  # single page, no pagination loop
-    endpoint, method, params = fake.calls[0]
+    stats_calls = [c for c in fake.calls if c[0] == "/v1/private/projects/stats"]
+    assert len(stats_calls) == 1  # single page, no pagination loop
+    endpoint, method, params = stats_calls[0]
     assert endpoint == "/v1/private/projects/stats"
     assert method == "GET"
     assert params["size"] == opik_workspace.DEFAULT_PROJECTS_STATS_PAGE_SIZE
@@ -342,9 +379,90 @@ def test_project_stats_page_size_override(monkeypatch):
     """page_size is overridable by the caller, still a single request."""
     fake = FakeClient(responses={"/v1/private/projects/stats": FakeResponse(payload={"content": []})})
     monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
 
     get_project_stats(["p1"], from_time=START, to_time=END, page_size=50)
 
-    assert len(fake.calls) == 1
-    _, _, params = fake.calls[0]
+    stats_calls = [c for c in fake.calls if c[0] == "/v1/private/projects/stats"]
+    assert len(stats_calls) == 1
+    _, _, params = stats_calls[0]
     assert params["size"] == 50
+
+
+# --- SDLCCT-63: registry key must be resolved to a real Opik project id ---
+
+
+def test_workspace_costs_registry_key_resolved_to_real_id_in_request_body(monkeypatch):
+    """Bug SDLCCT-63: body's project_ids must be the real Opik project
+    UUID(s), never the raw registry key string; the returned dict's keys
+    stay the original registry key(s)."""
+    real_uuid = "11111111-2222-3333-4444-555555555555"
+    fake = FakeClient(
+        responses={
+            "/v1/private/projects": FakeResponse(
+                payload={"content": [{"name": "maintenance_copilot", "id": real_uuid}]}
+            ),
+            "/v1/private/workspaces/costs": FakeResponse(
+                payload={"results": [{"project_id": real_uuid, "data": []}]}
+            ),
+        }
+    )
+    monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
+
+    result = get_workspace_daily_costs(["maintenance_copilot"], interval_start=START, interval_end=END)
+
+    post_calls = [c for c in fake.calls if c[1] == "POST"]
+    assert post_calls[0][2]["project_ids"] == [real_uuid]
+    assert set(result.keys()) == {"maintenance_copilot"}
+
+
+def test_workspace_costs_unmapped_response_project_id_raises_format_error(monkeypatch):
+    """A project_id in the response that isn't among the resolved,
+    requested ids is a backend/response mismatch, not silently dropped
+    or silently kept under a wrong key."""
+    real_uuid = "11111111-2222-3333-4444-555555555555"
+    fake = FakeClient(
+        responses={
+            "/v1/private/projects": FakeResponse(
+                payload={"content": [{"name": "maintenance_copilot", "id": real_uuid}]}
+            ),
+            "/v1/private/workspaces/costs": FakeResponse(
+                payload={"results": [{"project_id": "some-other-id", "data": []}]}
+            ),
+        }
+    )
+    monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
+
+    with pytest.raises(OpikResponseFormatError):
+        get_workspace_daily_costs(["maintenance_copilot"], interval_start=START, interval_end=END)
+
+
+def test_project_stats_registry_key_resolved_to_real_id_for_filtering(monkeypatch):
+    """Bug SDLCCT-63: client-side filtering must compare against the
+    resolved real Opik project id, not the raw registry key; the returned
+    dict's keys stay the original registry key(s)."""
+    real_uuid = "11111111-2222-3333-4444-555555555555"
+    fake = FakeClient(
+        responses={
+            "/v1/private/projects": FakeResponse(
+                payload={"content": [{"name": "maintenance_copilot", "id": real_uuid}]}
+            ),
+            "/v1/private/projects/stats": FakeResponse(
+                payload={
+                    "content": [
+                        {"project_id": real_uuid, "total_estimated_cost_sum": 4.2},
+                        {"project_id": "unrelated-id", "total_estimated_cost_sum": 99.0},
+                    ]
+                }
+            ),
+        }
+    )
+    monkeypatch.setattr(opik_workspace, "_client", lambda: fake)
+    monkeypatch.setattr(opik_metrics, "_client", lambda: fake)
+
+    result = get_project_stats(["maintenance_copilot"], from_time=START, to_time=END)
+
+    assert set(result.keys()) == {"maintenance_copilot"}
+    assert result["maintenance_copilot"].total_estimated_cost_sum == 4.2
