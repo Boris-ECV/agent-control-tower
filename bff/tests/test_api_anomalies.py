@@ -20,11 +20,11 @@ import api.anomalies as anomalies_module
 from anchor import DEFAULT_ANCHOR_DATE
 from anomaly_context_bloat import ContextBloatFinding
 from anomaly_governance_gap import GovernanceGapFinding
-from anomaly_model_switch import ModelSwitchFinding
+from anomaly_model_switch import InsufficientSwitchWindowDataError, ModelSwitchFinding
 from anomaly_night_batch_burst import NightBatchBurstFinding
-from anomaly_tool_retry_loop import ToolRetryLoopFinding
+from anomaly_tool_retry_loop import MissingErrorRateDataError, ToolRetryLoopFinding
 from api.app import app
-from baseline import BaselineComparison
+from baseline import BaselineComparison, InsufficientBaselineDataError
 
 client = TestClient(app)
 
@@ -475,3 +475,91 @@ def test_ac7_coverage_one_call_per_rule_per_registered_agent_and_one_batch_gover
     # ALL Agent ids (registered + unregistered).
     assert len(calls["governance_gap"]) == 1
     assert sorted(calls["governance_gap"][0]) == sorted(ALL_KEYS)
+
+
+def test_ac1_insufficient_baseline_data_in_tool_retry_loop_emits_no_row(monkeypatch):
+    # SDLCCT-69 AC1: tool_retry_loop raising InsufficientBaselineDataError
+    # (bff/baseline.py) must NOT produce a status="error" row -- it should
+    # be treated the same as "not anomalous" (no row at all).
+    _patch_all_no_findings(monkeypatch)
+
+    def flaky_tool_retry_loop(project_id, **kw):
+        if project_id == "procurement_rfq":
+            raise InsufficientBaselineDataError("no usable baseline data")
+        return _not_anomalous_tool_retry_loop(project_id, **kw)
+
+    monkeypatch.setattr(anomalies_module, "detect_tool_retry_loop", flaky_tool_retry_loop)
+
+    resp = client.get("/api/anomalies")
+    assert resp.status_code == 200
+    rows = resp.json()["anomalies"]
+
+    # No row at all for procurement_rfq's tool_retry_loop -- not "ok", not "error".
+    assert [r for r in rows if r["agent"] == "procurement_rfq" and r["anomaly_type"] == "tool_retry_loop"] == []
+    assert [r for r in rows if r["status"] == "error"] == []
+    # Other 7 registered agents' tool_retry_loop calls unaffected (no row each).
+    assert [r for r in rows if r["anomaly_type"] != "tool_retry_loop"] == []
+
+
+def test_ac1_insufficient_baseline_data_in_context_bloat_emits_no_row(monkeypatch):
+    # SDLCCT-69 AC1: same signal, raised from context_bloat's own detect_fn.
+    _patch_all_no_findings(monkeypatch)
+
+    def flaky_context_bloat(project_id, **kw):
+        if project_id == "maintenance_copilot":
+            raise InsufficientBaselineDataError("no usable baseline data")
+        return _not_anomalous_context_bloat(project_id, **kw)
+
+    monkeypatch.setattr(anomalies_module, "detect_context_bloat", flaky_context_bloat)
+
+    resp = client.get("/api/anomalies")
+    assert resp.status_code == 200
+    rows = resp.json()["anomalies"]
+
+    assert [r for r in rows if r["agent"] == "maintenance_copilot" and r["anomaly_type"] == "context_bloat"] == []
+    assert [r for r in rows if r["status"] == "error"] == []
+    assert [r for r in rows if r["anomaly_type"] != "context_bloat"] == []
+
+
+def test_ac2_missing_error_rate_data_in_tool_retry_loop_emits_no_row(monkeypatch):
+    # SDLCCT-69 AC2: tool_retry_loop raising MissingErrorRateDataError
+    # (bff/anomaly_tool_retry_loop.py) must also NOT produce a
+    # status="error" row.
+    _patch_all_no_findings(monkeypatch)
+
+    def flaky_tool_retry_loop(project_id, **kw):
+        if project_id == "order_status":
+            raise MissingErrorRateDataError("no usable error_rate for target_date")
+        return _not_anomalous_tool_retry_loop(project_id, **kw)
+
+    monkeypatch.setattr(anomalies_module, "detect_tool_retry_loop", flaky_tool_retry_loop)
+
+    resp = client.get("/api/anomalies")
+    assert resp.status_code == 200
+    rows = resp.json()["anomalies"]
+
+    assert [r for r in rows if r["agent"] == "order_status" and r["anomaly_type"] == "tool_retry_loop"] == []
+    assert [r for r in rows if r["status"] == "error"] == []
+    assert [r for r in rows if r["anomaly_type"] != "tool_retry_loop"] == []
+
+
+def test_ac3_insufficient_switch_window_data_emits_no_row(monkeypatch):
+    # SDLCCT-69 AC3: model_switch raising InsufficientSwitchWindowDataError
+    # (bff/anomaly_model_switch.py) must NOT produce a status="error" row
+    # (previously it did).
+    _patch_all_no_findings(monkeypatch)
+
+    def flaky_model_switch(project_id, **kw):
+        if project_id == "ehs_qa":
+            raise InsufficientSwitchWindowDataError("no usable before/after switch-window data")
+        return _no_switch_model_switch(project_id, **kw)
+
+    monkeypatch.setattr(anomalies_module, "detect_model_switch", flaky_model_switch)
+
+    resp = client.get("/api/anomalies")
+    assert resp.status_code == 200
+    rows = resp.json()["anomalies"]
+
+    assert [r for r in rows if r["agent"] == "ehs_qa" and r["anomaly_type"] == "model_switch"] == []
+    assert [r for r in rows if r["status"] == "error"] == []
+    assert [r for r in rows if r["anomaly_type"] != "model_switch"] == []
