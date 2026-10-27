@@ -944,3 +944,47 @@ E6（部署）Epic 四張票（SDLCCT-57/58/59/60）至此全數 Done。
 **範圍外**：不連線任何真實伺服器；不修改 `opik_spans.py`／`opik_traces.py`；不修改 9 個下游呼叫模組與 `anomalies.py`（純串接層）；不決定快取等具體實作細節（留給 G1b）。
 **驗收條件**：6 條 Gherkin 情境（/metrics 請求前必解析成真實 id、已知真實後端形狀納入 mock 測試、workspaces/costs 與 projects/stats 同樣修正、9 個下游模組無需修改、project_name 端點維持不變、既有 228 測試全數維持通過）。
 **狀態**：Done（PR #212，reviewer APPROVE，G2 通過；在 `bff/opik_metrics.py` 新增 `resolve_project_ids()`（60 秒 TTL 快取，隔離手法沿用既有 `get_project_metrics_cached()`）與 `UnknownProjectKeyError`，`get_project_metrics`／`get_workspace_daily_costs`／`get_project_stats` 內部解析後送出請求、收到回應後映射回原始字串；9 個下游模組與 `opik_spans.py`／`opik_traces.py` 零異動；新增 5 個測試，233 測試全綠；無 reopen）。
+
+## SDLCCT-69 — 異常與告警頁面「資料錯誤」卡片誤報（規則引擎「無可用資料」被誤判為錯誤並顯示給使用者）
+
+**票型**：Bug
+
+**根因**
+`bff/baseline.py` 的 `InsufficientBaselineDataError`（以及語意相同的 `MissingErrorRateDataError`、`InsufficientSwitchWindowDataError`）是設計上刻意的「資料不足、無法計算」訊號，但 `bff/api/anomalies.py` 用同一個廣泛 `except Exception` 把它們與真正的規則引擎錯誤一起包成 `status="error"` 列，前端依設計忠實渲染成紅色錯誤卡片。
+
+**範圍**
+修正 `bff/api/anomalies.py` 的 3 個 `_run_*` 函式，區分「資料不足」例外（不產生列）與其他例外（維持 status="error"，沿用 SDLCCT-51 AC6）。
+
+**範圍外**
+- 不修改前端 anomaly-error-banner.tsx
+- 不修改 night_batch_burst/governance_gap（無對應例外類別）
+- 不新增第三種 status 值
+- 不變更 baseline.py 本身的門檻邏輯
+
+**驗收條件**
+6 條 Gherkin 情境：3 類資料不足例外各自不產生列、非資料不足例外仍顯示錯誤、governance_gap 行為不變、既有 AC6 回歸測試不受影響。
+
+**狀態**
+Designing（G1 已通過，規模預估 0.5 開發日，進入架構設計階段）
+
+## SDLCCT-70 — Agent 詳情頁版本成本圖表與下方表格數字不一致（formatCurrency 捨入導致非零小額顯示為 0）
+
+**票型**：Bug
+
+**根因**
+圖表與表格共用同一組資料（單一 API 呼叫，無資料源分歧），問題在共用格式化函式 `frontend/lib/format.ts` 的 `formatCurrency()`：`Math.round()` 把 0~0.5 之間的非零金額捨入成與真正 0 元相同的顯示字串。同一函式也被 Cost 總覽、Agents 列表、模型拆解表、週期比較區塊共用，屬系統性問題，修一處即可修正所有畫面。
+
+**範圍**
+修正 `frontend/lib/format.ts` 的 `formatCurrency`/`formatSignedCurrency`，非零小額需能辨識出非零（不等同於真正 0 元的顯示字串）。
+
+**範圍外**
+- 不修改後端聚合邏輯
+- 不修改圖表 Y 軸縮放邏輯
+- 不處理 NT$/US$ 幣別符號問題（由 SDLCCT-67 另行處理）
+- 不新增使用者可調整精度設定
+
+**驗收條件**
+6 條 Gherkin 情境：非零小額可辨識、真零元仍顯示 0、null 顯示不受影響、既有一般金額格式回歸、其他共用畫面同步修正、圖表表格同一資料點顯示一致。
+
+**狀態**
+Designing（G1 已通過，規模預估 0.5 開發日，進入架構設計階段）
