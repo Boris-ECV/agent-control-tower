@@ -16,6 +16,12 @@ find_governance_gaps() batch call, since that call has no single Agent to
 attribute the failure to), and decision #5 (one shared interval_start/
 interval_end window, reusing the existing 22-day convention established by
 anomaly_context_bloat.py and friends -- not a new window).
+
+See also docs/design/SDLCCT-69.md for the "insufficient data is not an
+error" exception classification: `_run_target_date_rule`/`_run_model_switch`
+catch a deliberate tuple of "cannot compute, not a rule-engine failure"
+exception types BEFORE the generic `except Exception` below, returning `[]`
+(no row) instead of a `status="error"` row.
 """
 
 import sys
@@ -34,15 +40,27 @@ from registry import load_registry  # noqa: E402
 from anchor import get_anchor_date  # noqa: E402
 from anomaly_context_bloat import detect_context_bloat  # noqa: E402
 from anomaly_governance_gap import find_governance_gaps  # noqa: E402
-from anomaly_model_switch import detect_model_switch  # noqa: E402
+from anomaly_model_switch import InsufficientSwitchWindowDataError, detect_model_switch  # noqa: E402
 from anomaly_night_batch_burst import detect_night_batch_burst  # noqa: E402
-from anomaly_tool_retry_loop import detect_tool_retry_loop  # noqa: E402
+from anomaly_tool_retry_loop import MissingErrorRateDataError, detect_tool_retry_loop  # noqa: E402
+from baseline import InsufficientBaselineDataError  # noqa: E402
 
 # Reuses the existing, already-validated window convention established by
 # bff/tests/test_anomaly_context_bloat.py and friends: 21-day baseline +
 # target_date itself (see design doc decision #5) -- not a new window
 # invented for this endpoint.
 _WINDOW_DAYS = 22
+
+# SDLCCT-69: these two exception classes are the deliberate "cannot
+# compute, not a rule-engine failure" signal (see docs/design/SDLCCT-69.md
+# decision #1) for the 3 target_date rules (tool_retry_loop raises both;
+# context_bloat raises only InsufficientBaselineDataError via
+# compare_to_baseline(); night_batch_burst raises neither, so these
+# branches are simply never hit for it). If a 4th "insufficient data"
+# exception class is introduced in the future, it must be added here
+# manually -- see design doc decision #1 for why there is no shared base
+# class to catch instead.
+_NORMAL_RULE_NO_DATA_ERRORS = (InsufficientBaselineDataError, MissingErrorRateDataError)
 
 
 def _to_utc_midnight(d: date) -> datetime:
@@ -199,7 +217,9 @@ def _run_target_date_rule(
             interval_start=interval_start,
             interval_end=interval_end,
         )
-    except Exception as exc:  # noqa: BLE001 -- AC6: any rule exception, not a specific family
+    except _NORMAL_RULE_NO_DATA_ERRORS:
+        return []  # SDLCCT-69 AC1/AC2: insufficient data -> treat as "no anomaly", not an error row
+    except Exception as exc:  # noqa: BLE001 -- AC6: any OTHER rule exception, not a specific family
         return [
             _row(
                 agent=key,
@@ -233,6 +253,8 @@ def _run_model_switch(key: str, *, interval_start: datetime, interval_end: datet
             interval_start=interval_start,
             interval_end=interval_end,
         )
+    except InsufficientSwitchWindowDataError:
+        return []  # SDLCCT-69 AC3: insufficient switch-window data -> no row
     except Exception as exc:  # noqa: BLE001 -- AC6
         return [
             _row(
