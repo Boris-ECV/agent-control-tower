@@ -965,7 +965,7 @@ E6（部署）Epic 四張票（SDLCCT-57/58/59/60）至此全數 Done。
 6 條 Gherkin 情境：3 類資料不足例外各自不產生列、非資料不足例外仍顯示錯誤、governance_gap 行為不變、既有 AC6 回歸測試不受影響。
 
 **狀態**
-Designing（G1 已通過，規模預估 0.5 開發日，進入架構設計階段）
+Done（PR #217，reviewer APPROVE，G2 通過；`bff/api/anomalies.py` 新增 `_NORMAL_RULE_NO_DATA_ERRORS` tuple 於廣泛 `except Exception` 之前攔截三類「資料不足」例外並回傳 `[]`；`_run_governance_gaps`、前端、三個 anomaly_*.py 的門檻邏輯零異動；新增 4 個測試，237 測試全綠，覆蓋率 98%；無 reopen）。
 
 ## SDLCCT-70 — Agent 詳情頁版本成本圖表與下方表格數字不一致（formatCurrency 捨入導致非零小額顯示為 0）
 
@@ -987,4 +987,4 @@ Designing（G1 已通過，規模預估 0.5 開發日，進入架構設計階段
 6 條 Gherkin 情境：非零小額可辨識、真零元仍顯示 0、null 顯示不受影響、既有一般金額格式回歸、其他共用畫面同步修正、圖表表格同一資料點顯示一致。
 
 **狀態**
-Designing（G1 已通過，規模預估 0.5 開發日，進入架構設計階段）
+Done（PR #218，reviewer APPROVE，G2 通過；修正 `frontend/lib/format.ts` 的 `formatCurrency`/`formatSignedCurrency`，僅當 `Math.round(value) === 0 && value !== 0` 時改為固定 2 位小數顯示，其餘行為不變；新增 `frontend/lib/format.test.ts`（14 個測試），全部 6 個共用呼叫點無需個別修改；27 測試全綠；無 reopen）。
