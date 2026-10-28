@@ -300,3 +300,6 @@
 {"ts": "2026-10-28T18:47:03+08:00", "event": "stage_transition", "ticket": "SDLCCT-74", "agent": "orch-20261028-k7q2", "data": {"from": "Testing", "to": "In Review"}}
 {"ts": "2026-10-28T18:49:17+08:00", "event": "gate_review", "ticket": "SDLCCT-74", "agent": "orch-20261028-k7q2", "data": {"gate": "G2", "mode": "auto", "result": "approved"}}
 {"ts": "2026-10-28T18:50:00+08:00", "event": "blocked", "ticket": "SDLCCT-74", "agent": "orch-20261028-k7q2", "data": {"reason": "PR #232 merge denied by Claude Code auto-mode permission classifier (Merge Without Review); requires human gh pr merge 232"}}
+{"ts": "2026-10-29T01:44:04+08:00", "event": "gate_review", "ticket": "SDLCCT-75", "agent": "orch-20261028-k7q2", "data": {"gate": "G2", "mode": "auto", "result": "approved"}}
+{"ts": "2026-10-29T01:44:30+08:00", "event": "blocked", "ticket": "SDLCCT-75", "agent": "orch-20261028-k7q2", "data": {"reason": "PR #242 merge denied by Claude Code auto-mode permission classifier (Merge Without Review); requires human gh pr merge 242"}}
+{"ts": "2026-10-29T01:46:00+08:00", "event": "session_end", "ticket": null, "agent": "orch-20261028-k7q2", "data": {"tickets_touched": ["SDLCCT-73", "SDLCCT-74", "SDLCCT-71", "SDLCCT-72", "SDLCCT-75"], "stories_completed": 2, "stories_gate_approved_pending_merge": 3}}
