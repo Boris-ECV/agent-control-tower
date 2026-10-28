@@ -67,11 +67,16 @@ test("agent detail page loads and shows version series, model breakdown, and top
   await expect(page.getByText("gpt-4o", { exact: true })).toBeVisible();
   await expect(page.getByText("gpt-4o-mini")).toBeVisible();
 
-  // AC4: top-cost trace list section visible, metadata rendered as JSON.
+  // AC4: top-cost trace list section visible. metadata.user_id is not one of
+  // the 4 known fields (SDLCCT-74), so it sits collapsed behind "更多" until
+  // expanded.
   await expect(page.getByText("最貴執行清單")).toBeVisible();
   await expect(page.getByText("trace-001")).toBeVisible();
   await expect(page.getByText("trace-002")).toBeVisible();
-  await expect(page.getByText('{"user_id":"u1"}')).toBeVisible();
+  const populatedRow1 = page.locator("tr", { hasText: "trace-001" });
+  await expect(populatedRow1.getByText("user_id: u1")).toHaveCount(0);
+  await populatedRow1.getByRole("button", { name: "更多" }).click();
+  await expect(populatedRow1.getByText("user_id: u1")).toBeVisible();
 });
 
 test("AC2: a null point in the middle of a version's series breaks the line into separate segments, not 0 or a connected line", async ({
@@ -287,7 +292,164 @@ test("AC3: model-breakdown table shows — (not 0) for a null cost", async ({
   await expect(populatedRow.getByText("—")).toHaveCount(0);
 });
 
-test("AC4: top_traces metadata column renders a populated dict as JSON and a null metadata as —", async ({
+test("SDLCCT-74 AC1/AC2: top_traces metadata renders the 4 known fields as labelled chips, with other fields collapsed behind 更多/收合", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [],
+        model_cost_breakdown: [],
+        top_traces: [
+          {
+            id: "trace-001",
+            total_estimated_cost: 999,
+            metadata: {
+              plant: "P1",
+              deployed_version: "v2.1",
+              dept: "Sales",
+              trigger: "manual",
+              providers: "openai",
+              cost_center: "CC-01",
+            },
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const row = page.locator("tr", { hasText: "trace-001" });
+  // AC1: the 4 known fields show as labelled chips, always visible.
+  await expect(row.getByText("廠別: P1")).toBeVisible();
+  await expect(row.getByText("版本: v2.1")).toBeVisible();
+  await expect(row.getByText("部門: Sales")).toBeVisible();
+  await expect(row.getByText("觸發方式: manual")).toBeVisible();
+
+  // AC2: the remaining fields (providers/cost_center) are collapsed by
+  // default behind "更多", and not shown until expanded.
+  await expect(row.getByText("providers: openai")).toHaveCount(0);
+  await expect(row.getByText("cost_center: CC-01")).toHaveCount(0);
+  const moreButton = row.getByRole("button", { name: "更多" });
+  await expect(moreButton).toBeVisible();
+  await moreButton.click();
+  await expect(row.getByText("providers: openai")).toBeVisible();
+  await expect(row.getByText("cost_center: CC-01")).toBeVisible();
+
+  // Clicking again (now labelled 收合) collapses it back.
+  const collapseButton = row.getByRole("button", { name: "收合" });
+  await collapseButton.click();
+  await expect(row.getByText("providers: openai")).toHaveCount(0);
+  await expect(row.getByText("cost_center: CC-01")).toHaveCount(0);
+});
+
+test("SDLCCT-74 AC2: keyboard activation (Enter) of the 更多 button toggles expand without navigating away from the row", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [],
+        model_cost_breakdown: [],
+        top_traces: [
+          {
+            id: "trace-001",
+            total_estimated_cost: 999,
+            metadata: {
+              plant: "P1",
+              deployed_version: "v2.1",
+              dept: "Sales",
+              trigger: "manual",
+              providers: "openai",
+              cost_center: "CC-01",
+            },
+          },
+        ],
+      }),
+    });
+  });
+  await page.route(`**/api/agents/${MOCK_KEY}/traces/trace-001/spans`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ key: MOCK_KEY, trace_id: "trace-001", spans: [] }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const row = page.locator("tr", { hasText: "trace-001" });
+  const moreButton = row.getByRole("button", { name: "更多" });
+  await moreButton.focus();
+  await page.keyboard.press("Enter");
+
+  // Expanding via keyboard must not trigger the row's own onClick/onKeyDown
+  // navigation (stopPropagation safety check) — we must still be on the
+  // agent detail page, with the collapsed fields now visible.
+  await expect(page).toHaveURL(`/agents/${MOCK_KEY}`);
+  await expect(row.getByText("providers: openai")).toBeVisible();
+  await expect(row.getByText("cost_center: CC-01")).toBeVisible();
+
+  // Second Enter press collapses it back and still doesn't navigate.
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(`/agents/${MOCK_KEY}`);
+  await expect(row.getByText("providers: openai")).toHaveCount(0);
+});
+
+test("SDLCCT-74 AC3: a missing known field (dept) renders no blank/undefined chip, and is absent from the collapsed section too", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [],
+        model_cost_breakdown: [],
+        top_traces: [
+          {
+            id: "trace-001",
+            total_estimated_cost: 999,
+            metadata: { plant: "P1", deployed_version: "v2.1", trigger: "manual" },
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const row = page.locator("tr", { hasText: "trace-001" });
+  await expect(row.getByText("廠別: P1")).toBeVisible();
+  await expect(row.getByText("版本: v2.1")).toBeVisible();
+  await expect(row.getByText("觸發方式: manual")).toBeVisible();
+  // dept is missing: no blank/undefined/null text, and no "部門:" label at all.
+  await expect(row.getByText("部門", { exact: false })).toHaveCount(0);
+  await expect(row.getByText("undefined", { exact: false })).toHaveCount(0);
+  await expect(row.getByText("null", { exact: false })).toHaveCount(0);
+  // All 4 known fields present except dept -> no "other fields" remain, so
+  // no expand control should render at all.
+  await expect(row.getByRole("button", { name: "更多" })).toHaveCount(0);
+});
+
+test("SDLCCT-74 AC4: null metadata keeps the existing — behavior with no chips or expand control", async ({
   page,
 }) => {
   await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
@@ -311,11 +473,10 @@ test("AC4: top_traces metadata column renders a populated dict as JSON and a nul
 
   await page.goto(`/agents/${MOCK_KEY}`);
 
-  const populatedRow = page.locator("tr", { hasText: "trace-001" });
-  await expect(populatedRow.getByText('{"user_id":"u1"}')).toBeVisible();
-
   const nullRow = page.locator("tr", { hasText: "trace-002" });
   await expect(nullRow.getByText("—", { exact: true })).toBeVisible();
+  await expect(nullRow.getByRole("button", { name: "更多" })).toHaveCount(0);
+  await expect(nullRow.getByRole("button", { name: "收合" })).toHaveCount(0);
 });
 
 test("mobile viewport: version series, model breakdown, and top traces sections all remain visible with no horizontal overflow", async ({
