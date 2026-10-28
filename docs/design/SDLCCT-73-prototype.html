@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>原型 — SDLCCT-73 版本成本時間序列圖表 Y 軸刻度與數值標示</title>
+<style>
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #4B5563;
+    --color-border: #E5E7EB;
+    --color-accent: #2563EB;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #F9FAFB;
+    color: var(--color-text-primary);
+  }
+  main { max-width: 960px; margin: 0 auto; padding: 24px; }
+  h1 { margin: 0 0 4px 0; font-size: 24px; line-height: 32px; font-weight: 700; }
+  p.subtitle { margin: 0 0 24px 0; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  h2 { margin: 0 0 12px 0; font-size: 18px; line-height: 26px; font-weight: 600; }
+  section.block {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg);
+    padding: 16px;
+    margin-bottom: 24px;
+  }
+  .hint {
+    font-size: 11px;
+    line-height: 16px;
+    color: var(--color-text-secondary);
+    margin: 8px 0 0 0;
+    font-style: italic;
+  }
+  svg.chart { width: 100%; height: 160px; display: block; border: 1px dashed var(--color-border); }
+  .legend { display: flex; gap: 16px; margin-top: 8px; font-size: 12px; color: var(--color-text-secondary); }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>版本成本時間序列圖表 — Y 軸刻度與數值標示</h1>
+  <p class="subtitle">
+    SDLCCT-73：對既有 <code>VersionCostChart</code>（SDLCCT-48）手刻 SVG 折線圖，
+    在左側留白區（x &lt; CHART_PADDING = 24）疊加 max/min 兩個金額 <code>&lt;text&gt;</code>
+    標示。折線本身、圖例、下方明細表格完全不變動 — 下面三個區塊對應 3 條 Gherkin 情境。
+  </p>
+
+  <section class="block">
+    <h2>情境 1：數值有落差（max ≠ min）→ 兩個金額標示</h2>
+    <svg class="chart" viewBox="0 0 480 160" role="img" aria-label="範例：有落差">
+      <!-- polylines（示範既有折線，顏色與座標為範例值） -->
+      <polyline points="24,30 252,80 480,136" fill="none" stroke="#2563eb" stroke-width="2" />
+      <polyline points="24,100 252,50 480,30" fill="none" stroke="#dc2626" stroke-width="2" />
+      <!-- 新增：Y 軸 max/min 金額標示（x=2, text-anchor=start，皆 < CHART_PADDING=24） -->
+      <text x="2" y="24" dominant-baseline="middle" text-anchor="start" font-size="10" fill="#4B5563">US$ 150</text>
+      <text x="2" y="136" dominant-baseline="middle" text-anchor="start" font-size="10" fill="#4B5563">US$ 20</text>
+    </svg>
+    <div class="legend">
+      <span><span class="dot" style="background:#2563eb"></span>v1</span>
+      <span><span class="dot" style="background:#dc2626"></span>v2</span>
+    </div>
+    <p class="hint">
+      max 標示的 y 座標 = CHART_PADDING（折線頂端），min 標示的 y 座標 = CHART_PADDING + innerHeight（折線底端） —
+      與既有 toXY() 的 y 公式共用同一套換算（見設計文件「關鍵技術決策 1」），不是另外發明一套座標系統。
+      文字 anchor 落在 x=2（&lt; 24），符合「左側留白區」的定位要求；字串本身視覺上可能延伸超出 24 這個邊界，
+      設計文件已記錄此取捨（見「關鍵技術決策 4」）。
+    </p>
+  </section>
+
+  <section class="block">
+    <h2>情境 2：所有數值相同（max === min）→ 只有一個金額標示</h2>
+    <svg class="chart" viewBox="0 0 480 160" role="img" aria-label="範例：數值全部相同">
+      <polyline points="24,80 252,80 480,80" fill="none" stroke="#2563eb" stroke-width="2" />
+      <text x="2" y="80" dominant-baseline="middle" text-anchor="start" font-size="10" fill="#4B5563">US$ 100</text>
+    </svg>
+    <div class="legend"><span><span class="dot" style="background:#2563eb"></span>v1</span></div>
+    <p class="hint">
+      沿用既有 toXY() 的 max===min 除以零防呆分支（折線收斂到 CHART_PADDING + innerHeight/2 的水平線），
+      標示文字的 y 座標直接取同一個收斂高度，只渲染一個 &lt;text&gt;，不產生兩個重疊的標示。
+    </p>
+  </section>
+
+  <section class="block">
+    <h2>情境 3：沒有任何非 null 數值 → 不顯示任何金額標示</h2>
+    <svg class="chart" viewBox="0 0 480 160" role="img" aria-label="範例：全部無資料">
+      <!-- 無 polyline、無 text：entries 存在但每個 point.value 皆為 null -->
+    </svg>
+    <div class="legend"><span><span class="dot" style="background:#2563eb"></span>v1（本週無資料）</span></div>
+    <p class="hint">
+      不渲染任何 &lt;text&gt;，絕不猜測顯示「US$ 0」或任何數值 — 延續 CONSTITUTION
+      「缺值顯示 unknown，不可顯示 0」與 SDLCCT-47 決策 2 的既有慣例。
+    </p>
+  </section>
+</main>
+</body>
+</html>

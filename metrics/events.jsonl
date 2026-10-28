@@ -286,3 +286,17 @@
 {"ts": "2026-10-28T14:15:39+08:00", "event": "gate_review", "ticket": "SDLCCT-66", "agent": "orch-20261028-k7q2", "data": {"gate": "G2", "mode": "auto", "result": "approved"}}
 {"ts": "2026-10-28T14:16:14+08:00", "event": "stage_transition", "ticket": "SDLCCT-66", "agent": "orch-20261028-k7q2", "data": {"from": "In Review", "to": "Done"}}
 {"ts": "2026-10-28T14:20:00+08:00", "event": "session_end", "ticket": null, "agent": "orch-20261028-k7q2", "data": {"tickets_touched": ["SDLCCT-64", "SDLCCT-65", "SDLCCT-66"], "stories_completed": 3}}
+{"ts": "2026-10-28T18:09:26+08:00", "event": "gate_review", "ticket": "SDLCCT-73", "agent": "orch-20261028-k7q2", "data": {"gate": "G1b", "mode": "auto", "result": "approved"}}
+{"ts": "2026-10-28T18:09:26+08:00", "event": "stage_transition", "ticket": "SDLCCT-73", "agent": "orch-20261028-k7q2", "data": {"from": "Designing", "to": "Ready"}}
+{"ts": "2026-10-28T18:10:00+08:00", "event": "stage_transition", "ticket": "SDLCCT-73", "agent": "orch-20261028-k7q2", "data": {"from": "Ready", "to": "In Progress"}}
+{"ts": "2026-10-28T18:42:32+08:00", "event": "stage_transition", "ticket": "SDLCCT-73", "agent": "orch-20261028-k7q2", "data": {"from": "In Progress", "to": "Testing"}}
+{"ts": "2026-10-28T18:48:12+08:00", "event": "stage_transition", "ticket": "SDLCCT-73", "agent": "orch-20261028-k7q2", "data": {"from": "Testing", "to": "In Review"}}
+{"ts": "2026-10-28T18:50:06+08:00", "event": "gate_review", "ticket": "SDLCCT-73", "agent": "orch-20261028-k7q2", "data": {"gate": "G2", "mode": "auto", "result": "approved"}}
+{"ts": "2026-10-28T20:20:19+08:00", "event": "stage_transition", "ticket": "SDLCCT-73", "agent": "orch-20261028-k7q2", "data": {"from": "In Review", "to": "Done"}}
+{"ts": "2026-10-28T17:29:26+08:00", "event": "gate_review", "ticket": "SDLCCT-74", "agent": "orch-20261028-k7q2", "data": {"gate": "G1b", "mode": "auto", "result": "approved"}}
+{"ts": "2026-10-28T17:29:26+08:00", "event": "stage_transition", "ticket": "SDLCCT-74", "agent": "orch-20261028-k7q2", "data": {"from": "Designing", "to": "Ready"}}
+{"ts": "2026-10-28T18:10:00+08:00", "event": "stage_transition", "ticket": "SDLCCT-74", "agent": "orch-20261028-k7q2", "data": {"from": "Ready", "to": "In Progress"}}
+{"ts": "2026-10-28T18:37:44+08:00", "event": "stage_transition", "ticket": "SDLCCT-74", "agent": "orch-20261028-k7q2", "data": {"from": "In Progress", "to": "Testing"}}
+{"ts": "2026-10-28T18:47:03+08:00", "event": "stage_transition", "ticket": "SDLCCT-74", "agent": "orch-20261028-k7q2", "data": {"from": "Testing", "to": "In Review"}}
+{"ts": "2026-10-28T18:49:17+08:00", "event": "gate_review", "ticket": "SDLCCT-74", "agent": "orch-20261028-k7q2", "data": {"gate": "G2", "mode": "auto", "result": "approved"}}
+{"ts": "2026-10-28T18:50:00+08:00", "event": "blocked", "ticket": "SDLCCT-74", "agent": "orch-20261028-k7q2", "data": {"reason": "PR #232 merge denied by Claude Code auto-mode permission classifier (Merge Without Review); requires human gh pr merge 232"}}
