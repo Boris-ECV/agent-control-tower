@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-68 prototype — sticky header before/after</title>
+<style>
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #4B5563;
+    --color-border: #E5E7EB;
+  }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #F9FAFB;
+    margin: 0;
+    padding: 32px;
+    color: var(--color-text-primary);
+  }
+  h2.section { font-size: 16px; margin: 32px 0 8px; }
+  .caption { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 8px; }
+  .page-shell {
+    border: 1px solid var(--color-border);
+    max-width: 960px;
+    margin-bottom: 8px;
+  }
+  header.sticky-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg);
+    padding: 12px 24px;
+  }
+  header.sticky-header.justify-end { justify-content: flex-end; }
+  .dup-title {
+    font-size: 18px;
+    line-height: 26px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .removed {
+    text-decoration: line-through;
+    opacity: 0.35;
+  }
+  .date-meta {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+  }
+  main.body { padding: 24px; }
+  h1.page-title {
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 700;
+    margin: 0 0 4px;
+    text-align: left;
+  }
+  p.subtitle {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    margin: 0;
+    text-align: left;
+  }
+</style>
+</head>
+<body>
+  <h1>SDLCCT-68 — sticky header 原型（移除重複「Agent Control Tower」文字節點）</h1>
+  <p class="caption">
+    僅聚焦工作區頂部 sticky header 區塊的 before/after；不含側邊欄（側邊欄不變）、
+    不含頁面其餘內容。涵蓋兩種既有 header 形狀：(A) 含右側日期 meta
+    （cost-dashboard / anomalies / agents / agent-detail 共用形狀）、
+    (B) 不含日期 meta（trace-detail 專屬形狀）。
+  </p>
+
+  <h2 class="section">(A) 含日期 meta 的 header — Before</h2>
+  <div class="caption">範例取自 /cost-dashboard。</div>
+  <div class="page-shell">
+    <header class="sticky-header">
+      <span class="dup-title">Agent Control Tower</span>
+      <span class="date-meta">資料日期：2026/10/20</span>
+    </header>
+    <main class="body">
+      <h1 class="page-title">成本總覽</h1>
+      <p class="subtitle">查看各 Agent 的成本與用量趨勢</p>
+    </main>
+  </div>
+
+  <h2 class="section">(A) 含日期 meta 的 header — After</h2>
+  <div class="caption">
+    移除左側重複文字節點；header 由 <code>justify-between</code> 改為
+    <code>justify-end</code>，讓唯一保留的日期 meta 維持原本的靠右位置
+    （若不改，flex 只剩單一子元素時會貼齊 main-start，變成跑到左邊——
+    這不是 spec 要求的版面重新設計，而是避免移除文字節點後產生非預期的
+    位移副作用）。
+  </div>
+  <div class="page-shell">
+    <header class="sticky-header justify-end">
+      <span class="date-meta">資料日期：2026/10/20</span>
+    </header>
+    <main class="body">
+      <h1 class="page-title">成本總覽</h1>
+      <p class="subtitle">查看各 Agent 的成本與用量趨勢</p>
+    </main>
+  </div>
+
+  <h2 class="section">(B) 不含日期 meta 的 header（trace-detail）— Before</h2>
+  <div class="page-shell">
+    <header class="sticky-header">
+      <span class="dup-title">Agent Control Tower</span>
+    </header>
+    <main class="body">
+      <h1 class="page-title">執行追蹤詳情 — trace-abc123</h1>
+    </main>
+  </div>
+
+  <h2 class="section">(B) 不含日期 meta 的 header（trace-detail）— After</h2>
+  <div class="caption">
+    header 容器本身保留（含 padding/border，sticky 行為不變），只是內容變
+    空——依 spec 範圍外「不做整體排版/間距重新設計，僅移除重複文字節點」，
+    不額外移除整個 &lt;header&gt; 容器（移除容器會是更大的版面決策，超出本
+    Story 範圍）。
+  </div>
+  <div class="page-shell">
+    <header class="sticky-header"></header>
+    <main class="body">
+      <h1 class="page-title">執行追蹤詳情 — trace-abc123</h1>
+    </main>
+  </div>
+
+</body>
+</html>
