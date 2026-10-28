@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<title>SDLCCT-72 原型：版本成本時間序列圖表固定 7 天日期軸</title>
+<style>
+  :root {
+    --color-text-primary: #111827;
+    --color-text-secondary: #4B5563;
+    --color-border: #E5E7EB;
+    --color-bg: #FFFFFF;
+  }
+  body {
+    font-family: -apple-system, "Segoe UI", "Noto Sans TC", sans-serif;
+    background: #F9FAFB;
+    color: var(--color-text-primary);
+    margin: 0;
+    padding: 24px;
+  }
+  h1 {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+  .intro {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    margin-bottom: 24px;
+    max-width: 800px;
+    line-height: 1.6;
+  }
+  .panel {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 24px;
+    max-width: 820px;
+  }
+  .panel h2 {
+    font-size: 16px;
+    margin: 0 0 4px;
+  }
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .tag.bug {
+    background: #FEE2E2;
+    color: #B91C1C;
+  }
+  .tag.fixed {
+    background: #DCFCE7;
+    color: #15803D;
+  }
+  .note {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    margin: 8px 0 16px;
+    line-height: 1.6;
+  }
+  svg {
+    display: block;
+    width: 100%;
+    max-width: 480px;
+    height: 160px;
+    margin-bottom: 12px;
+  }
+  .legend {
+    display: flex;
+    gap: 12px;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 16px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+  .legend li {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    display: inline-block;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th, td {
+    text-align: left;
+    padding: 6px 10px 6px 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  thead th {
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+  }
+  td.missing {
+    color: var(--color-text-secondary);
+  }
+  .missing-col {
+    background: #FFF7ED;
+  }
+  .callout {
+    font-size: 12px;
+    background: #EFF6FF;
+    border: 1px solid #BFDBFE;
+    color: #1E40AF;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-top: 12px;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+  <h1>SDLCCT-72 原型：版本成本時間序列圖表固定 7 天日期軸</h1>
+  <p class="intro">
+    對照「修正前（現行 bug）」與「修正後」在同一組資料下的渲染結果。
+    兩個版本都是 anchor_date = 2026-10-20，某個 version（v2）在
+    2026-10-18 這天完全沒有回傳資料點（整個日期缺席，不是 value: null）。
+  </p>
+
+  <!-- ============ 修正前（Bug）============ -->
+  <section class="panel">
+    <h2>修正前<span class="tag bug">現行行為（Bug）</span></h2>
+    <p class="note">
+      unionSortedDates() 只收集「至少一個 version 有值」的日期——
+      2026-10-18 因為 v1、v2 都沒有這天的 point，整欄從表格與折線
+      X 軸消失。日期軸被壓縮成 6 天，容易誤讀成「資料窗縮短了」或
+      「資料被截斷」。
+    </p>
+    <svg viewBox="0 0 480 160">
+      <!-- v1: 7 points but we only have 6 columns here (10/18 missing from axis) -->
+      <polyline points="24,90 80.3,70 136.7,50 193,40 249.3,60 305.7,30 362,20" fill="none" stroke="#2563eb" stroke-width="2" />
+      <!-- v2: also 6 columns, values differ -->
+      <polyline points="24,120 80.3,110 136.7,100 193,115 249.3,95 305.7,105 362,80" fill="none" stroke="#dc2626" stroke-width="2" />
+    </svg>
+    <ul class="legend">
+      <li><span class="dot" style="background:#2563eb"></span> v1</li>
+      <li><span class="dot" style="background:#dc2626"></span> v2</li>
+    </ul>
+    <table>
+      <thead>
+        <tr>
+          <th>版本</th>
+          <th>10月14日</th>
+          <th>10月15日</th>
+          <th>10月16日</th>
+          <th>10月17日</th>
+          <th>10月19日</th>
+          <th>10月20日</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>v1</td>
+          <td>US$ 120</td><td>US$ 140</td><td>US$ 160</td><td>US$ 180</td><td>US$ 150</td><td>US$ 200</td>
+        </tr>
+        <tr>
+          <td>v2</td>
+          <td>US$ 40</td><td>US$ 50</td><td>US$ 60</td><td>US$ 45</td><td>US$ 55</td><td>US$ 90</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="callout">
+      注意：表格只有 6 欄，10 月 18 日完全沒有出現——而不是以「—」標示
+      該天無資料。這正是本票要修正的問題（對應 Gherkin 情境 1）。
+    </div>
+  </section>
+
+  <!-- ============ 修正後 ============ -->
+  <section class="panel">
+    <h2>修正後<span class="tag fixed">本票修正行為</span></h2>
+    <p class="note">
+      日期軸改由 anchorDate 回推固定 7 天（anchor_date-6 到
+      anchor_date），不論該天是否有資料都會出現。10 月 18 日這天
+      v1、v2 皆無資料點：表格顯示「—」，折線在這一天的 X 位置斷開
+      （對應 Gherkin 情境 1/2）。
+    </p>
+    <svg viewBox="0 0 480 160">
+      <!-- v1: 2026-10-14..17 as one segment, 2026-10-19..20 as a second segment (break at 10/18, index 4 of 7) -->
+      <polyline points="24,90 79.7,70 135.3,50 191,40" fill="none" stroke="#2563eb" stroke-width="2" />
+      <polyline points="302.3,60 358,30 413.7,20" fill="none" stroke="#2563eb" stroke-width="2" />
+      <!-- v2: break at 10/18 too -->
+      <polyline points="24,120 79.7,110 135.3,100 191,115" fill="none" stroke="#dc2626" stroke-width="2" />
+      <polyline points="302.3,95 358,105 413.7,80" fill="none" stroke="#dc2626" stroke-width="2" />
+    </svg>
+    <ul class="legend">
+      <li><span class="dot" style="background:#2563eb"></span> v1</li>
+      <li><span class="dot" style="background:#dc2626"></span> v2</li>
+    </ul>
+    <table>
+      <thead>
+        <tr>
+          <th>版本</th>
+          <th>10月14日</th>
+          <th>10月15日</th>
+          <th>10月16日</th>
+          <th>10月17日</th>
+          <th class="missing-col">10月18日</th>
+          <th>10月19日</th>
+          <th>10月20日</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>v1</td>
+          <td>US$ 120</td><td>US$ 140</td><td>US$ 160</td><td>US$ 180</td>
+          <td class="missing missing-col">—</td>
+          <td>US$ 150</td><td>US$ 200</td>
+        </tr>
+        <tr>
+          <td>v2</td>
+          <td>US$ 40</td><td>US$ 50</td><td>US$ 60</td><td>US$ 45</td>
+          <td class="missing missing-col">—</td>
+          <td>US$ 55</td><td>US$ 90</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="callout">
+      表格固定 7 欄（10/14 ~ 10/20），10 月 18 日明確顯示「—」而不是
+      消失，折線在該日的 X 位置斷開而不是跳過整個欄位重新計算間距。
+      日期軸的欄數/間距恒定，不受任一天缺資料影響（對應 Gherkin
+      情境 1/2，情境 3 的「point 存在但 value: null」與此處「日期缺席」
+      在畫面上呈現完全相同，情境 4/5 則是這 7 欄本身不依賴
+      entries/points 內容，恒定存在）。
+    </div>
+  </section>
+</body>
+</html>
