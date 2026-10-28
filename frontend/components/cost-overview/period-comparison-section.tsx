@@ -11,7 +11,7 @@ import { ErrorCard } from "./error-card";
 // large/undefined (and previous_cost === 0 yields delta_pct: null from the
 // bff already); show a "notable new spend" badge instead of a % figure.
 // Strict "<" so previous_cost === 10 still shows the percentage
-// (docs/design/SDLCCT-66.md decision 2).
+// (SDLCCT-66 design decision: strict less-than so the US$10 boundary itself still shows a percentage).
 const NOTABLE_NEW_SPEND_THRESHOLD_USD = 10;
 
 export function PeriodComparisonSection() {
