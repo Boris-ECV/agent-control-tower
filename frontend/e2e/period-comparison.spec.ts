@@ -108,7 +108,7 @@ test("previous=US$0, current=US$120: shows +US$ 120 with the 新增顯著支出 
   await expect(page.getByText(/%）/)).toHaveCount(0);
 });
 
-test("threshold boundary: previous=US$10, current=US$20: shows +US$ 10（100.0%）without the badge", async ({
+test("threshold boundary: previous=US$10, current=US$20: shows +US$ 10.00（100.0%）without the badge", async ({
   page,
 }) => {
   await page.route("**/api/cost-overview/period-comparison", async (route) => {
@@ -132,6 +132,6 @@ test("threshold boundary: previous=US$10, current=US$20: shows +US$ 10（100.0%�
 
   await page.goto("/cost-dashboard");
 
-  await expect(page.getByText("+US$ 10（100.0%）")).toBeVisible();
+  await expect(page.getByText("+US$ 10.00（100.0%）")).toBeVisible();
   await expect(page.getByText("新增顯著支出")).toHaveCount(0);
 });
