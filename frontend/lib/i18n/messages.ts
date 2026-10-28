@@ -156,6 +156,11 @@ export const messages = {
           metadata: "中繼資料",
         },
       },
+      metadata: {
+        fields: { plant: "廠別", deployedVersion: "版本", dept: "部門", trigger: "觸發方式" },
+        more: "更多",
+        collapse: "收合",
+      },
     },
     footer: { dataSource: "資料來源：Agent registry ＋ 觀測性後端成本查詢。" },
     unknown: "—",

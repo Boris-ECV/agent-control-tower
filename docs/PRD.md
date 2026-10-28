@@ -988,3 +988,74 @@ Done（PR #217，reviewer APPROVE，G2 通過；`bff/api/anomalies.py` 新增 `_
 
 **狀態**
 Done（PR #218，reviewer APPROVE，G2 通過；修正 `frontend/lib/format.ts` 的 `formatCurrency`/`formatSignedCurrency`，僅當 `Math.round(value) === 0 && value !== 0` 時改為固定 2 位小數顯示，其餘行為不變；新增 `frontend/lib/format.test.ts`（14 個測試），全部 6 個共用呼叫點無需個別修改；27 測試全綠；無 reopen）。
+
+## SDLCCT-71 — Agent 詳情頁版本成本圖表與下方表格仍對不上：表格整數捨入吃掉小額波動，SDLCCT-70 未解決根因
+
+**使用者故事**
+身為查看 Agent 詳情頁「版本成本時間序列」的使用者，我希望下方表格顯示的每日成本金額，在金額量級很小（例如每日 US$2 等級）時也能呈現小數精度，以便表格數字能忠實反映折線圖上實際呈現的逐日波動，而不是因為整數捨入讓明顯有斜率的線看起來像是持平。
+
+**範圍**
+修正全域 formatCurrency/formatSignedCurrency（frontend/lib/format.ts），門檻 US$100：Math.abs(value) < 100 時一律顯示 2 位小數，>= 100 維持原本整數捨入＋千分位。
+
+**驗收條件**
+14 個 Gherkin 情境，涵蓋小額金額顯示 2 位小數、真正 0 不受影響、門檻邊界（99.99 vs 100.4）、大額金額維持整數捨入、null/undefined 維持 em dash、既有回歸測試案例更新（0.6 → "US$ 0.60"）、formatSignedCurrency 對稱套用、version-cost-chart.tsx 表格呈現逐日波動不再全部顯示同一捨入值。
+
+**範圍外**
+- 不修改折線圖座標計算邏輯
+- 不新增依序列波動動態決定小數位數的邏輯
+- 不變更貨幣符號/多幣別
+- 不變更 Y 軸金額標籤呼叫方式
+- 不擴大修正到 formatPercent/formatTaiwanDate
+
+**依賴**
+前置 SDLCCT-70（已 Done）
+
+**規模預估**
+<= 1 開發日
+
+## SDLCCT-72 — Agent 清單趨勢小圖與 Agent 詳情版本成本圖表資料源不同，天數與形狀對不上
+
+**使用者故事**
+作為使用 Agent 詳情頁的 FinOps / 工程主管，我想要「版本成本時間序列」圖表與表格固定顯示完整 7 天（與 Agent 清單頁的 7 天趨勢小圖涵蓋同一組日期），缺資料的日期明確顯示為「無資料」而不是整欄消失。
+
+**範圍**
+採方案 (a)，不要求兩畫面數字完全相同，但日期涵蓋範圍必須一致，都是以 anchor_date 回推的完整 7 天，缺資料顯示為「無資料」（沿用 value===null → 斷線 / formatCurrency(null) → 「—」慣例），不得補 0。純前端改動：version-cost-chart.tsx 新增 anchorDate prop 取代 unionSortedDates() 邏輯；agent-detail-content.tsx 傳入 state.data.anchor_date。不修改任何後端查詢邏輯。
+
+**驗收條件**
+5 個 Gherkin 情境，涵蓋日期軸永遠涵蓋完整 7 天、某天某 version 完全缺資料顯示「—」且折線斷開、既有「point 存在但 value 為 null」行為不變（回歸測試）、所有 version 當週無資料、entries 本身為空陣列。
+
+**範圍外**
+- 不修改任何後端查詢邏輯或新增交叉驗證（原票選項 (b)，明確不採用）
+- 不處理 Agent 清單頁小圖本身是否有同類風險
+- 不改變兩組數字是否應相等的產品定位
+- 不修改 Y 軸金額標示邏輯
+
+**依賴**
+需要 bff/api/agent_detail.py 回應既有的 anchor_date 欄位（已存在）
+
+**規模預估**
+<= 1 開發日
+
+## SDLCCT-75 — 圖表分類色票未驗證色盲安全：補上設計規範「資料視覺化」章節，並修正現有圖表配色
+
+**使用者故事**
+As a 色盲（紅綠色盲／deutan）使用者, I want Agent 詳情頁的多版本成本折線圖使用經色盲安全驗證過的分類色票, so that 我可以正確分辨圖表中不同版本對應的線段與圖例顏色，不會因相鄰色票色差過小而讀錯圖表。
+
+**範圍**
+(1) docs/design-system.md 新增「資料視覺化」章節（章節 11），含 8 色分類色票表格（#2a78d6藍/#eb6834橘/#1baf7a青綠/#eda100黃/#e87ba4洋紅/#008300綠/#6250d6紫/#e34948紅）、固定順位不循環規則、新增圖表前必查提醒。(2) frontend/components/agent-detail/version-cost-chart.tsx 的 COLORS 常數改用前 6 色，取代原本未經驗證的 ["#2563eb","#dc2626","#16a34a","#d97706","#7c3aed","#0891b2"]。
+
+**驗收條件**
+6 個 Gherkin 情境，涵蓋文件章節內容完整性、COLORS 常數精確值、色盲安全驗證記錄（ΔE≥8）、既有測試回歸、新增線段顏色斷言。
+
+**範圍外**
+- 不修改 Sparkline（單色不受影響）
+- 不處理 modulo 循環邏輯（版本數>6 時顏色重複，既有獨立問題）
+- 不實際使用第 7/8 色
+- 不建立 CI 色盲驗證工具鏈
+- 不回溯套用到其他圖表
+
+**Epic 歸屬**
+E3 Portal MVP
+
+**規模預估**
+<= 1 開發日

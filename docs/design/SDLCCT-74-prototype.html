@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>原型 — SDLCCT-74 最貴執行清單中繼資料可讀化</title>
+<style>
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #4B5563;
+    --color-border: #E5E7EB;
+    --color-accent: #2563EB;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #F9FAFB;
+    color: var(--color-text-primary);
+  }
+  header.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg);
+    padding: 12px 24px;
+  }
+  header.topbar .brand { font-size: 18px; line-height: 26px; font-weight: 600; }
+  main { max-width: 1040px; margin: 0 auto; padding: 24px; }
+  h1 { margin: 0 0 4px 0; font-size: 24px; line-height: 32px; font-weight: 700; }
+  p.subtitle { margin: 0 0 24px 0; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  h2 { margin: 0 0 16px 0; font-size: 18px; line-height: 26px; font-weight: 600; }
+  .note-box {
+    border: 1px dashed var(--color-accent);
+    background: #EFF6FF;
+    color: var(--color-text-primary);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    line-height: 18px;
+    margin-bottom: 24px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--color-border); color: var(--color-text-secondary); font-size: 12px; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--color-border); vertical-align: top; }
+  .row-note { font-size: 11px; color: var(--color-text-secondary); display: block; margin-top: 4px; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chip {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    background: #F3F4F6;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .chip .label { color: var(--color-text-secondary); }
+  .chip .value { color: var(--color-text-primary); font-weight: 600; }
+  .more-link {
+    font-size: 12px;
+    color: var(--color-accent);
+    text-decoration: underline;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+  }
+  .collapsed-section {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: #F9FAFB;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+  .collapsed-section div { padding: 2px 0; }
+  .dash { color: var(--color-text-secondary); }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">Agent Control Tower</div>
+  <div></div>
+</header>
+<main>
+  <h1>最貴執行清單 — metadata 欄位原型</h1>
+  <p class="subtitle">
+    frontend/components/agent-detail/top-traces-table.tsx 的 metadata 欄位，
+    由原始 JSON.stringify 改為可讀標籤 + 可展開的其餘欄位（SDLCCT-74）。
+    以下每一列對應一條 AC，非真實查詢結果。
+  </p>
+
+  <div class="note-box">
+    佔位資料為範例，非真實查詢結果。4 個常用欄位固定順序：
+    廠別（plant）→ 版本（deployed_version）→ 部門（dept）→ 觸發方式（trigger）。
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Trace ID</th><th>預估成本</th><th>中繼資料</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>trace-aaa</td>
+        <td>$12.30</td>
+        <td>
+          <div class="chip-row">
+            <span class="chip"><span class="label">廠別</span><span class="value">台中廠</span></span>
+            <span class="chip"><span class="label">版本</span><span class="value">v2.0</span></span>
+            <span class="chip"><span class="label">部門</span><span class="value">銷售部</span></span>
+            <span class="chip"><span class="label">觸發方式</span><span class="value">scheduler</span></span>
+            <button class="more-link" type="button">更多</button>
+          </div>
+          <span class="row-note">AC1：4 個常用欄位皆存在，收合區（cost_center/workflow/未知 key）預設收合。</span>
+        </td>
+      </tr>
+      <tr>
+        <td>trace-bbb</td>
+        <td>$9.80</td>
+        <td>
+          <div class="chip-row">
+            <span class="chip"><span class="label">廠別</span><span class="value">高雄廠</span></span>
+            <span class="chip"><span class="label">版本</span><span class="value">v1.0</span></span>
+            <span class="chip"><span class="label">部門</span><span class="value">採購部</span></span>
+            <span class="chip"><span class="label">觸發方式</span><span class="value">api</span></span>
+            <button class="more-link" type="button" aria-expanded="true">收合</button>
+          </div>
+          <div class="collapsed-section">
+            <div>cost_center: CC-204</div>
+            <div>workflow: rfq_batch_rerun</div>
+            <div>providers: openai,anthropic</div>
+          </div>
+          <span class="row-note">AC2：「更多」展開後（此處以靜態方式呈現已展開狀態）顯示收合區其餘 key:value，再次點擊「收合」收回。</span>
+        </td>
+      </tr>
+      <tr>
+        <td>trace-ccc</td>
+        <td>$6.40</td>
+        <td>
+          <div class="chip-row">
+            <span class="chip"><span class="label">廠別</span><span class="value">台中廠</span></span>
+            <span class="chip"><span class="label">版本</span><span class="value">v3.1</span></span>
+            <span class="chip"><span class="label">觸發方式</span><span class="value">scheduler</span></span>
+          </div>
+          <span class="row-note">AC3：本列 metadata 缺少 dept（也沒有 cost_center），只顯示存在的 3 個標籤，不顯示空白/undefined/null 文字，缺少的欄位也不出現在收合區。</span>
+        </td>
+      </tr>
+      <tr>
+        <td>trace-ddd</td>
+        <td>$3.10</td>
+        <td>
+          <span class="dash">—</span>
+          <span class="row-note">AC4：metadata 為 null，維持既有行為顯示「—」，不渲染任何標籤或展開控制項。</span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</main>
+</body>
+</html>
