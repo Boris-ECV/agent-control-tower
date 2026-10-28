@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-71 原型 — 版本成本時間序列表格小額金額小數精度</title>
+<style>
+  body {
+    font-family: -apple-system, "Segoe UI", "Noto Sans TC", sans-serif;
+    background: #0f1117;
+    color: #e6e6e6;
+    padding: 32px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  p.sub { color: #9aa0ab; margin-top: 0; margin-bottom: 28px; font-size: 14px; }
+  .panel {
+    background: #171a23;
+    border: 1px solid #2a2e3a;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+  .panel h2 {
+    font-size: 15px;
+    margin: 0 0 4px 0;
+  }
+  .panel .note {
+    font-size: 13px;
+    color: #9aa0ab;
+    margin: 0 0 14px 0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  th, td {
+    text-align: right;
+    padding: 8px 12px;
+    border-bottom: 1px solid #2a2e3a;
+  }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: #9aa0ab; font-weight: 500; }
+  td.amount { font-family: "SF Mono", Consolas, monospace; }
+  .before td.amount { color: #e2a33a; }
+  .after td.amount { color: #4caf7d; }
+  .flat-warning, .wave-ok {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .flat-warning { background: #3a2a1f; color: #e2a33a; }
+  .wave-ok { background: #1f3a2a; color: #4caf7d; }
+  .legend {
+    font-size: 12px;
+    color: #9aa0ab;
+    margin-top: 28px;
+    border-top: 1px solid #2a2e3a;
+    padding-top: 12px;
+  }
+</style>
+</head>
+<body>
+  <h1>SDLCCT-71 — 版本成本時間序列表格:修正前後對照原型</h1>
+  <p class="sub">
+    場景取自 Gherkin 情境 14:某 Agent 版本 10/9~10/14 六天每日成本依序為
+    2.1, 1.3, 2.8, 1.9, 2.4, 1.6(皆 &lt; US$100)。此原型僅展示表格文字內容
+    差異,不涉及折線圖座標計算或任何樣式變更。
+  </p>
+
+  <div class="panel before">
+    <h2>修正前(現況,bug)</h2>
+    <p class="note">formatCurrency 對 &lt; US$100 金額仍整數捨入,六天數值幾乎全部顯示相同整數,與折線圖上明顯的逐日波動不符。</p>
+    <table>
+      <thead>
+        <tr><th>日期</th><th>10/9</th><th>10/10</th><th>10/11</th><th>10/12</th><th>10/13</th><th>10/14</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>每日成本</td>
+          <td class="amount">US$ 2</td>
+          <td class="amount">US$ 1</td>
+          <td class="amount">US$ 3</td>
+          <td class="amount">US$ 2</td>
+          <td class="amount">US$ 2</td>
+          <td class="amount">US$ 2</td>
+        </tr>
+      </tbody>
+    </table>
+    <span class="flat-warning">⚠ 看起來像是持平 / 重複,與圖表波動不一致</span>
+  </div>
+
+  <div class="panel after">
+    <h2>修正後(本設計)</h2>
+    <p class="note">formatCurrency 對 &lt; US$100 金額一律顯示 2 位小數,六個儲存格各自不同,忠實反映折線圖上的逐日波動。</p>
+    <table>
+      <thead>
+        <tr><th>日期</th><th>10/9</th><th>10/10</th><th>10/11</th><th>10/12</th><th>10/13</th><th>10/14</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>每日成本</td>
+          <td class="amount">US$ 2.10</td>
+          <td class="amount">US$ 1.30</td>
+          <td class="amount">US$ 2.80</td>
+          <td class="amount">US$ 1.90</td>
+          <td class="amount">US$ 2.40</td>
+          <td class="amount">US$ 1.60</td>
+        </tr>
+      </tbody>
+    </table>
+    <span class="wave-ok">✓ 六格皆不相同,與折線圖波動一致</span>
+  </div>
+
+  <div class="panel">
+    <h2>門檻邊界行為(回歸,不受影響)</h2>
+    <p class="note">&gt;= US$100 的金額維持原本整數捨入 + 千分位,大額金額顯示不變。</p>
+    <table>
+      <thead>
+        <tr><th>輸入值</th><th>formatCurrency 輸出</th><th>說明</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0</td><td class="amount">US$ 0</td><td>真正的 0,不受影響</td></tr>
+        <tr><td>0.02</td><td class="amount">US$ 0.02</td><td>SDLCCT-70 既有行為涵蓋</td></tr>
+        <tr><td>99.99</td><td class="amount">US$ 99.99</td><td>門檻邊界:剛好 &lt; 100</td></tr>
+        <tr><td>100.4</td><td class="amount">US$ 100</td><td>門檻邊界:剛好 &gt;= 100,維持整數</td></tr>
+        <tr><td>1234.4</td><td class="amount">US$ 1,234</td><td>大額金額,維持整數 + 千分位</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="legend">
+    本原型為靜態展示,僅用於 G1b 設計審核時讓人類直接看到修正前後的視覺差異。
+    實際實作變更僅限 <code>frontend/lib/format.ts</code> 的
+    <code>formatCurrency</code>/<code>formatSignedCurrency</code>,詳見
+    <code>docs/design/SDLCCT-71.md</code>。
+  </p>
+</body>
+</html>
