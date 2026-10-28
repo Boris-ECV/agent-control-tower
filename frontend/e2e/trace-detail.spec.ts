@@ -75,6 +75,15 @@ test("Scenario 2: 200 with a non-empty span tree renders name/type/time for each
 
   await page.goto(`/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}`);
 
+  // SDLCCT-68: the sticky header no longer duplicates the sidebar's product
+  // title; the sidebar nav (components/layout/app-sidebar.tsx) remains the
+  // sole place "Agent Control Tower" is rendered, including on this
+  // trace-detail page explicitly named in the ticket's acceptance criteria.
+  await expect(
+    page.locator("header").getByText("Agent Control Tower"),
+  ).toHaveCount(0);
+  await expect(page.getByText("Agent Control Tower")).toBeVisible();
+
   await expect(page.getByText("root-chain")).toBeVisible();
   await expect(page.getByText("general")).toBeVisible();
   await expect(page.getByText("summarize")).toBeVisible();
