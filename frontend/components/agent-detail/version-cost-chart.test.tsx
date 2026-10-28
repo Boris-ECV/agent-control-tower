@@ -219,3 +219,51 @@ describe("VersionCostChart 日期軸固定 7 天 (SDLCCT-72)", () => {
     expect(container.querySelectorAll("tbody tr")).toHaveLength(0);
   });
 });
+
+describe("VersionCostChart 色盲安全色票 (SDLCCT-75)", () => {
+  it("6 個版本序列依序使用色盲安全驗證過的新色票（折線與圖例色塊一致）", () => {
+    const COLORBLIND_SAFE_COLORS = [
+      "#2a78d6",
+      "#eb6834",
+      "#1baf7a",
+      "#eda100",
+      "#e87ba4",
+      "#008300",
+    ];
+
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [{ date: "2026-10-14", value: 100 }]),
+      entry("v2", [{ date: "2026-10-14", value: 200 }]),
+      entry("v3", [{ date: "2026-10-14", value: 300 }]),
+      entry("v4", [{ date: "2026-10-14", value: 400 }]),
+      entry("v5", [{ date: "2026-10-14", value: 500 }]),
+      entry("v6", [{ date: "2026-10-14", value: 600 }]),
+    ];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-14" />,
+    );
+
+    const polylines = container.querySelectorAll("svg polyline");
+    expect(polylines).toHaveLength(6);
+    const strokes = Array.from(polylines).map((el) => el.getAttribute("stroke"));
+    expect(strokes).toEqual(COLORBLIND_SAFE_COLORS);
+
+    const swatches = container.querySelectorAll("ul li span");
+    expect(swatches).toHaveLength(6);
+    const backgroundColors = Array.from(swatches).map(
+      (el) => (el as HTMLElement).style.backgroundColor,
+    );
+    const expectedBackgroundColors = COLORBLIND_SAFE_COLORS.map(
+      (hex) => hexToRgb(hex),
+    );
+    expect(backgroundColors).toEqual(expectedBackgroundColors);
+  });
+});
+
+function hexToRgb(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgb(${r}, ${g}, ${b})`;
+}

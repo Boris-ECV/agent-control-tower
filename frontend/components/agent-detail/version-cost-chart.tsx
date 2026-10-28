@@ -12,7 +12,7 @@ const CHART_HEIGHT = 160;
 const CHART_PADDING = 24;
 
 // 固定色票，依 version 的索引輪替（不依賴任何圖表函式庫的調色盤）。
-const COLORS = ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed", "#0891b2"];
+const COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300"];
 
 function fixedSevenDates(anchorDate: string): string[] {
   const anchor = new Date(`${anchorDate}T00:00:00Z`);
