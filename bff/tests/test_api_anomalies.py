@@ -367,6 +367,48 @@ def test_ac1_normal_rule_anomalous_night_batch_burst_emits_row_with_reason(monke
     )
 
 
+def test_ac1_normal_rule_anomalous_night_batch_burst_without_corroborating_workflow(monkeypatch):
+    # Covers the else-branch of _night_batch_burst_reason: is_anomalous=True
+    # AND corroborating_workflow=None must still produce a complete,
+    # human-readable sentence with no "可能與批次工作流程...相關" clause and
+    # no literal "None" in the output (SDLCCT-65 review follow-up).
+    _patch_all_no_findings(monkeypatch)
+
+    def anomalous_night_batch_burst_no_workflow(project_id, **kw):
+        if project_id != "supply_risk_monitor":
+            return _not_anomalous_night_batch_burst(project_id, **kw)
+        return NightBatchBurstFinding(
+            project_id=project_id,
+            is_anomalous=True,
+            ratio_threshold=10.0,
+            off_hours_window_utc=(17, 19),
+            off_hours_trace_count=42,
+            baseline_hourly_rate=1.0,
+            ratio=42.0,
+            corroborating_workflow=None,
+        )
+
+    monkeypatch.setattr(
+        anomalies_module, "detect_night_batch_burst", anomalous_night_batch_burst_no_workflow
+    )
+
+    resp = client.get("/api/anomalies")
+    assert resp.status_code == 200
+    rows = resp.json()["anomalies"]
+
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["agent"] == "supply_risk_monitor"
+    assert row["anomaly_type"] == "night_batch_burst"
+    assert row["date"] == ANCHOR_DATE_ISO
+    assert row["status"] == "ok"
+    assert row["reason"] == (
+        "此 Agent 於非營業時段（UTC 17:00–19:00）出現異常大量請求，約為平時同時段的 42 倍"
+    )
+    assert "None" not in row["reason"]
+    assert "可能與批次工作流程" not in row["reason"]
+
+
 def test_ac6_model_switch_exception_emits_explicit_error_row(monkeypatch):
     # AC6 for model_switch's own try/except block (_run_model_switch),
     # a code path distinct from the normal-rule (_run_target_date_rule) and
