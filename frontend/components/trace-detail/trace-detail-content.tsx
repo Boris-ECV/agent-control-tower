@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useCallback } from "react";
 
 import { SpanTreeRow } from "@/components/trace-detail/span-tree-row";
+import { BackLink } from "@/components/common/back-link";
 import { ErrorCard } from "@/components/cost-overview/error-card";
 import { fetchTraceSpans } from "@/lib/trace-spans-api";
 import { t } from "@/lib/i18n/t";
@@ -31,6 +32,7 @@ export function TraceDetailContent() {
   return (
     <div className="flex min-h-full flex-col bg-gray-50">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-bg px-6 py-3">
+        <BackLink href={`/agents/${key}`} label={t("traceDetail.header.backToAgent")} />
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-6">

@@ -340,3 +340,83 @@ test("AC5: backend 502 shows an explicit error card, never blank", async ({ page
   await expect(page.getByText("模型成本分解")).toHaveCount(0);
   await expect(page.getByText("最貴執行清單")).toHaveCount(0);
 });
+
+test("SDLCCT-64: header back link navigates to /agents via click, Enter, and Space, and stays usable under loading/error", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [],
+        model_cost_breakdown: [],
+        top_traces: [],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const backLink = page.getByRole("link", { name: "返回 Agent 清單" });
+  await expect(backLink).toHaveAttribute("href", "/agents");
+  await backLink.click();
+  await expect(page).toHaveURL("/agents");
+
+  // Keyboard: focus the back link directly, then Enter (native <a> behavior).
+  await page.goto(`/agents/${MOCK_KEY}`);
+  const backLinkForEnter = page.getByRole("link", { name: "返回 Agent 清單" });
+  await backLinkForEnter.focus();
+  await expect(backLinkForEnter).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL("/agents");
+
+  // Keyboard: focus the back link directly, then Space (manual onKeyDown handler).
+  await page.goto(`/agents/${MOCK_KEY}`);
+  const backLinkForSpace = page.getByRole("link", { name: "返回 Agent 清單" });
+  await backLinkForSpace.focus();
+  await expect(backLinkForSpace).toBeFocused();
+  await page.keyboard.press(" ");
+  await expect(page).toHaveURL("/agents");
+});
+
+test("SDLCCT-64: header back link remains visible and usable while the cost-breakdown request is pending", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async () => {
+    // Never fulfill: simulates an indefinitely pending request so the page
+    // stays in its loading state.
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const backLink = page.getByRole("link", { name: "返回 Agent 清單" });
+  await expect(backLink).toBeVisible();
+  await expect(backLink).toHaveAttribute("href", "/agents");
+  await backLink.click();
+  await expect(page).toHaveURL("/agents");
+});
+
+test("SDLCCT-64: header back link remains visible and usable when the cost-breakdown request errors", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 502,
+      contentType: "application/json",
+      body: JSON.stringify({ error: { message: "Opik query failed" } }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const backLink = page.getByRole("link", { name: "返回 Agent 清單" });
+  await expect(backLink).toBeVisible();
+  await expect(backLink).toHaveAttribute("href", "/agents");
+  await backLink.click();
+  await expect(page).toHaveURL("/agents");
+});
