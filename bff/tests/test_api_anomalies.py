@@ -160,7 +160,10 @@ def test_ac1_normal_rule_anomalous_emits_one_row_with_target_date(monkeypatch):
     assert row["anomaly_type"] == "context_bloat"
     assert row["date"] == ANCHOR_DATE_ISO
     assert row["status"] == "ok"
-    assert "2.0" in row["reason"]
+    assert row["reason"] == (
+        "此 Agent 近期每筆對話的 prompt token 使用量較過去 21 天基準值"
+        "高出約 100%（目前約 200、基準約 100 tokens/trace）"
+    )
 
 
 def test_ac3_model_switch_with_switch_date_and_anomalous_emits_one_row(monkeypatch):
@@ -193,9 +196,7 @@ def test_ac3_model_switch_with_switch_date_and_anomalous_emits_one_row(monkeypat
     assert row["anomaly_type"] == "model_switch"
     assert row["date"] == switch_date.isoformat()
     assert row["status"] == "ok"
-    assert "model:gpt-cheap" in row["reason"]
-    assert "model:gpt-expensive" in row["reason"]
-    assert "5.0" in row["reason"]
+    assert row["reason"] == "模型於 9/28 由 gpt-cheap 切換為 gpt-expensive，成本偏離正常值約 5 倍"
 
 
 def test_ac4_model_switch_with_no_switch_date_emits_no_row(monkeypatch):
@@ -231,7 +232,7 @@ def test_ac5_governance_gaps_flagged_subset_emits_rows_with_null_date(monkeypatc
     assert "date" in row  # key always present
     assert row["date"] is None
     assert row["status"] == "ok"
-    assert "registered=False" in row["reason"]
+    assert row["reason"] == "此 Agent 尚未登錄負責人與預算，過去一日花費約 未知"
 
 
 def test_ac6_rule_exception_emits_explicit_error_row_and_other_agents_continue(monkeypatch):
@@ -322,8 +323,10 @@ def test_ac1_normal_rule_anomalous_tool_retry_loop_emits_row_with_reason(monkeyp
     assert row["anomaly_type"] == "tool_retry_loop"
     assert row["date"] == ANCHOR_DATE_ISO
     assert row["status"] == "ok"
-    assert "error_rate=0.25" in row["reason"]
-    assert "3.0" in row["reason"]
+    assert row["reason"] == (
+        "此 Agent 近期錯誤率與平均工具呼叫次數同時異常升高：錯誤率約 25%，"
+        "平均每筆對話呼叫工具次數較基準值高出約 3 倍（目前約 3.0、基準約 1.0 次/trace）"
+    )
 
 
 def test_ac1_normal_rule_anomalous_night_batch_burst_emits_row_with_reason(monkeypatch):
@@ -358,8 +361,10 @@ def test_ac1_normal_rule_anomalous_night_batch_burst_emits_row_with_reason(monke
     assert row["anomaly_type"] == "night_batch_burst"
     assert row["date"] == ANCHOR_DATE_ISO
     assert row["status"] == "ok"
-    assert "off_hours_trace_count=42" in row["reason"]
-    assert "nightly_sync" in row["reason"]
+    assert row["reason"] == (
+        "此 Agent 於非營業時段（UTC 17:00–19:00）出現異常大量請求，"
+        "約為平時同時段的 42 倍，可能與批次工作流程「nightly_sync」相關"
+    )
 
 
 def test_ac6_model_switch_exception_emits_explicit_error_row(monkeypatch):
@@ -391,12 +396,13 @@ def test_ac6_model_switch_exception_emits_explicit_error_row(monkeypatch):
     assert [r for r in rows if r["anomaly_type"] != "model_switch"] == []
 
 
-def test_ac5_governance_gap_reason_includes_owner_budget_and_cost_fields(monkeypatch):
-    # The existing AC5 test only exercises the all-None (unregistered, no
-    # owner/budget/cost) case and only asserts "registered=False" is in the
-    # reason string -- it does not prove owner/budget/cost values actually
-    # appear. Exercise a flagged *registered* agent with real owner/budget/
-    # cost values instead.
+def test_ac5_governance_gap_reason_uses_fixed_template_and_computed_cost(monkeypatch):
+    # SDLCCT-65: the reason is now a fixed business-language template that
+    # does not vary with owner/budget/registered -- it only ever shows the
+    # computed last_day_cost amount (or "未知" when cost is unknown, see
+    # the other AC5 test above). Exercise a flagged *registered* agent with
+    # real owner/budget/cost values to confirm those raw fields are NOT
+    # echoed into the reason string, only the formatted cost is.
     _patch_all_no_findings(monkeypatch)
 
     finding = GovernanceGapFinding(
@@ -420,11 +426,9 @@ def test_ac5_governance_gap_reason_includes_owner_budget_and_cost_fields(monkeyp
     assert row["agent"] == "production_scheduler"
     assert row["date"] is None
     assert row["status"] == "ok"
-    assert "owner='team-ops'" in row["reason"]
-    assert "budget=500.0" in row["reason"]
-    assert "first_day_cost=10.0" in row["reason"]
-    assert "last_day_cost=20.0" in row["reason"]
-    assert "registered=True" in row["reason"]
+    assert row["reason"] == "此 Agent 尚未登錄負責人與預算，過去一日花費約 US$ 20"
+    assert "team-ops" not in row["reason"]
+    assert "500.0" not in row["reason"]
 
 
 def test_ac7_coverage_one_call_per_rule_per_registered_agent_and_one_batch_governance_call(monkeypatch):
