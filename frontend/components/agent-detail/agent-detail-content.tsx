@@ -6,6 +6,7 @@ import { useCallback } from "react";
 import { ModelBreakdownTable } from "@/components/agent-detail/model-breakdown-table";
 import { TopTracesTable } from "@/components/agent-detail/top-traces-table";
 import { VersionCostChart } from "@/components/agent-detail/version-cost-chart";
+import { BackLink } from "@/components/common/back-link";
 import { ErrorCard } from "@/components/cost-overview/error-card";
 import { fetchAgentCostBreakdown } from "@/lib/agent-detail-api";
 import { formatTaiwanDate } from "@/lib/format";
@@ -36,7 +37,8 @@ export function AgentDetailContent() {
 
   return (
     <div className="flex min-h-full flex-col bg-gray-50">
-      <header className="sticky top-0 z-10 flex items-center justify-end border-b border-border bg-bg px-6 py-3">
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-bg px-6 py-3">
+        <BackLink href="/agents" label={t("agentDetail.header.backToList")} />
         <span className="text-xs leading-[18px] text-text-secondary">
           {state.status === "success"
             ? formatTaiwanDate(state.data.anchor_date)
