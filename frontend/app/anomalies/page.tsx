@@ -21,10 +21,7 @@ export default function AnomaliesPage() {
 
   return (
     <div className="flex min-h-full flex-col bg-gray-50">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-bg px-6 py-3">
-        <span className="text-lg leading-[26px] font-semibold text-text-primary">
-          Agent Control Tower
-        </span>
+      <header className="sticky top-0 z-10 flex items-center justify-end border-b border-border bg-bg px-6 py-3">
         <span className="text-xs leading-[18px] text-text-secondary">
           {state.status === "success"
             ? formatTaiwanDate(state.data.anchor_date)
