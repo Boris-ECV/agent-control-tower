@@ -234,6 +234,65 @@ test("SDLCCT-74 AC1/AC2: top_traces metadata renders the 4 known fields as label
   await expect(row.getByText("cost_center: CC-01")).toHaveCount(0);
 });
 
+test("SDLCCT-74 AC2: keyboard activation (Enter) of the 更多 button toggles expand without navigating away from the row", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [],
+        model_cost_breakdown: [],
+        top_traces: [
+          {
+            id: "trace-001",
+            total_estimated_cost: 999,
+            metadata: {
+              plant: "P1",
+              deployed_version: "v2.1",
+              dept: "Sales",
+              trigger: "manual",
+              providers: "openai",
+              cost_center: "CC-01",
+            },
+          },
+        ],
+      }),
+    });
+  });
+  await page.route(`**/api/agents/${MOCK_KEY}/traces/trace-001/spans`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ key: MOCK_KEY, trace_id: "trace-001", spans: [] }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const row = page.locator("tr", { hasText: "trace-001" });
+  const moreButton = row.getByRole("button", { name: "更多" });
+  await moreButton.focus();
+  await page.keyboard.press("Enter");
+
+  // Expanding via keyboard must not trigger the row's own onClick/onKeyDown
+  // navigation (stopPropagation safety check) — we must still be on the
+  // agent detail page, with the collapsed fields now visible.
+  await expect(page).toHaveURL(`/agents/${MOCK_KEY}`);
+  await expect(row.getByText("providers: openai")).toBeVisible();
+  await expect(row.getByText("cost_center: CC-01")).toBeVisible();
+
+  // Second Enter press collapses it back and still doesn't navigate.
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(`/agents/${MOCK_KEY}`);
+  await expect(row.getByText("providers: openai")).toHaveCount(0);
+});
+
 test("SDLCCT-74 AC3: a missing known field (dept) renders no blank/undefined chip, and is absent from the collapsed section too", async ({
   page,
 }) => {
