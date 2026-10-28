@@ -540,13 +540,23 @@ always be recoverable from the board alone.
 Reports and ticket comments to the human: Traditional Chinese (繁體中文).
 Code, commits, branch names, PR descriptions, config: English.
 
-When writing Traditional Chinese into a Jira field, prefer passing
-literal UTF-8 text over hand-typed `\uXXXX` escapes. A single-digit
-escape typo silently produces a different-but-valid CJK character —
-the JSON is well-formed and the API call succeeds, so nothing errors;
-the mistake only surfaces if a human happens to read the rendered
-text closely. If escapes are unavoidable, re-read the field immediately
-after writing and visually check the CJK characters before moving on.
+When writing Traditional Chinese into a Jira field, **never hand-type
+`\uXXXX` escapes — always pass literal UTF-8 text directly in the tool
+call.** A single-digit escape typo silently produces a different-but-valid
+CJK character — the JSON is well-formed and the API call succeeds, so
+nothing errors; the mistake only surfaces if a human happens to read the
+rendered text closely. This has recurred three times in one project despite
+being written up as a memory lesson each time ("prefer literal UTF-8" was
+treated as a soft preference, not a hard rule) — stating the preference in
+memory alone does not change in-the-moment behavior under task pressure, so
+the rule is now absolute, not a preference. For any long or complex
+Traditional Chinese block (e.g. a multi-scenario Gherkin spec), draft it in
+a scratch file first (where literal characters are the only natural way to
+type) and pass that file's content into the tool call, rather than
+composing CJK text inline inside tool-call JSON. Regardless of how the text
+was composed, always re-read the field immediately after writing and
+visually check the CJK characters before moving on — this is the safety
+net, never the primary control.
 
 A second, distinct source of the same symptom: text a subagent hands back
 (e.g. requirements-analyst's drafted spec) can itself contain stray
