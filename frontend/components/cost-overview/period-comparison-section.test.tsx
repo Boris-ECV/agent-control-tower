@@ -78,13 +78,13 @@ describe("PeriodComparisonSection delta column", () => {
     expect(screen.queryByText(/%/)).not.toBeInTheDocument();
   });
 
-  it("previous=US$10 (boundary), current=US$20: shows +US$ 10（100.0%）and no badge", async () => {
+  it("previous=US$10 (boundary), current=US$20: shows +US$ 10.00（100.0%）and no badge (SDLCCT-71: delta < US$100 now shows 2 decimals)", async () => {
     fetchPeriodComparison.mockResolvedValueOnce(makeComparison(20, 10, 10, 100.0));
 
     const { container } = render(<PeriodComparisonSection />);
 
     await waitFor(() =>
-      expect(deltaCellText(container)).toBe("+US$ 10（100.0%）"),
+      expect(deltaCellText(container)).toBe("+US$ 10.00（100.0%）"),
     );
     expect(screen.queryByText("新增顯著支出")).not.toBeInTheDocument();
   });

@@ -32,12 +32,13 @@ describe("VersionCostChart Y 軸金額標示 (SDLCCT-73)", () => {
     const CHART_PADDING = 24;
     const contents = Array.from(texts).map((el) => el.textContent);
     expect(contents).toContain("US$ 400");
-    expect(contents).toContain("US$ 50");
+    // SDLCCT-71: 50 < US$100 門檻，formatCurrency 顯示 2 位小數。
+    expect(contents).toContain("US$ 50.00");
 
     // max=400 的標示對齊圖表最上方（y === CHART_PADDING）；
     // min=50 的標示對齊圖表最下方（y === CHART_HEIGHT - CHART_PADDING = 136）。
     const maxText = Array.from(texts).find((el) => el.textContent === "US$ 400");
-    const minText = Array.from(texts).find((el) => el.textContent === "US$ 50");
+    const minText = Array.from(texts).find((el) => el.textContent === "US$ 50.00");
     expect(Number(maxText?.getAttribute("y"))).toBeCloseTo(CHART_PADDING, 1);
     expect(Number(minText?.getAttribute("y"))).toBeCloseTo(136, 1);
 
@@ -82,5 +83,35 @@ describe("VersionCostChart Y 軸金額標示 (SDLCCT-73)", () => {
     const texts = container.querySelectorAll("svg text");
 
     expect(texts).toHaveLength(0);
+  });
+});
+
+describe("VersionCostChart 表格小額金額顯示精度 (SDLCCT-71)", () => {
+  it("六天皆為小額（< US$100）的每日成本，表格儲存格各自顯示 2 位小數且不全部相同", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [
+        { date: "2026-10-09", value: 2.1 },
+        { date: "2026-10-10", value: 1.3 },
+        { date: "2026-10-11", value: 2.8 },
+        { date: "2026-10-12", value: 1.9 },
+        { date: "2026-10-13", value: 2.4 },
+        { date: "2026-10-14", value: 1.6 },
+      ]),
+    ];
+
+    const { container } = render(<VersionCostChart entries={entries} />);
+    const row = container.querySelector("tbody tr");
+    const cells = row ? Array.from(row.querySelectorAll("td")).slice(1) : [];
+    const cellTexts = cells.map((c) => c.textContent);
+
+    expect(cellTexts).toEqual([
+      "US$ 2.10",
+      "US$ 1.30",
+      "US$ 2.80",
+      "US$ 1.90",
+      "US$ 2.40",
+      "US$ 1.60",
+    ]);
+    expect(new Set(cellTexts).size).toBeGreaterThan(1);
   });
 });

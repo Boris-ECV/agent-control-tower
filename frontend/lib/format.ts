@@ -4,7 +4,7 @@
 
 export function formatCurrency(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
-  if (Math.round(value) === 0 && value !== 0) {
+  if (Math.abs(value) < 100 && value !== 0) {
     return `US$ ${value.toLocaleString("zh-TW", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
@@ -22,7 +22,7 @@ export function formatSignedCurrency(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
   const sign = value > 0 ? "+" : value < 0 ? "-" : "";
   const abs = Math.abs(value);
-  if (Math.round(abs) === 0 && abs !== 0) {
+  if (abs < 100 && abs !== 0) {
     return `${sign}US$ ${abs.toLocaleString("zh-TW", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
