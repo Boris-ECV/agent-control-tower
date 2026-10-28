@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-75 — 色盲安全色票原型（design-system.md 章節 11 + 折線圖換色）</title>
+<style>
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #FFFFFF;
+    color: #1F2937;
+    max-width: 960px;
+    margin: 32px auto;
+    padding: 0 24px;
+    line-height: 1.6;
+  }
+  h1 { font-size: 24px; font-weight: 700; }
+  h2 { font-size: 18px; font-weight: 600; margin-top: 48px; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px; }
+  p.meta { font-size: 12px; color: #4B5563; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 14px; }
+  th, td { border-bottom: 1px solid #E5E7EB; padding: 8px 12px; text-align: left; }
+  th { color: #4B5563; font-size: 12px; }
+  .swatch {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    vertical-align: middle;
+    margin-right: 8px;
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+  .compare-row { display: flex; gap: 48px; margin: 24px 0; flex-wrap: wrap; }
+  .compare-col { flex: 1; min-width: 320px; }
+  .compare-col h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .compare-col .note { font-size: 12px; color: #4B5563; margin-bottom: 12px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 0; margin: 0 0 16px 0; list-style: none; }
+  .legend li { display: flex; align-items: center; font-size: 12px; color: #4B5563; }
+  .legend .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; display: inline-block; }
+  .deuter { filter: url(#deuteranopia); }
+  .box { border: 1px solid #E5E7EB; border-radius: 6px; padding: 16px; background: #FFFFFF; }
+  .warn { background: #FFFBEB; border: 1px solid #FDE68A; padding: 12px 16px; border-radius: 6px; font-size: 13px; }
+  code { background: #F3F4F6; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<!--
+  SVG feColorMatrix 近似模擬 deuteranopia（紅綠色盲，M 視錐缺陷）視覺效果。
+  係數採用業界常見的 Machado/Viénot 線性變換近似矩陣（簡化版，供肉眼示意用，
+  非正式醫學驗證工具）。實際驗收所用的 ΔE 驗證方法見設計文件「關鍵技術決策 3」。
+-->
+<svg width="0" height="0" style="position:absolute">
+  <filter id="deuteranopia" color-interpolation-filters="linearRGB">
+    <feColorMatrix type="matrix" values="
+      0.625 0.375 0     0 0
+      0.700 0.300 0     0 0
+      0     0.300 0.700 0 0
+      0     0     0     1 0
+    "/>
+  </filter>
+</svg>
+
+<h1>SDLCCT-75 — 多版本成本折線圖色盲安全色票原型</h1>
+<p class="meta">
+  靜態原型，無需安裝任何套件，直接用瀏覽器開啟即可。右側「deuteranopia 模擬」
+  欄位使用 SVG <code>feColorMatrix</code> 濾鏡近似模擬紅綠色盲視覺效果，僅供
+  肉眼示意比較用，不是本票的正式驗收依據（正式驗收依據見設計文件「關鍵技術
+  決策 3」的 OKLab 色差公式）。
+</p>
+
+<h2>一、docs/design-system.md 章節 11（資料視覺化）色票表格預覽</h2>
+<table>
+  <thead>
+    <tr><th>順位</th><th>色相</th><th>Hex</th><th>色塊</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>1</td><td>藍</td><td>#2a78d6</td><td><span class="swatch" style="background:#2a78d6"></span></td></tr>
+    <tr><td>2</td><td>橘</td><td>#eb6834</td><td><span class="swatch" style="background:#eb6834"></span></td></tr>
+    <tr><td>3</td><td>青綠</td><td>#1baf7a</td><td><span class="swatch" style="background:#1baf7a"></span></td></tr>
+    <tr><td>4</td><td>黃</td><td>#eda100</td><td><span class="swatch" style="background:#eda100"></span></td></tr>
+    <tr><td>5</td><td>洋紅</td><td>#e87ba4</td><td><span class="swatch" style="background:#e87ba4"></span></td></tr>
+    <tr><td>6</td><td>綠</td><td>#008300</td><td><span class="swatch" style="background:#008300"></span></td></tr>
+    <tr><td>7</td><td>紫</td><td>#6250d6</td><td><span class="swatch" style="background:#6250d6"></span></td></tr>
+    <tr><td>8</td><td>紅</td><td>#e34948</td><td><span class="swatch" style="background:#e34948"></span></td></tr>
+  </tbody>
+</table>
+<div class="warn">
+  固定順位，不可循環使用／不可重新排序。任何圖表的第 N 個資料序列固定對應色票
+  第 N 個順位。新增圖表前必須先查本章節，不可自行選色。前 3 色在任意組合下通
+  過色盲安全驗證；超過 3 色時必須搭配圖例或資料標籤，不可純靠顏色分辨。
+</div>
+
+<h2>二、version-cost-chart.tsx 圖例色塊 — 換色前 / 換色後對照</h2>
+<div class="compare-row">
+  <div class="compare-col">
+    <h3>換色前（舊色票，一般視覺）</h3>
+    <div class="note">["#2563eb","#dc2626","#16a34a","#d97706","#7c3aed","#0891b2"]</div>
+    <div class="box">
+      <ul class="legend">
+        <li><span class="dot" style="background:#2563eb"></span>v1.0</li>
+        <li><span class="dot" style="background:#dc2626"></span>v1.1</li>
+        <li><span class="dot" style="background:#16a34a"></span>v1.2</li>
+        <li><span class="dot" style="background:#d97706"></span>v1.3</li>
+        <li><span class="dot" style="background:#7c3aed"></span>v1.4</li>
+        <li><span class="dot" style="background:#0891b2"></span>v1.5</li>
+      </ul>
+    </div>
+  </div>
+  <div class="compare-col">
+    <h3>換色前（deuteranopia 模擬）</h3>
+    <div class="note">注意藍／紫在此模擬下趨近，綠／橘對比亦減弱</div>
+    <div class="box deuter">
+      <ul class="legend">
+        <li><span class="dot" style="background:#2563eb"></span>v1.0</li>
+        <li><span class="dot" style="background:#dc2626"></span>v1.1</li>
+        <li><span class="dot" style="background:#16a34a"></span>v1.2</li>
+        <li><span class="dot" style="background:#d97706"></span>v1.3</li>
+        <li><span class="dot" style="background:#7c3aed"></span>v1.4</li>
+        <li><span class="dot" style="background:#0891b2"></span>v1.5</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="compare-row">
+  <div class="compare-col">
+    <h3>換色後（新色票，一般視覺）</h3>
+    <div class="note">["#2a78d6","#eb6834","#1baf7a","#eda100","#e87ba4","#008300"]（色票順位 1-6）</div>
+    <div class="box">
+      <ul class="legend">
+        <li><span class="dot" style="background:#2a78d6"></span>v1.0</li>
+        <li><span class="dot" style="background:#eb6834"></span>v1.1</li>
+        <li><span class="dot" style="background:#1baf7a"></span>v1.2</li>
+        <li><span class="dot" style="background:#eda100"></span>v1.3</li>
+        <li><span class="dot" style="background:#e87ba4"></span>v1.4</li>
+        <li><span class="dot" style="background:#008300"></span>v1.5</li>
+      </ul>
+    </div>
+  </div>
+  <div class="compare-col">
+    <h3>換色後（deuteranopia 模擬）</h3>
+    <div class="note">相鄰色塊在模擬下仍維持明顯區隔（已通過 ΔE ≥ 8 驗證，見設計文件）</div>
+    <div class="box deuter">
+      <ul class="legend">
+        <li><span class="dot" style="background:#2a78d6"></span>v1.0</li>
+        <li><span class="dot" style="background:#eb6834"></span>v1.1</li>
+        <li><span class="dot" style="background:#1baf7a"></span>v1.2</li>
+        <li><span class="dot" style="background:#eda100"></span>v1.3</li>
+        <li><span class="dot" style="background:#e87ba4"></span>v1.4</li>
+        <li><span class="dot" style="background:#008300"></span>v1.5</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h2>三、折線圖線段模擬（簡化示意，非實際 SVG 元件渲染）</h2>
+<div class="compare-row">
+  <div class="compare-col">
+    <h3>換色前 — deuteranopia 模擬</h3>
+    <svg width="100%" height="100" viewBox="0 0 480 100" class="deuter">
+      <polyline points="10,80 110,40 210,60 310,20 410,50" fill="none" stroke="#2563eb" stroke-width="3"/>
+      <polyline points="10,70 110,60 210,30 310,50 410,30" fill="none" stroke="#dc2626" stroke-width="3"/>
+      <polyline points="10,50 110,80 210,45 310,70 410,40" fill="none" stroke="#16a34a" stroke-width="3"/>
+      <polyline points="10,30 110,20 210,70 310,30 410,60" fill="none" stroke="#d97706" stroke-width="3"/>
+      <polyline points="10,90 110,50 210,20 310,60 410,80" fill="none" stroke="#7c3aed" stroke-width="3"/>
+      <polyline points="10,40 110,30 210,80 310,40 410,20" fill="none" stroke="#0891b2" stroke-width="3"/>
+    </svg>
+  </div>
+  <div class="compare-col">
+    <h3>換色後 — deuteranopia 模擬</h3>
+    <svg width="100%" height="100" viewBox="0 0 480 100" class="deuter">
+      <polyline points="10,80 110,40 210,60 310,20 410,50" fill="none" stroke="#2a78d6" stroke-width="3"/>
+      <polyline points="10,70 110,60 210,30 310,50 410,30" fill="none" stroke="#eb6834" stroke-width="3"/>
+      <polyline points="10,50 110,80 210,45 310,70 410,40" fill="none" stroke="#1baf7a" stroke-width="3"/>
+      <polyline points="10,30 110,20 210,70 310,30 410,60" fill="none" stroke="#eda100" stroke-width="3"/>
+      <polyline points="10,90 110,50 210,20 310,60 410,80" fill="none" stroke="#e87ba4" stroke-width="3"/>
+      <polyline points="10,40 110,30 210,80 310,40 410,20" fill="none" stroke="#008300" stroke-width="3"/>
+    </svg>
+  </div>
+</div>
+
+</body>
+</html>
