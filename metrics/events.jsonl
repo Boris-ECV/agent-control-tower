@@ -253,3 +253,36 @@
 {"ts": "2026-10-28T11:49:16+08:00", "event": "stage_transition", "ticket": "SDLCCT-67", "agent": "orch-20261028-sess1", "data": {"from": "Refining", "to": "Designing"}}
 {"ts": "2026-10-28T11:50:07+08:00", "event": "gate_review", "ticket": "SDLCCT-68", "agent": "orch-20261028-sess1", "data": {"gate": "G1", "mode": "auto", "result": "approved", "criteria_results": {"no_human_gate_label": "pass", "gherkin_present": "pass", "out_of_scope_declared": "pass", "no_open_questions": "pass", "size_ok": "pass"}}}
 {"ts": "2026-10-28T11:50:07+08:00", "event": "stage_transition", "ticket": "SDLCCT-68", "agent": "orch-20261028-sess1", "data": {"from": "Refining", "to": "Designing"}}
+{"ts": "2026-10-28T11:58:14+08:00", "event": "gate_review", "ticket": "SDLCCT-68", "agent": "orch-20261028-k7q2", "data": {"gate": "G1b", "mode": "auto", "result": "approved", "criteria_results": {"no_human_gate_label": "pass", "design_doc_exists": "pass", "interface_declared": "pass", "data_model_declared": "pass", "no_open_design_questions": "pass", "ui_prototype_present": "pass"}}}
+{"ts": "2026-10-28T11:58:14+08:00", "event": "stage_transition", "ticket": "SDLCCT-68", "agent": "orch-20261028-k7q2", "data": {"from": "Designing", "to": "Ready"}}
+{"ts": "2026-10-28T11:58:33+08:00", "event": "stage_transition", "ticket": "SDLCCT-68", "agent": "orch-20261028-k7q2", "data": {"from": "Ready", "to": "In Progress"}}
+{"ts": "2026-10-28T12:17:00+08:00", "event": "stage_transition", "ticket": "SDLCCT-68", "agent": "orch-20261028-k7q2", "data": {"from": "In Progress", "to": "Testing"}}
+{"ts": "2026-10-28T12:22:39+08:00", "event": "stage_transition", "ticket": "SDLCCT-68", "agent": "orch-20261028-k7q2", "data": {"from": "Testing", "to": "In Review"}}
+{"ts": "2026-10-28T12:24:54+08:00", "event": "gate_review", "ticket": "SDLCCT-68", "agent": "orch-20261028-k7q2", "data": {"gate": "G2", "mode": "auto", "result": "approved", "criteria_results": {"no_human_gate_label": "pass", "protected_paths_untouched": "pass", "pr_exists": "pass", "ci_green": "pass", "reviewer_approve": "pass", "checklist_complete": "pass", "coverage_met": "pass(N/A-profile-scope)", "e2e_declared_and_honored": "pass(gap-found-and-fixed)"}}}
+{"ts": "2026-10-28T12:28:11+08:00", "event": "stage_transition", "ticket": "SDLCCT-68", "agent": "orch-20261028-k7q2", "data": {"from": "In Review", "to": "Done"}}
+{"ts": "2026-10-28T13:25:36+08:00", "event": "gate_review", "ticket": "SDLCCT-64", "agent": "orch-20261028-k7q2", "data": {"gate": "G1b", "mode": "auto", "result": "approved"}}
+{"ts": "2026-10-28T13:25:36+08:00", "event": "stage_transition", "ticket": "SDLCCT-64", "agent": "orch-20261028-k7q2", "data": {"from": "Designing", "to": "Ready"}}
+{"ts": "2026-10-28T13:26:36+08:00", "event": "stage_transition", "ticket": "SDLCCT-64", "agent": "orch-20261028-k7q2", "data": {"from": "Ready", "to": "In Progress"}}
+{"ts": "2026-10-28T13:45:02+08:00", "event": "stage_transition", "ticket": "SDLCCT-64", "agent": "orch-20261028-k7q2", "data": {"from": "In Progress", "to": "Testing"}}
+{"ts": "2026-10-28T13:48:33+08:00", "event": "stage_transition", "ticket": "SDLCCT-64", "agent": "orch-20261028-k7q2", "data": {"from": "Testing", "to": "In Review"}}
+{"ts": "2026-10-28T14:19:12+08:00", "event": "gate_review", "ticket": "SDLCCT-64", "agent": "orch-20261028-k7q2", "data": {"gate": "G2", "mode": "auto", "result": "approved"}}
+{"ts": "2026-10-28T14:19:12+08:00", "event": "stage_transition", "ticket": "SDLCCT-64", "agent": "orch-20261028-k7q2", "data": {"from": "In Review", "to": "Done"}}
+{"ts": "2026-10-28T13:25:38+08:00", "event": "gate_review", "ticket": "SDLCCT-65", "agent": "orch-20261028-k7q2", "data": {"gate": "G1b", "mode": "auto", "result": "approved"}}
+{"ts": "2026-10-28T13:25:38+08:00", "event": "stage_transition", "ticket": "SDLCCT-65", "agent": "orch-20261028-k7q2", "data": {"from": "Designing", "to": "Ready"}}
+{"ts": "2026-10-28T13:26:38+08:00", "event": "stage_transition", "ticket": "SDLCCT-65", "agent": "orch-20261028-k7q2", "data": {"from": "Ready", "to": "In Progress"}}
+{"ts": "2026-10-28T13:36:38+08:00", "event": "stage_transition", "ticket": "SDLCCT-65", "agent": "orch-20261028-k7q2", "data": {"from": "In Progress", "to": "Testing"}}
+{"ts": "2026-10-28T13:39:39+08:00", "event": "stage_transition", "ticket": "SDLCCT-65", "agent": "orch-20261028-k7q2", "data": {"from": "Testing", "to": "In Review"}}
+{"ts": "2026-10-28T13:44:29+08:00", "event": "gate_review", "ticket": "SDLCCT-65", "agent": "orch-20261028-k7q2", "data": {"gate": "G2", "mode": "auto", "result": "rejected", "reason": "reviewer REQUEST_CHANGES: missing test coverage for night_batch_burst without corroborating workflow"}}
+{"ts": "2026-10-28T13:44:29+08:00", "event": "reopen", "ticket": "SDLCCT-65", "agent": "orch-20261028-k7q2", "data": {"stage": "In Review", "reason_summary": "missing test coverage gap found by reviewer"}}
+{"ts": "2026-10-28T13:49:05+08:00", "event": "gate_review", "ticket": "SDLCCT-65", "agent": "orch-20261028-k7q2", "data": {"gate": "G2", "mode": "auto", "result": "approved"}}
+{"ts": "2026-10-28T13:49:55+08:00", "event": "stage_transition", "ticket": "SDLCCT-65", "agent": "orch-20261028-k7q2", "data": {"from": "In Review", "to": "Done"}}
+{"ts": "2026-10-28T13:26:07+08:00", "event": "gate_review", "ticket": "SDLCCT-66", "agent": "orch-20261028-k7q2", "data": {"gate": "G1b", "mode": "auto", "result": "approved"}}
+{"ts": "2026-10-28T13:26:07+08:00", "event": "stage_transition", "ticket": "SDLCCT-66", "agent": "orch-20261028-k7q2", "data": {"from": "Designing", "to": "Ready"}}
+{"ts": "2026-10-28T13:50:18+08:00", "event": "stage_transition", "ticket": "SDLCCT-66", "agent": "orch-20261028-k7q2", "data": {"from": "Ready", "to": "In Progress"}}
+{"ts": "2026-10-28T14:04:40+08:00", "event": "stage_transition", "ticket": "SDLCCT-66", "agent": "orch-20261028-k7q2", "data": {"from": "In Progress", "to": "Testing"}}
+{"ts": "2026-10-28T14:08:31+08:00", "event": "stage_transition", "ticket": "SDLCCT-66", "agent": "orch-20261028-k7q2", "data": {"from": "Testing", "to": "In Review"}}
+{"ts": "2026-10-28T14:11:47+08:00", "event": "gate_review", "ticket": "SDLCCT-66", "agent": "orch-20261028-k7q2", "data": {"gate": "G2", "mode": "auto", "result": "rejected", "reason": "reviewer REQUEST_CHANGES: comment cites nonexistent design doc file"}}
+{"ts": "2026-10-28T14:11:47+08:00", "event": "reopen", "ticket": "SDLCCT-66", "agent": "orch-20261028-k7q2", "data": {"stage": "In Review", "reason_summary": "stale design-doc file citation in code comment"}}
+{"ts": "2026-10-28T14:15:39+08:00", "event": "gate_review", "ticket": "SDLCCT-66", "agent": "orch-20261028-k7q2", "data": {"gate": "G2", "mode": "auto", "result": "approved"}}
+{"ts": "2026-10-28T14:16:14+08:00", "event": "stage_transition", "ticket": "SDLCCT-66", "agent": "orch-20261028-k7q2", "data": {"from": "In Review", "to": "Done"}}
+{"ts": "2026-10-28T14:20:00+08:00", "event": "session_end", "ticket": null, "agent": "orch-20261028-k7q2", "data": {"tickets_touched": ["SDLCCT-64", "SDLCCT-65", "SDLCCT-66"], "stories_completed": 3}}
