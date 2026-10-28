@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-66 原型 — 跨 Agent 期間比較：基期過小時的呈現</title>
+<style>
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #4B5563;
+    --color-border: #E5E7EB;
+    --color-accent: #2563EB;
+  }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #F9FAFB;
+    color: var(--color-text-primary);
+    margin: 0;
+    padding: 32px;
+  }
+  h1 {
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    text-align: left;
+  }
+  p.note {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    margin: 0 0 24px 0;
+  }
+  .card {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 16px;
+    max-width: 720px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th {
+    border-bottom: 1px solid var(--color-border);
+    padding: 8px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--color-text-secondary);
+  }
+  th.num, td.num {
+    text-align: right;
+  }
+  td {
+    border-bottom: 1px solid var(--color-border);
+    padding: 12px 8px;
+    font-size: 14px;
+  }
+  tr:last-child td {
+    border-bottom: none;
+  }
+  .idx {
+    display: inline-flex;
+    height: 20px;
+    width: 20px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #EFF6FF;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-accent);
+    margin-right: 8px;
+  }
+  .delta {
+    font-weight: 600;
+    color: #B91C1C; /* text-red-700 */
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 6px;
+    border-radius: 999px;
+    border: 1px solid #FCA5A5; /* border-red-300 */
+    background: #FEF2F2; /* bg-red-50 */
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #B91C1C; /* text-red-700 */
+  }
+  .scenario-label {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+  <h1>跨 Agent 期間比較 — Delta 欄呈現原型</h1>
+  <p class="note">
+    SDLCCT-66 靜態原型，僅示範「漲幅」欄在 4 個 Gherkin Scenario 下的呈現差異。
+    佔位數字對應驗收條件範例，非真實查詢結果。套用 docs/design-system.md 定稿色彩/字級/間距 token。
+  </p>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Agent</th>
+          <th class="num">本期花費</th>
+          <th class="num">前期花費</th>
+          <th class="num">漲幅</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <span class="idx">1</span>設備預測性維護
+            <div class="scenario-label">Scenario 1：前期金額充足</div>
+          </td>
+          <td class="num">US$ 750</td>
+          <td class="num">US$ 500</td>
+          <td class="num delta">+US$ 250（50.0%）</td>
+        </tr>
+        <tr>
+          <td>
+            <span class="idx">2</span>供應鏈需求預測
+            <div class="scenario-label">Scenario 2：前期金額過小（&lt;US$10）</div>
+          </td>
+          <td class="num">US$ 639</td>
+          <td class="num">US$ 1</td>
+          <td class="num">
+            <span class="delta">+US$ 638</span><span class="badge">新增顯著支出</span>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span class="idx">3</span>臨時供應商爬蟲
+            <div class="scenario-label">Scenario 3：前期金額為零</div>
+          </td>
+          <td class="num">US$ 120</td>
+          <td class="num">US$ 0</td>
+          <td class="num">
+            <span class="delta">+US$ 120</span><span class="badge">新增顯著支出</span>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span class="idx">4</span>品質檢測異常偵測
+            <div class="scenario-label">Scenario 4：門檻邊界（previous=US$10，不觸發）</div>
+          </td>
+          <td class="num">US$ 20</td>
+          <td class="num">US$ 10</td>
+          <td class="num delta">+US$ 10（100.0%）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

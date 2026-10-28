@@ -142,6 +142,122 @@ test("AC2: a null point in the middle of a version's series breaks the line into
   await expect(page.locator("ul li", { hasText: "v2" })).toHaveCount(1);
 });
 
+test("SDLCCT-73: chart shows exactly two Y-axis amount labels (max and min) when values differ", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [
+          {
+            version: "v1",
+            points: [
+              { date: "2026-10-14", value: 100 },
+              { date: "2026-10-15", value: 400 },
+            ],
+          },
+          {
+            version: "v2",
+            points: [
+              { date: "2026-10-14", value: 50 },
+              { date: "2026-10-15", value: 200 },
+            ],
+          },
+        ],
+        model_cost_breakdown: [],
+        top_traces: [],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const labels = page.locator("svg text");
+  await expect(labels).toHaveCount(2);
+  await expect(page.locator("svg text", { hasText: "US$ 400" })).toHaveCount(1);
+  await expect(page.locator("svg text", { hasText: "US$ 50" })).toHaveCount(1);
+
+  // Both labels sit in the left padding area (x < CHART_PADDING = 24).
+  const xs = await labels.evaluateAll((els) =>
+    els.map((el) => Number(el.getAttribute("x"))),
+  );
+  for (const x of xs) {
+    expect(x).toBeLessThan(24);
+  }
+});
+
+test("SDLCCT-73: chart shows exactly one Y-axis amount label when all values are equal", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [
+          {
+            version: "v1",
+            points: [
+              { date: "2026-10-14", value: 100 },
+              { date: "2026-10-15", value: 100 },
+            ],
+          },
+        ],
+        model_cost_breakdown: [],
+        top_traces: [],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  await expect(page.locator("svg text")).toHaveCount(1);
+  await expect(page.locator("svg text", { hasText: "US$ 100" })).toHaveCount(1);
+});
+
+test("SDLCCT-73: chart shows no Y-axis amount label and never fabricates US$ 0 when every value is null", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [
+          {
+            version: "v1",
+            points: [
+              { date: "2026-10-14", value: null },
+              { date: "2026-10-15", value: null },
+            ],
+          },
+        ],
+        model_cost_breakdown: [],
+        top_traces: [],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  await expect(page.locator("svg text")).toHaveCount(0);
+  await expect(page.locator("svg", { hasText: "US$ 0" })).toHaveCount(0);
+});
+
 test("AC3: model-breakdown table shows — (not 0) for a null cost", async ({
   page,
 }) => {
