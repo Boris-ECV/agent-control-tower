@@ -5,12 +5,13 @@ test("cost dashboard page loads and shows the expected static content", async ({
 }) => {
   await page.goto("/cost-dashboard");
 
-  // Scoped to <header> because the sidebar nav (components/layout/app-sidebar.tsx)
-  // also renders the literal text "Agent Control Tower", which makes the
-  // unscoped locator ambiguous under Playwright's strict mode.
+  // The sticky header no longer duplicates the sidebar's product title
+  // (SDLCCT-68); the sidebar nav (components/layout/app-sidebar.tsx) remains
+  // the sole place "Agent Control Tower" is rendered.
   await expect(
     page.locator("header").getByText("Agent Control Tower"),
-  ).toBeVisible();
+  ).toHaveCount(0);
+  await expect(page.getByText("Agent Control Tower")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "成本總覽" }),
   ).toBeVisible();

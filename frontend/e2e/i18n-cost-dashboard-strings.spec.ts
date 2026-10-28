@@ -3,12 +3,13 @@ import { expect, test } from "@playwright/test";
 test("cost dashboard 靜態文字在 i18n 重構後維持不變", async ({ page }) => {
   await page.goto("/cost-dashboard");
 
-  // Scoped to <header>: the sidebar nav also renders the literal text
-  // "Agent Control Tower", which makes the unscoped locator ambiguous
-  // under Playwright's strict mode (see cost-dashboard.spec.ts).
+  // The sticky header no longer duplicates the sidebar's product title
+  // (SDLCCT-68); the sidebar nav (components/layout/app-sidebar.tsx) remains
+  // the sole place "Agent Control Tower" is rendered.
   await expect(
     page.locator("header").getByText("Agent Control Tower"),
-  ).toBeVisible();
+  ).toHaveCount(0);
+  await expect(page.getByText("Agent Control Tower")).toBeVisible();
   await expect(page.getByRole("heading", { name: "成本總覽" })).toBeVisible();
   await expect(
     page.getByText("本月成本 vs 預算、預估月底超支、跨 Agent 期間比較"),
