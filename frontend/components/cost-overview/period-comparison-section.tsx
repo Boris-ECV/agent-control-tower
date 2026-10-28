@@ -7,6 +7,13 @@ import { useFetchOnce } from "@/lib/use-fetch-once";
 
 import { ErrorCard } from "./error-card";
 
+// Below this previous-period amount, a percentage delta is misleadingly
+// large/undefined (and previous_cost === 0 yields delta_pct: null from the
+// bff already); show a "notable new spend" badge instead of a % figure.
+// Strict "<" so previous_cost === 10 still shows the percentage
+// (SDLCCT-66 design decision: strict less-than so the US$10 boundary itself still shows a percentage).
+const NOTABLE_NEW_SPEND_THRESHOLD_USD = 10;
+
 export function PeriodComparisonSection() {
   const state = useFetchOnce(fetchPeriodComparison);
 
@@ -66,7 +73,13 @@ export function PeriodComparisonSection() {
                 }`}
               >
                 {formatSignedCurrency(agent.delta)}
-                {agent.delta_pct !== null ? `（${formatPercent(agent.delta_pct)}）` : ""}
+                {agent.previous_cost < NOTABLE_NEW_SPEND_THRESHOLD_USD ? (
+                  <span className="ml-1.5 inline-flex items-center rounded-full border border-red-300 bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">
+                    {t("costOverview.period.notableNewSpendBadge")}
+                  </span>
+                ) : agent.delta_pct !== null ? (
+                  `（${formatPercent(agent.delta_pct)}）`
+                ) : null}
               </td>
             </tr>
           ))}

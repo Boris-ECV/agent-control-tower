@@ -40,7 +40,11 @@ from registry import load_registry  # noqa: E402
 from anchor import get_anchor_date  # noqa: E402
 from anomaly_context_bloat import detect_context_bloat  # noqa: E402
 from anomaly_governance_gap import find_governance_gaps  # noqa: E402
-from anomaly_model_switch import InsufficientSwitchWindowDataError, detect_model_switch  # noqa: E402
+from anomaly_model_switch import (  # noqa: E402
+    MODEL_TAG_PREFIX,
+    InsufficientSwitchWindowDataError,
+    detect_model_switch,
+)
 from anomaly_night_batch_burst import detect_night_batch_burst  # noqa: E402
 from anomaly_tool_retry_loop import MissingErrorRateDataError, detect_tool_retry_loop  # noqa: E402
 from baseline import InsufficientBaselineDataError  # noqa: E402
@@ -67,49 +71,67 @@ def _to_utc_midnight(d: date) -> datetime:
     return datetime(d.year, d.month, d.day, tzinfo=UTC)
 
 
+def _format_usd(value: float) -> str:
+    """Business-language USD formatting shared by reason builders --
+    see docs design decision for SDLCCT-65: whole-dollar, thousands
+    separator, no decimals (matches SDLCCT-67's US$ display convention)."""
+    return f"US$ {round(value):,}"
+
+
 def _tool_retry_loop_reason(finding: Any) -> str:
+    """SDLCCT-65: business-language reason -- no raw field names/thresholds."""
     c = finding.comparison
+    error_rate_pct = round(finding.error_rate * 100)
+    ratio = round(c.deviation_ratio)
     return (
-        f"error_rate={finding.error_rate} (threshold={finding.error_rate_threshold}), "
-        f"spans/trace deviation_ratio={c.deviation_ratio} "
-        f"(baseline={c.baseline_value}, actual={c.actual_value}, "
-        f"ratio_threshold={finding.ratio_threshold})"
+        f"此 Agent 近期錯誤率與平均工具呼叫次數同時異常升高："
+        f"錯誤率約 {error_rate_pct}%，"
+        f"平均每筆對話呼叫工具次數較基準值高出約 {ratio} 倍"
+        f"（目前約 {c.actual_value:.1f}、基準約 {c.baseline_value:.1f} 次/trace）"
     )
 
 
 def _context_bloat_reason(finding: Any) -> str:
+    """SDLCCT-65: business-language reason -- no raw field names/thresholds."""
     c = finding.comparison
+    pct = round(c.deviation_pct)
+    actual = round(c.actual_value)
+    baseline = round(c.baseline_value)
     return (
-        f"tokens/trace deviation_ratio={c.deviation_ratio} "
-        f"(baseline={c.baseline_value}, actual={c.actual_value}, "
-        f"threshold={finding.deviation_threshold})"
+        f"此 Agent 近期每筆對話的 prompt token 使用量較過去 {c.baseline_window_days} "
+        f"天基準值高出約 {pct}%（目前約 {actual}、基準約 {baseline} tokens/trace）"
     )
 
 
 def _night_batch_burst_reason(finding: Any) -> str:
-    return (
-        f"off_hours_window_utc={finding.off_hours_window_utc}, ratio={finding.ratio} "
-        f"(off_hours_trace_count={finding.off_hours_trace_count}, "
-        f"baseline_hourly_rate={finding.baseline_hourly_rate}, "
-        f"ratio_threshold={finding.ratio_threshold}), "
-        f"corroborating_workflow={finding.corroborating_workflow!r}"
+    """SDLCCT-65: business-language reason -- no raw field names/thresholds."""
+    window_start, window_end = finding.off_hours_window_utc
+    ratio = round(finding.ratio)
+    reason = (
+        f"此 Agent 於非營業時段（UTC {window_start:02d}:00–{window_end:02d}:00）"
+        f"出現異常大量請求，約為平時同時段的 {ratio} 倍"
     )
+    if finding.corroborating_workflow:
+        reason += f"，可能與批次工作流程「{finding.corroborating_workflow}」相關"
+    return reason
 
 
 def _model_switch_reason(finding: Any) -> str:
+    """SDLCCT-65: business-language reason -- no raw field names/thresholds."""
+    before = finding.before_model_tag.removeprefix(MODEL_TAG_PREFIX)
+    after = finding.after_model_tag.removeprefix(MODEL_TAG_PREFIX)
+    switch_date = finding.switch_date
+    ratio = round(finding.deviation_ratio)
     return (
-        f"model switched from {finding.before_model_tag} to {finding.after_model_tag} "
-        f"on {finding.switch_date}, deviation_ratio={finding.deviation_ratio} "
-        f"(threshold={finding.deviation_threshold})"
+        f"模型於 {switch_date.month}/{switch_date.day} 由 {before} 切換為 {after}，"
+        f"成本偏離正常值約 {ratio} 倍"
     )
 
 
 def _governance_gap_reason(finding: Any) -> str:
-    return (
-        f"registered={finding.registered}, owner={finding.owner!r}, "
-        f"budget={finding.budget!r}, first_day_cost={finding.first_day_cost!r}, "
-        f"last_day_cost={finding.last_day_cost!r}"
-    )
+    """SDLCCT-65: business-language reason -- no raw field names/thresholds."""
+    cost_str = "未知" if finding.last_day_cost is None else _format_usd(finding.last_day_cost)
+    return f"此 Agent 尚未登錄負責人與預算，過去一日花費約 {cost_str}"
 
 
 def _row(*, agent: str | None, anomaly_type: str, row_date: date | None, status: str, reason: str) -> dict:

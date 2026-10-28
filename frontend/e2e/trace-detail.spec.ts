@@ -230,3 +230,72 @@ test("Scenario 6: no screen text contains 'Opik' or any other underlying observa
   const bodyText = await page.locator("body").innerText();
   expect(bodyText.toLowerCase()).not.toContain("opik");
 });
+
+test("SDLCCT-64: header back link points to the owning agent (not the agent list) and works via click/Enter/Space", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}/spans`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ key: MOCK_KEY, trace_id: MOCK_TRACE_ID, spans: [] }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}`);
+
+  const backLink = page.getByRole("link", { name: "返回 Agent 明細" });
+  await expect(backLink).toHaveAttribute("href", `/agents/${MOCK_KEY}`);
+  await backLink.click();
+  await expect(page).toHaveURL(`/agents/${MOCK_KEY}`);
+
+  await page.goto(`/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}`);
+  const backLinkForEnter = page.getByRole("link", { name: "返回 Agent 明細" });
+  await backLinkForEnter.focus();
+  await expect(backLinkForEnter).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(`/agents/${MOCK_KEY}`);
+
+  await page.goto(`/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}`);
+  const backLinkForSpace = page.getByRole("link", { name: "返回 Agent 明細" });
+  await backLinkForSpace.focus();
+  await expect(backLinkForSpace).toBeFocused();
+  await page.keyboard.press(" ");
+  await expect(page).toHaveURL(`/agents/${MOCK_KEY}`);
+});
+
+test("SDLCCT-64: header back link remains visible and usable while the spans request is pending", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}/spans`, async () => {
+    // Never fulfill: simulates an indefinitely pending request.
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}`);
+
+  const backLink = page.getByRole("link", { name: "返回 Agent 明細" });
+  await expect(backLink).toBeVisible();
+  await expect(backLink).toHaveAttribute("href", `/agents/${MOCK_KEY}`);
+  await backLink.click();
+  await expect(page).toHaveURL(`/agents/${MOCK_KEY}`);
+});
+
+test("SDLCCT-64: header back link remains visible and usable when the spans request errors", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}/spans`, async (route) => {
+    await route.fulfill({
+      status: 502,
+      contentType: "application/json",
+      body: JSON.stringify({ error: { message: "trace query failed" } }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}`);
+
+  const backLink = page.getByRole("link", { name: "返回 Agent 明細" });
+  await expect(backLink).toBeVisible();
+  await expect(backLink).toHaveAttribute("href", `/agents/${MOCK_KEY}`);
+  await backLink.click();
+  await expect(page).toHaveURL(`/agents/${MOCK_KEY}`);
+});

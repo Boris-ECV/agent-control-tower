@@ -58,6 +58,7 @@ export const messages = {
       currentPeriod: (range: string) => `本期花費（${range}）`,
       previousPeriod: (range: string) => `前期花費（${range}）`,
       delta: "漲幅",
+      notableNewSpendBadge: "新增顯著支出",
     },
   },
   agents: {
@@ -128,7 +129,7 @@ export const messages = {
     empty: "目前沒有異常",
   },
   agentDetail: {
-    header: { title: "Agent 明細" },
+    header: { title: "Agent 明細", backToList: "返回 Agent 清單" },
     versionSeries: {
       title: "版本成本時間序列",
       table: {
@@ -160,7 +161,7 @@ export const messages = {
     unknown: "—",
   },
   traceDetail: {
-    header: { title: "執行詳情" },
+    header: { title: "執行詳情", backToAgent: "返回 Agent 明細" },
     empty: "查無資料",
     expand: "展開查看個別",
     collapse: "收合",
