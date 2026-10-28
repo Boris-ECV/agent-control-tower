@@ -41,17 +41,31 @@ export function VersionCostChart({
   const innerWidth = CHART_WIDTH - CHART_PADDING * 2;
   const innerHeight = CHART_HEIGHT - CHART_PADDING * 2;
 
+  const yFor = (value: number) =>
+    max === min
+      ? CHART_PADDING + innerHeight / 2
+      : CHART_PADDING + innerHeight - ((value - min) / (max - min)) * innerHeight;
+
   const toXY = (dateIndex: number, value: number) => {
     const x =
       dates.length > 1
         ? CHART_PADDING + (dateIndex / (dates.length - 1)) * innerWidth
         : CHART_PADDING + innerWidth / 2;
-    const y =
-      max === min
-        ? CHART_PADDING + innerHeight / 2
-        : CHART_PADDING + innerHeight - ((value - min) / (max - min)) * innerHeight;
+    const y = yFor(value);
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   };
+
+  // Y 軸金額標示（SDLCCT-73）：僅在有非 null 數值時顯示，絕不臆測 0
+  // (CONSTITUTION「缺值顯示未知，不顯示 0」)。max === min 時僅顯示一個標示。
+  const hasValues = allValues.length > 0;
+  const labels = !hasValues
+    ? []
+    : max === min
+      ? [{ key: "single", value: max, y: yFor(max) }]
+      : [
+          { key: "max", value: max, y: yFor(max) },
+          { key: "min", value: min, y: yFor(min) },
+        ];
 
   const byDate = (entry: VersionCostSeriesEntry) => {
     const map = new Map(entry.points.map((p) => [p.date, p.value]));
@@ -97,6 +111,22 @@ export function VersionCostChart({
             </g>
           );
         })}
+
+        <g>
+          {labels.map((label) => (
+            <text
+              key={label.key}
+              x={2}
+              y={label.y}
+              textAnchor="start"
+              fontSize={10}
+              fill="var(--color-text-secondary)"
+              dominantBaseline="middle"
+            >
+              {formatCurrency(label.value)}
+            </text>
+          ))}
+        </g>
       </svg>
 
       <ul className="mb-4 flex flex-wrap gap-3 p-0 text-xs text-text-secondary">
