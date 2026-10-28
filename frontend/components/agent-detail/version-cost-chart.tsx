@@ -14,22 +14,23 @@ const CHART_PADDING = 24;
 // 固定色票，依 version 的索引輪替（不依賴任何圖表函式庫的調色盤）。
 const COLORS = ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed", "#0891b2"];
 
-function unionSortedDates(entries: VersionCostSeriesEntry[]): string[] {
-  const set = new Set<string>();
-  for (const entry of entries) {
-    for (const point of entry.points) {
-      set.add(point.date);
-    }
-  }
-  return Array.from(set).sort();
+function fixedSevenDates(anchorDate: string): string[] {
+  const anchor = new Date(`${anchorDate}T00:00:00Z`);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(anchor);
+    d.setUTCDate(d.getUTCDate() - (6 - i));
+    return d.toISOString().slice(0, 10);
+  });
 }
 
 export function VersionCostChart({
   entries,
+  anchorDate,
 }: {
   entries: VersionCostSeriesEntry[];
+  anchorDate: string; // "YYYY-MM-DD", UTC midnight convention, same as AgentCostBreakdownResponse.anchor_date
 }) {
-  const dates = unionSortedDates(entries);
+  const dates = fixedSevenDates(anchorDate);
 
   const allValues = entries
     .flatMap((entry) => entry.points)
