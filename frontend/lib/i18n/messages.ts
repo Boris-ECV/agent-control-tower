@@ -58,6 +58,7 @@ export const messages = {
       currentPeriod: (range: string) => `本期花費（${range}）`,
       previousPeriod: (range: string) => `前期花費（${range}）`,
       delta: "漲幅",
+      notableNewSpendBadge: "新增顯著支出",
     },
   },
   agents: {
