@@ -5,12 +5,12 @@
 export function formatCurrency(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
   if (Math.round(value) === 0 && value !== 0) {
-    return `NT$ ${value.toLocaleString("zh-TW", {
+    return `US$ ${value.toLocaleString("zh-TW", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
   }
-  return `NT$ ${Math.round(value).toLocaleString("zh-TW")}`;
+  return `US$ ${Math.round(value).toLocaleString("zh-TW")}`;
 }
 
 export function formatPercent(value: number | null | undefined, digits = 1): string {
@@ -23,12 +23,12 @@ export function formatSignedCurrency(value: number | null | undefined): string {
   const sign = value > 0 ? "+" : value < 0 ? "-" : "";
   const abs = Math.abs(value);
   if (Math.round(abs) === 0 && abs !== 0) {
-    return `${sign}NT$ ${abs.toLocaleString("zh-TW", {
+    return `${sign}US$ ${abs.toLocaleString("zh-TW", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
   }
-  return `${sign}NT$ ${Math.round(abs).toLocaleString("zh-TW")}`;
+  return `${sign}US$ ${Math.round(abs).toLocaleString("zh-TW")}`;
 }
 
 /** Convert a bff UTC date string (YYYY-MM-DD, anchor.get_anchor_date()'s
