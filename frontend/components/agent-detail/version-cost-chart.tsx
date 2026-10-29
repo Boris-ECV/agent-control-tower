@@ -14,6 +14,15 @@ const CHART_PADDING = 24;
 // 固定色票，依 version 的索引輪替（不依賴任何圖表函式庫的調色盤）。
 const COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300"];
 
+// 終點直接標籤（SDLCCT-79）：對 byDate(entry) 回傳的 values 陣列，從尾端
+// 往前找第一個非 null 索引（「最後一個有值的點」），-1 代表全 null。
+function lastValidIndex(values: (number | null)[]): number {
+  for (let i = values.length - 1; i >= 0; i--) {
+    if (values[i] !== null) return i;
+  }
+  return -1;
+}
+
 function fixedSevenDates(anchorDate: string): string[] {
   const anchor = new Date(`${anchorDate}T00:00:00Z`);
   return Array.from({ length: 7 }, (_, i) => {
@@ -91,6 +100,13 @@ export function VersionCostChart({
     return dates.map((date) => map.get(date) ?? null);
   };
 
+  // 終點直接標籤 vs 圖例（SDLCCT-79）：資料序列數 <= 4 時使用線條終點直接
+  // 標籤取代圖例；> 4 時直接標籤互相重疊風險高，退回純圖例顯示。門檻值 4
+  // 為 spec 定案數字。
+  const showTailLabels = entries.length <= 4;
+  const plotMidX = CHART_PADDING + innerWidth / 2;
+  const tailLabels: { key: string; x: number; y: number; color: string; text: string }[] = [];
+
   return (
     <div>
       <svg
@@ -133,6 +149,24 @@ export function VersionCostChart({
           if (current.length > 0) segments.push(current);
 
           const color = COLORS[entryIndex % COLORS.length];
+
+          // 終點直接標籤（SDLCCT-79）：重用同一個 values 陣列（與折線斷點
+          // 判斷同一個「有值」定義），不重新解析 entry.points。
+          const tailIndex = lastValidIndex(values);
+          const tailPoint =
+            tailIndex === -1
+              ? null
+              : { x: xFor(tailIndex), y: yFor(values[tailIndex] as number) };
+          if (tailPoint) {
+            tailLabels.push({
+              key: entry.version,
+              x: tailPoint.x,
+              y: tailPoint.y,
+              color,
+              text: `${entry.version} ${formatCurrency(values[tailIndex] as number)}`,
+            });
+          }
+
           return (
             <g key={entry.version}>
               {segments.map((segment, i) => (
@@ -179,19 +213,46 @@ export function VersionCostChart({
             </text>
           ))}
         </g>
+
+        {/* 終點直接標籤（SDLCCT-79）：插入在既有順序最後（所有折線與軸線
+            標籤之後），確保視覺堆疊順序上位於最上層。entries.length > 4
+            時完全不渲染（連空 <g> 也不輸出）。 */}
+        {showTailLabels && (
+          <g data-labels="tail">
+            {tailLabels.map((label) => {
+              const anchor: "start" | "end" = label.x >= plotMidX ? "end" : "start";
+              const dx = anchor === "end" ? -6 : 6;
+              return (
+                <text
+                  key={label.key}
+                  x={label.x + dx}
+                  y={label.y}
+                  textAnchor={anchor}
+                  fontSize={10}
+                  fill={label.color}
+                  dominantBaseline="middle"
+                >
+                  {label.text}
+                </text>
+              );
+            })}
+          </g>
+        )}
       </svg>
 
-      <ul className="mb-4 flex flex-wrap gap-3 p-0 text-xs text-text-secondary">
-        {entries.map((entry, entryIndex) => (
-          <li key={entry.version} className="flex items-center gap-1">
-            <span
-              className="inline-block h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: COLORS[entryIndex % COLORS.length] }}
-            />
-            {entry.version}
-          </li>
-        ))}
-      </ul>
+      {!showTailLabels && (
+        <ul className="mb-4 flex flex-wrap gap-3 p-0 text-xs text-text-secondary">
+          {entries.map((entry, entryIndex) => (
+            <li key={entry.version} className="flex items-center gap-1">
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: COLORS[entryIndex % COLORS.length] }}
+              />
+              {entry.version}
+            </li>
+          ))}
+        </ul>
+      )}
 
       <table className="w-full border-collapse text-sm">
         <thead>
