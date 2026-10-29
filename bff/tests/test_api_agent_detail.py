@@ -19,6 +19,7 @@ import api.agent_detail as agent_detail_module
 from anchor import DEFAULT_ANCHOR_DATE
 from api.app import app
 from opik_metrics import (
+    BreakdownField,
     MetricPoint,
     MetricSeries,
     OpikConfigError,
@@ -60,11 +61,27 @@ def _model_series_map(entries: dict[str, float | None]) -> dict:
     return {AGENT_KEY: tuple(series)}
 
 
-def _patch_metrics(monkeypatch, *, version_map: dict, model_map: dict):
+def _patch_metrics(
+    monkeypatch, *, version_map: dict, model_map: dict, total_map: dict | None = None
+):
+    """Patch the 3 get_project_metrics_cached() calls made by
+    get_agent_cost_breakdown(), dispatching on `breakdown` (SDLCCT-76: a
+    bare `interval.value == "DAILY"` check can no longer distinguish the
+    version-breakdown query from the new no-breakdown total query -- both
+    are DAILY). `total_map` defaults to `version_map` itself when omitted:
+    since `_by_date()` summing that same series tuple reproduces exactly
+    the version series' own per-day totals, this yields a zero gap every
+    day (no "其他" entry appended), preserving every pre-SDLCCT-76 test's
+    expected response shape without each of them having to say so."""
+    if total_map is None:
+        total_map = version_map
+
     def fake(keys, metric_type, *, interval, breakdown=None, **kw):
-        if interval.value == "DAILY":
+        if breakdown is not None and breakdown.field == BreakdownField.METADATA:
             return version_map
-        return model_map
+        if breakdown is not None and breakdown.field == BreakdownField.TAGS:
+            return model_map
+        return total_map
 
     monkeypatch.setattr(agent_detail_module, "get_project_metrics_cached", fake)
 
@@ -119,11 +136,15 @@ def test_version_cost_series_queried_with_metadata_breakdown(monkeypatch):
     captured = {}
 
     def fake(keys, metric_type, *, interval, breakdown=None, **kw):
-        if interval.value == "DAILY":
+        if breakdown is not None and breakdown.field == BreakdownField.METADATA:
             captured["version_breakdown"] = breakdown
             return _version_series_map({"v1.2.0": [1.0] * 7})
-        captured["model_breakdown"] = breakdown
-        return _model_series_map({})
+        if breakdown is not None and breakdown.field == BreakdownField.TAGS:
+            captured["model_breakdown"] = breakdown
+            return _model_series_map({})
+        # the new no-breakdown total query (SDLCCT-76): match the version
+        # series exactly so no "其他" entry is appended here.
+        return _version_series_map({"v1.2.0": [1.0] * 7})
 
     monkeypatch.setattr(agent_detail_module, "get_project_metrics_cached", fake)
     _patch_traces(monkeypatch, ())
@@ -356,3 +377,191 @@ def test_traces_query_failure_maps_to_502_even_when_metrics_succeed(monkeypatch)
     body = resp.json()
     assert body["error"]["message"] == str(exc)
     assert body["error"]["endpoint"] == "/v1/private/traces"
+
+
+# -- SDLCCT-76: "其他／未標記版本" entry for untagged cost -------------------
+
+
+def test_other_version_entry_appended_for_day_with_gap(monkeypatch):
+    """Scenario 1: version_cost_series already has version entries, but the
+    no-breakdown total query shows one day's real total is higher than the
+    sum of the known versions that day -> a trailing "其他／未標記版本"
+    entry is appended, with null on every day that has no gap and the gap
+    amount on the one day that does."""
+    _patch_metrics(
+        monkeypatch,
+        version_map=_version_series_map({"v1.2.0": [1.0] * 7}),
+        model_map=_model_series_map({}),
+        total_map=_version_series_map(
+            {"total": [1.0, 1.0, 1.0, 4.0, 1.0, 1.0, None]}
+        ),
+    )
+    _patch_traces(monkeypatch, ())
+
+    resp = client.get(f"/api/agents/{AGENT_KEY}/cost-breakdown")
+    assert resp.status_code == 200
+    body = resp.json()
+    series = body["version_cost_series"]
+    assert len(series) == 2
+    assert series[0]["version"] == "v1.2.0"
+    other = series[1]
+    assert other["version"] == "其他／未標記版本"
+    by_date = {p["date"]: p["value"] for p in other["points"]}
+    assert len(by_date) == 7
+    assert by_date["2026-10-12"] == pytest.approx(3.0)  # total 4.0 - version 1.0
+    assert by_date["2026-10-15"] is None  # total itself unknown that day -> null, not a gap
+    for date_iso, value in by_date.items():
+        if date_iso not in ("2026-10-12", "2026-10-15"):
+            assert value is None
+
+
+def test_other_version_entry_not_appended_when_fully_covered(monkeypatch):
+    """Scenario 2: every day's version-split sum already equals the
+    no-breakdown total (within the 1-cent tolerance) -> no "其他" entry is
+    appended, and the response is byte-identical to the pre-SDLCCT-76
+    SDLCCT-47 shape."""
+    _patch_metrics(
+        monkeypatch,
+        version_map=_version_series_map({"v1.2.0": [1.0] * 7}),
+        model_map=_model_series_map({"gpt-4o": 10.0}),
+        # total_map omitted -> defaults to version_map: exact match, no gap.
+    )
+    _patch_traces(monkeypatch, ())
+
+    resp = client.get(f"/api/agents/{AGENT_KEY}/cost-breakdown")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["version_cost_series"] == [
+        {
+            "version": "v1.2.0",
+            "points": [
+                {"date": f"2026-10-{9 + i:02d}", "value": pytest.approx(1.0)}
+                for i in range(7)
+            ],
+        }
+    ]
+
+
+def test_other_version_entry_not_appended_when_gap_within_threshold(monkeypatch):
+    """A sub-cent gap (floating point noise) must not trigger the "其他"
+    entry -- see docs/design/SDLCCT-76.md decision #3's 1-cent tolerance."""
+    _patch_metrics(
+        monkeypatch,
+        version_map=_version_series_map({"v1.2.0": [1.0] * 7}),
+        model_map=_model_series_map({}),
+        total_map=_version_series_map({"total": [1.005] * 7}),
+    )
+    _patch_traces(monkeypatch, ())
+
+    resp = client.get(f"/api/agents/{AGENT_KEY}/cost-breakdown")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["version_cost_series"]) == 1
+    assert body["version_cost_series"][0]["version"] == "v1.2.0"
+
+
+def test_other_version_entry_not_appended_when_gap_exactly_at_threshold(monkeypatch):
+    """Boundary: a gap of exactly 0.01 (the stated 1-cent threshold itself,
+    bit-for-bit -- version_map is empty so the gap is the raw total value
+    with no subtraction-induced float noise) must NOT trigger the "其他"
+    entry anywhere: the comparison is strictly `gap > 0.01`, not `>=`."""
+    _patch_metrics(
+        monkeypatch,
+        version_map=_version_series_map({}),
+        model_map=_model_series_map({}),
+        total_map=_version_series_map({"total": [0.01] * 7}),
+    )
+    _patch_traces(monkeypatch, ())
+
+    resp = client.get(f"/api/agents/{AGENT_KEY}/cost-breakdown")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["version_cost_series"] == []
+
+
+def test_other_version_entry_appended_when_gap_just_above_threshold(monkeypatch):
+    """Boundary complement: on a single day where the (bit-exact, no
+    subtraction noise) gap is 0.02 while every other day is exactly 0.01
+    (at, not over, the threshold), only that one day triggers the "其他"
+    entry -- proving the boundary isn't rounded loosely in either
+    direction."""
+    _patch_metrics(
+        monkeypatch,
+        version_map=_version_series_map({}),
+        model_map=_model_series_map({}),
+        total_map=_version_series_map(
+            {"total": [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.02]}
+        ),
+    )
+    _patch_traces(monkeypatch, ())
+
+    resp = client.get(f"/api/agents/{AGENT_KEY}/cost-breakdown")
+    assert resp.status_code == 200
+    body = resp.json()
+    series = body["version_cost_series"]
+    assert len(series) == 1
+    other = series[0]
+    assert other["version"] == "其他／未標記版本"
+    by_date = {p["date"]: p["value"] for p in other["points"]}
+    assert by_date["2026-10-15"] == pytest.approx(0.02)
+    for date_iso, value in by_date.items():
+        if date_iso != "2026-10-15":
+            assert value is None
+
+
+def test_total_cost_query_failure_maps_to_502_even_when_version_and_model_succeed(
+    monkeypatch,
+):
+    """AC4/decision #2: the NEW third query (no-breakdown daily total,
+    added by SDLCCT-76) must propagate a failure to an explicit 502 exactly
+    like the pre-existing two queries do -- not be silently swallowed into
+    "no gap detected". Succeeds on the METADATA (version) and TAGS (model)
+    calls, fails only on the third (breakdown=None) call."""
+    exc = OpikHTTPError(
+        "non-2xx response", endpoint="/v1/private/projects/p1/metrics", status_code=503
+    )
+
+    def fake(keys, metric_type, *, interval, breakdown=None, **kw):
+        if breakdown is not None and breakdown.field == BreakdownField.METADATA:
+            return _version_series_map({"v1.2.0": [1.0] * 7})
+        if breakdown is not None and breakdown.field == BreakdownField.TAGS:
+            return _model_series_map({"gpt-4o": 10.0})
+        raise exc
+
+    monkeypatch.setattr(agent_detail_module, "get_project_metrics_cached", fake)
+    _patch_traces(monkeypatch, ())
+
+    resp = client.get(f"/api/agents/{AGENT_KEY}/cost-breakdown")
+    assert resp.status_code == 502
+    body = resp.json()
+    assert body["error"]["message"] == str(exc)
+    assert body["error"]["endpoint"] == "/v1/private/projects/p1/metrics"
+
+
+def test_other_version_entry_covers_whole_window_when_all_untagged(monkeypatch):
+    """Scenario 3: the version-breakdown query returns no series at all
+    (every trace untagged) -> version_cost_series contains exactly one
+    "其他／未標記版本" entry, covering the full 7-day window with the
+    no-breakdown total query's own values/dates (not derived from the
+    now-empty version series)."""
+    _patch_metrics(
+        monkeypatch,
+        version_map=_version_series_map({}),
+        model_map=_model_series_map({}),
+        total_map=_version_series_map(
+            {"total": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]}
+        ),
+    )
+    _patch_traces(monkeypatch, ())
+
+    resp = client.get(f"/api/agents/{AGENT_KEY}/cost-breakdown")
+    assert resp.status_code == 200
+    body = resp.json()
+    series = body["version_cost_series"]
+    assert len(series) == 1
+    other = series[0]
+    assert other["version"] == "其他／未標記版本"
+    assert other["points"] == [
+        {"date": f"2026-10-{9 + i:02d}", "value": pytest.approx(float(i + 1))}
+        for i in range(7)
+    ]

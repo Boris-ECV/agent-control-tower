@@ -1,14 +1,18 @@
 """Business logic for the Agent detail cost-breakdown endpoint (SDLCCT-47,
 split from SDLCCT-44): combines a single Agent's seed/registry.py record
-with three read-only Opik queries -- a version-split 7-day daily cost
-series (Breakdown(METADATA, metadata_key="deployed_version")), a
-model-split current-period cost breakdown (Breakdown(TAGS)), and a
-top-N cost-sorted trace list (opik_traces.get_top_traces_by_cost()).
+with read-only Opik queries -- a version-split 7-day daily cost series
+(Breakdown(METADATA, metadata_key="deployed_version")), a model-split
+current-period cost breakdown (Breakdown(TAGS)), a top-N cost-sorted
+trace list (opik_traces.get_top_traces_by_cost()), and (SDLCCT-76) a
+no-breakdown 7-day daily cost total used to detect/append a synthetic
+"其他／未標記版本" entry for cost not attributable to any
+deployed_version tag.
 
 Reuses the sys.path.insert(..., "seed") technique already established by
 bff/api/agents.py / bff/api/cost_overview.py. See docs/design/SDLCCT-47.md
-"介面/API 契約" and "關鍵技術決策" for the exact contract and the reasoning
-behind the time windows and null-handling rules below.
+and docs/design/SDLCCT-76.md "介面/API 契約" and "關鍵技術決策" for the
+exact contract and the reasoning behind the time windows and
+null-handling rules below.
 """
 
 import sys
@@ -51,6 +55,62 @@ def _series_cost(series: MetricSeries) -> float | None:
     return sum(values)
 
 
+_OTHER_VERSION_LABEL = "其他／未標記版本"
+_OTHER_VERSION_GAP_THRESHOLD = 0.01  # 1 cent, see docs/design/SDLCCT-76.md decision #3
+
+
+def _by_date(series_tuple: tuple[MetricSeries, ...]) -> dict[str, float | None]:
+    """Merge every point across every series in `series_tuple` into a single
+    {date_iso: value} map. For a given date, if any series has a non-None
+    value that day, the result is the sum of all non-None values that day;
+    if every series is None (or has no point) for that day, the result is
+    None -- never 0.0 (see docs/design/SDLCCT-76.md decision #3: "unknown"
+    is always represented as null, never coerced to 0)."""
+    by_date: dict[str, float | None] = {}
+    for series in series_tuple:
+        for point in series.points:
+            date_iso = point.time.date().isoformat()
+            if point.value is None:
+                by_date.setdefault(date_iso, None)
+                continue
+            current = by_date.get(date_iso)
+            by_date[date_iso] = point.value if current is None else current + point.value
+    return by_date
+
+
+def _compute_other_entry(
+    total_by_date: dict[str, float | None], version_series: list[dict]
+) -> dict | None:
+    """Return the {"version": "其他／未標記版本", "points": [...]} entry to
+    append to version_cost_series, or None if no entry is needed. The date
+    set/order is taken from `total_by_date` (the no-breakdown total query),
+    not from `version_series` -- see docs/design/SDLCCT-76.md decision #4;
+    this matters when `version_series` is empty (Scenario 3).
+    """
+    version_sums_by_date: dict[str, float] = {}
+    for entry in version_series:
+        for p in entry["points"]:
+            value = p["value"] or 0.0
+            version_sums_by_date[p["date"]] = version_sums_by_date.get(p["date"], 0.0) + value
+
+    points = []
+    any_gap = False
+    for date_iso, total in total_by_date.items():
+        if total is None:
+            points.append({"date": date_iso, "value": None})
+            continue
+        gap = total - version_sums_by_date.get(date_iso, 0.0)
+        if gap > _OTHER_VERSION_GAP_THRESHOLD:
+            any_gap = True
+            points.append({"date": date_iso, "value": gap})
+        else:
+            points.append({"date": date_iso, "value": None})
+
+    if not any_gap:
+        return None
+    return {"version": _OTHER_VERSION_LABEL, "points": points}
+
+
 def get_agent_cost_breakdown(key: str, *, top_n: int = DEFAULT_TOP_TRACES_SIZE) -> dict | None:
     """GET /api/agents/{key}/cost-breakdown business logic. See design doc
     docs/design/SDLCCT-47.md section "介面/API 契約" for the exact contract.
@@ -89,6 +149,16 @@ def get_agent_cost_breakdown(key: str, *, top_n: int = DEFAULT_TOP_TRACES_SIZE) 
         interval_end=_to_utc_midnight(anchor_date + timedelta(days=1)),
         breakdown=Breakdown(field=BreakdownField.TAGS),
     )
+    total_daily_metrics_map = get_project_metrics_cached(
+        [key],
+        MetricType.COST,
+        interval=Interval.DAILY,
+        interval_start=_to_utc_midnight(trend_start),
+        interval_end=_to_utc_midnight(anchor_date + timedelta(days=1)),
+        # breakdown omitted -> None: the real daily total for this window,
+        # same query shape as bff/api/agents.py::_trend_points() (see
+        # docs/design/SDLCCT-76.md decision #1/#4).
+    )
     top_traces = get_top_traces_by_cost(key, size=top_n)
 
     version_cost_series = [
@@ -101,6 +171,12 @@ def get_agent_cost_breakdown(key: str, *, top_n: int = DEFAULT_TOP_TRACES_SIZE) 
         }
         for series in version_metrics_map.get(key, ())
     ]
+
+    other_entry = _compute_other_entry(
+        _by_date(total_daily_metrics_map.get(key, ())), version_cost_series
+    )
+    if other_entry is not None:
+        version_cost_series.append(other_entry)
 
     model_cost_breakdown = [
         {"model": series.key, "cost": _series_cost(series)}
