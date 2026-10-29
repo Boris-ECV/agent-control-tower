@@ -937,3 +937,67 @@ test("SDLCCT-64: header back link remains visible and usable when the cost-break
   await backLink.click();
   await expect(page).toHaveURL("/agents");
 });
+
+test("SDLCCT-80: hovering the version-cost chart at D-2 shows a tooltip listing every version's amount for that day, null as —", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [
+          {
+            version: "v1",
+            points: [
+              { date: "2026-10-14", value: 100 },
+              { date: "2026-10-18", value: 123 },
+            ],
+          },
+          {
+            version: "v2",
+            points: [
+              // 2026-10-18 (D-2) absent for v2 -> byDate returns null there.
+              { date: "2026-10-14", value: 50 },
+            ],
+          },
+        ],
+        model_cost_breakdown: [],
+        top_traces: [],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const versionSection = page.locator('section[aria-label="版本成本時間序列"]');
+  const svg = versionSection.locator("svg[role='img']");
+  await expect(svg).toBeVisible();
+
+  // No hover yet: tooltip absent, but the table below already has the full
+  // dataset (accessibility fallback requires zero interaction).
+  await expect(svg.locator('g[data-tooltip="active"]')).toHaveCount(0);
+  await expect(page.getByText("2026年10月18日")).toBeVisible();
+
+  // CHART_WIDTH=480, CHART_PADDING=24, innerWidth=432, dates.length=7.
+  // D-2 (anchor_date - 2 = 2026-10-18) is dateIndex=4:
+  // xFor(4) = 24 + (4/6)*432 = 312, as a fraction of the viewBox width: 312/480.
+  const box = await svg.boundingBox();
+  if (!box) throw new Error("svg bounding box not available");
+  const targetX = (312 / 480) * box.width;
+  await svg.hover({ position: { x: targetX, y: box.height / 2 } });
+
+  const tooltip = svg.locator('g[data-tooltip="active"]');
+  await expect(tooltip).toHaveCount(1);
+  await expect(tooltip.locator("text", { hasText: "2026年10月18日" })).toHaveCount(1);
+  await expect(tooltip.locator("text", { hasText: "v1: US$ 123" })).toHaveCount(1);
+  await expect(tooltip.locator("text", { hasText: "v2: —" })).toHaveCount(1);
+
+  // Moving the mouse off the chart clears the tooltip and crosshair.
+  await page.mouse.move(0, 0);
+  await expect(svg.locator('g[data-tooltip="active"]')).toHaveCount(0);
+});

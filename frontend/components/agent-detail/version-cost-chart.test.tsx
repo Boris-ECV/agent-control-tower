@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { VersionCostChart } from "@/components/agent-detail/version-cost-chart";
@@ -813,5 +813,118 @@ describe("VersionCostChart 線條終點直接標籤 — 測試者獨立補充驗
     expect(tailText?.getAttribute("text-anchor")).toBe("end");
     // anchor="end" => dx=-6 => rendered x = 240 - 6 = 234
     expect(Number(tailText?.getAttribute("x"))).toBeCloseTo(234, 1);
+  });
+});
+
+// Hover tooltip／十字線／可存取性備援（SDLCCT-80）：固定 7 天日期軸下，
+// anchorDate="2026-10-20" => dates = [10-14..10-20]，D-2 對應 dateIndex=4
+// （10-18）。CHART_WIDTH=480、CHART_PADDING=24、innerWidth=432，
+// xFor(4) = 24 + (4/6)*432 = 312。
+describe("VersionCostChart Hover Tooltip／十字線／可存取性備援 (SDLCCT-80)", () => {
+  const CHART_WIDTH = 480;
+
+  function mockOverlayRectWidth(container: HTMLElement) {
+    const svg = container.querySelector("svg");
+    if (!svg) throw new Error("svg not found");
+    // jsdom 不做真實版面計算，getBoundingClientRect 預設全為 0；手動模擬
+    // 「實際渲染寬度 === CHART_WIDTH」(scaleX = 1)，讓 clientX 可直接對應
+    // viewBox 座標，不需要額外換算。
+    svg.getBoundingClientRect = () =>
+      ({
+        width: CHART_WIDTH,
+        height: 160,
+        left: 0,
+        top: 0,
+        right: CHART_WIDTH,
+        bottom: 160,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    const overlayRect = svg.querySelector(":scope > rect");
+    if (!overlayRect) throw new Error("overlay rect not found");
+    return overlayRect;
+  }
+
+  it("Scenario: hover 顯示該日（D-2）所有版本數值，null 顯示「—」", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [{ date: "2026-10-18", value: 123 }]),
+      entry("v2", [{ date: "2026-10-14", value: 50 }]), // 10-18 當天缺席 => null
+    ];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-20" />,
+    );
+
+    // hover 前：無 tooltip。
+    expect(container.querySelectorAll('svg g[data-tooltip="active"]')).toHaveLength(0);
+
+    const overlayRect = mockOverlayRectWidth(container);
+    // dateIndex=4 (D-2, 2026-10-18) 的 viewBox x 座標 = 312。
+    fireEvent.mouseMove(overlayRect, { clientX: 312 });
+
+    const tooltip = container.querySelector('svg g[data-tooltip="active"]');
+    expect(tooltip).toBeTruthy();
+    const texts = Array.from(tooltip?.querySelectorAll("text") ?? []).map(
+      (el) => el.textContent,
+    );
+    expect(texts[0]).toContain("2026"); // 日期標題（formatTaiwanDate）
+    expect(texts).toContain("v1: US$ 123");
+    expect(texts).toContain("v2: —");
+
+    // 十字線固定在 xFor(hoveredIndex)=312。
+    const crosshair = container.querySelector("svg line[stroke-dasharray]");
+    expect(crosshair).toBeTruthy();
+    expect(Number(crosshair?.getAttribute("x1"))).toBeCloseTo(312, 1);
+    expect(Number(crosshair?.getAttribute("x2"))).toBeCloseTo(312, 1);
+
+    // mouseLeave 清除 hover 狀態：tooltip／十字線消失。
+    fireEvent.mouseLeave(overlayRect);
+    expect(container.querySelectorAll('svg g[data-tooltip="active"]')).toHaveLength(0);
+    expect(container.querySelectorAll("svg line[stroke-dasharray]")).toHaveLength(0);
+  });
+
+  it("Scenario: 鍵盤／螢幕閱讀器使用者不觸發 hover 時，圖表下方表格仍完整呈現所有日期與版本的數值", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [
+        { date: "2026-10-14", value: 100 },
+        { date: "2026-10-18", value: 123 },
+      ]),
+      entry("v2", [{ date: "2026-10-14", value: 50 }]),
+    ];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-20" />,
+    );
+
+    // 零互動（預設 render，未觸發任何 mouseMove）：tooltip／十字線不存在。
+    expect(container.querySelectorAll('svg g[data-tooltip="active"]')).toHaveLength(0);
+    expect(container.querySelectorAll("svg line[stroke-dasharray]")).toHaveLength(0);
+
+    // 表格仍完整呈現所有日期（7 欄）與版本（2 列）的數值，不依賴圖表互動。
+    const headerCells = container.querySelectorAll("thead th");
+    expect(headerCells).toHaveLength(8); // 版本欄 + 7 天
+
+    const rows = container.querySelectorAll("tbody tr");
+    expect(rows).toHaveLength(2);
+
+    const row1Cells = Array.from(rows[0]?.querySelectorAll("td") ?? []).map(
+      (el) => el.textContent,
+    );
+    expect(row1Cells).toEqual([
+      "v1",
+      "US$ 100",
+      "—",
+      "—",
+      "—",
+      "US$ 123",
+      "—",
+      "—",
+    ]);
+
+    const row2Cells = Array.from(rows[1]?.querySelectorAll("td") ?? []).map(
+      (el) => el.textContent,
+    );
+    expect(row2Cells).toEqual(["v2", "US$ 50.00", "—", "—", "—", "—", "—", "—"]);
   });
 });

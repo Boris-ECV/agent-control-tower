@@ -1,5 +1,7 @@
 "use client";
 
+import * as React from "react";
+
 import type { VersionCostSeriesEntry } from "@/lib/agent-detail-api";
 import { formatCurrency, formatTaiwanDate } from "@/lib/format";
 import { t } from "@/lib/i18n/t";
@@ -39,6 +41,8 @@ export function VersionCostChart({
   entries: VersionCostSeriesEntry[];
   anchorDate: string; // "YYYY-MM-DD", UTC midnight convention, same as AgentCostBreakdownResponse.anchor_date
 }) {
+  const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
+
   const dates = fixedSevenDates(anchorDate);
 
   const allValues = entries
@@ -106,6 +110,42 @@ export function VersionCostChart({
   const showTailLabels = entries.length <= 4;
   const plotMidX = CHART_PADDING + innerWidth / 2;
   const tailLabels: { key: string; x: number; y: number; color: string; text: string }[] = [];
+
+  // Hover hit-testing（SDLCCT-80）：單一全高透明 <rect> overlay，把游標的
+  // 螢幕像素座標換算回 viewBox 座標系統後，找出最接近的 dateIndex。
+  const handleMouseMove = (event: React.MouseEvent<SVGRectElement>) => {
+    const svg = event.currentTarget.ownerSVGElement;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const scaleX = CHART_WIDTH / rect.width;
+    const svgX = (event.clientX - rect.left) * scaleX;
+    let closest = 0;
+    let minDist = Infinity;
+    for (let i = 0; i < dates.length; i++) {
+      const dist = Math.abs(xFor(i) - svgX);
+      if (dist < minDist) {
+        minDist = dist;
+        closest = i;
+      }
+    }
+    setHoveredIndex(closest);
+  };
+
+  const handleMouseLeave = () => setHoveredIndex(null);
+
+  // Tooltip（SDLCCT-80）：列出 entries 全部成員，不受 showTailLabels 門檻
+  // 限制；定位以 xFor(hoveredIndex) 為錨點，依左半/右半決定延伸方向。
+  const tooltipWidth = 140;
+  const tooltipHeight = 14 + (entries.length + 1) * 14 + 6;
+  const tooltipAnchorRight =
+    hoveredIndex !== null ? xFor(hoveredIndex) >= plotMidX : false;
+  const tooltipX =
+    hoveredIndex !== null
+      ? tooltipAnchorRight
+        ? xFor(hoveredIndex) - tooltipWidth - 8
+        : xFor(hoveredIndex) + 8
+      : 0;
+  const tooltipY = CHART_PADDING;
 
   return (
     <div>
@@ -236,6 +276,68 @@ export function VersionCostChart({
                 </text>
               );
             })}
+          </g>
+        )}
+
+        {/* Hover hit-test overlay（SDLCCT-80）：插入在既有 SVG 內容最後，
+            確保在視覺/事件堆疊順序上位於最上層。fill="transparent"（非
+            "none"）才能接收滑鼠事件。 */}
+        <rect
+          x={CHART_PADDING}
+          y={0}
+          width={innerWidth}
+          height={CHART_HEIGHT}
+          fill="transparent"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+        />
+
+        {/* 十字線（SDLCCT-80）：虛線、次要文字色，避免被誤認為資料序列。 */}
+        {hoveredIndex !== null && (
+          <line
+            x1={xFor(hoveredIndex)}
+            x2={xFor(hoveredIndex)}
+            y1={CHART_PADDING}
+            y2={CHART_HEIGHT - CHART_PADDING - 10}
+            stroke="var(--color-text-secondary)"
+            strokeWidth={1}
+            strokeDasharray="2,2"
+          />
+        )}
+
+        {/* Tooltip（SDLCCT-80）：SVG-native 結構，列出 entries 全部成員，
+            null 經由既有 formatCurrency 顯示「—」。 */}
+        {hoveredIndex !== null && (
+          <g data-tooltip="active">
+            <rect
+              x={tooltipX}
+              y={tooltipY}
+              width={tooltipWidth}
+              height={tooltipHeight}
+              fill="var(--color-bg)"
+              stroke="var(--color-border)"
+              rx={4}
+            />
+            <text
+              x={tooltipX + 8}
+              y={tooltipY + 14}
+              fontSize={10}
+              fill="var(--color-text-primary)"
+              fontWeight={600}
+            >
+              {formatTaiwanDate(dates[hoveredIndex])}
+            </text>
+            {entries.map((entry, i) => (
+              <text
+                key={entry.version}
+                x={tooltipX + 8}
+                y={tooltipY + 14 + (i + 1) * 14}
+                fontSize={10}
+                fill={COLORS[i % COLORS.length]}
+              >
+                {`${entry.version}: ${formatCurrency(byDate(entry)[hoveredIndex])}`}
+              </text>
+            ))}
           </g>
         )}
       </svg>
