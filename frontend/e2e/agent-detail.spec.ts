@@ -142,6 +142,214 @@ test("AC2: a null point in the middle of a version's series breaks the line into
   await expect(page.locator("ul li", { hasText: "v2" })).toHaveCount(1);
 });
 
+test("SDLCCT-72: date axis always covers a full 7 days (anchor_date-6..anchor_date), even when a version's points cover only part of it", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [
+          {
+            version: "v1",
+            points: [
+              { date: "2026-10-18", value: 100 },
+              { date: "2026-10-19", value: 150 },
+            ],
+          },
+        ],
+        model_cost_breakdown: [],
+        top_traces: [],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  // Exactly 7 date <th> columns (plus 1 "version" header column), D-6..D in
+  // order, even though v1's points only cover 2 of those 7 days. Scope to
+  // the version-series section: the page also has model-breakdown and
+  // top-traces tables with their own <thead>.
+  const versionSection = page.locator('section[aria-label="版本成本時間序列"]');
+  const headerRow = versionSection.locator("thead tr");
+  await expect(headerRow.locator("th")).toHaveCount(8);
+  const dateHeaders = await headerRow.locator("th").allTextContents();
+  // formatTaiwanDate renders dates as e.g. "2026年10月14日"; assert the full
+  // ordered set of day labels for 2026-10-14..2026-10-20.
+  expect(dateHeaders.slice(1)).toEqual([
+    "2026年10月14日",
+    "2026年10月15日",
+    "2026年10月16日",
+    "2026年10月17日",
+    "2026年10月18日",
+    "2026年10月19日",
+    "2026年10月20日",
+  ]);
+});
+
+test("SDLCCT-72: a day with no data point at all for a version shows — (not 0), and the polyline breaks there", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [
+          {
+            version: "v1",
+            points: [
+              { date: "2026-10-14", value: 100 },
+              // 2026-10-15 is entirely absent (not value: null).
+              { date: "2026-10-16", value: 150 },
+              { date: "2026-10-17", value: 160 },
+              { date: "2026-10-18", value: 170 },
+              { date: "2026-10-19", value: 180 },
+              { date: "2026-10-20", value: 190 },
+            ],
+          },
+        ],
+        model_cost_breakdown: [],
+        top_traces: [],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const row = page.locator("tbody tr", { hasText: "v1" });
+  const cells = row.locator("td");
+  await expect(cells).toHaveCount(8);
+  // cells[0] = version name, cells[2] = 2026-10-15 (the absent date).
+  await expect(cells.nth(2)).toHaveText("—");
+
+  // The line breaks at the absent day: 2 polyline segments (1-point + 5-point).
+  const polylines = page.locator("svg polyline");
+  await expect(polylines).toHaveCount(2);
+  const pointCounts = await polylines.evaluateAll((els) =>
+    els.map((el) => (el.getAttribute("points") ?? "").trim().split(/\s+/).length),
+  );
+  expect(pointCounts.sort()).toEqual([1, 5]);
+});
+
+test("SDLCCT-72: an existing point with value: null renders identically to an absent date (regression)", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [
+          {
+            version: "v1",
+            points: [
+              { date: "2026-10-14", value: 100 },
+              { date: "2026-10-15", value: null },
+              { date: "2026-10-16", value: 150 },
+              { date: "2026-10-17", value: 160 },
+              { date: "2026-10-18", value: 170 },
+              { date: "2026-10-19", value: 180 },
+              { date: "2026-10-20", value: 190 },
+            ],
+          },
+        ],
+        model_cost_breakdown: [],
+        top_traces: [],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const row = page.locator("tbody tr", { hasText: "v1" });
+  const cells = row.locator("td");
+  await expect(cells.nth(2)).toHaveText("—");
+
+  const polylines = page.locator("svg polyline");
+  await expect(polylines).toHaveCount(2);
+  const pointCounts = await polylines.evaluateAll((els) =>
+    els.map((el) => (el.getAttribute("points") ?? "").trim().split(/\s+/).length),
+  );
+  expect(pointCounts.sort()).toEqual([1, 5]);
+});
+
+test("SDLCCT-72: all versions have zero points for the whole week -> table still shows 7 date columns, every cell —, no exception", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [
+          { version: "v1", points: [] },
+          { version: "v2", points: [] },
+        ],
+        model_cost_breakdown: [],
+        top_traces: [],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const versionSection = page.locator('section[aria-label="版本成本時間序列"]');
+  await expect(versionSection.locator("thead th")).toHaveCount(8);
+  const rows = versionSection.locator("tbody tr");
+  await expect(rows).toHaveCount(2);
+  for (const row of await rows.all()) {
+    const cells = await row.locator("td").allTextContents();
+    for (const text of cells.slice(1)) {
+      expect(text).toBe("—");
+    }
+  }
+  await expect(page.locator("svg polyline")).toHaveCount(0);
+});
+
+test("SDLCCT-72: entries itself is an empty array -> table still shows 7 date columns, no data rows, no exception", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [],
+        model_cost_breakdown: [],
+        top_traces: [],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const versionSection = page.locator('section[aria-label="版本成本時間序列"]');
+  await expect(versionSection.locator("thead th")).toHaveCount(8);
+  await expect(versionSection.locator("tbody tr")).toHaveCount(0);
+});
+
 test("SDLCCT-73: chart shows exactly two Y-axis amount labels (max and min) when values differ", async ({
   page,
 }) => {
