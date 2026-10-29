@@ -181,7 +181,10 @@ test("SDLCCT-73: chart shows exactly two Y-axis amount labels (max and min) when
   const labels = page.locator("svg text");
   await expect(labels).toHaveCount(2);
   await expect(page.locator("svg text", { hasText: "US$ 400" })).toHaveCount(1);
-  await expect(page.locator("svg text", { hasText: "US$ 50" })).toHaveCount(1);
+  // SDLCCT-71: 50 < US$100 threshold, formatCurrency now renders 2 decimals.
+  // ("US$ 50" would still coincidentally match "US$ 50.00" via hasText's
+  // substring semantics, so assert the exact post-fix string instead.)
+  await expect(page.locator("svg text", { hasText: "US$ 50.00" })).toHaveCount(1);
 
   // Both labels sit in the left padding area (x < CHART_PADDING = 24).
   const xs = await labels.evaluateAll((els) =>
