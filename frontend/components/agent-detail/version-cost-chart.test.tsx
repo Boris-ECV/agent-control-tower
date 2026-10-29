@@ -641,3 +641,177 @@ describe("VersionCostChart 線條終點直接標籤 (SDLCCT-79)", () => {
     expect(tailTexts[0]?.textContent).toBe("v2 US$ 100");
   });
 });
+
+// 以下為測試者（非開發者）獨立補寫的驗證案例，涵蓋設計文件/開發者測試
+// 未明確覆蓋的邊界條件：剛好 4/5 個版本的門檻邊界、終點非陣列最後索引
+// 時的座標正確性、全 null 版本與正常版本混合、顏色與各自折線的精確配
+// 對、以及 anchor 方向的邊界值（x === plotMidX）。
+describe("VersionCostChart 線條終點直接標籤 — 測試者獨立補充驗證（邊界值）", () => {
+  it("版本數恰好為 4（門檻值本身）時，仍走「<=4」分支：顯示終點標籤、隱藏圖例", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [{ date: "2026-10-14", value: 100 }]),
+      entry("v2", [{ date: "2026-10-14", value: 200 }]),
+      entry("v3", [{ date: "2026-10-14", value: 300 }]),
+      entry("v4", [{ date: "2026-10-14", value: 400 }]),
+    ];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-14" />,
+    );
+
+    const tailTexts = container.querySelectorAll('svg g[data-labels="tail"] text');
+    expect(tailTexts).toHaveLength(4);
+    expect(container.querySelectorAll("ul li")).toHaveLength(0);
+  });
+
+  it("版本數恰好為 5（門檻值 + 1）時，走「>4」分支：隱藏終點標籤、顯示圖例列出全部 5 個版本", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [{ date: "2026-10-14", value: 100 }]),
+      entry("v2", [{ date: "2026-10-14", value: 200 }]),
+      entry("v3", [{ date: "2026-10-14", value: 300 }]),
+      entry("v4", [{ date: "2026-10-14", value: 400 }]),
+      entry("v5", [{ date: "2026-10-14", value: 500 }]),
+    ];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-14" />,
+    );
+
+    expect(
+      container.querySelectorAll('svg g[data-labels="tail"] text'),
+    ).toHaveLength(0);
+    const legendItems = container.querySelectorAll("ul li");
+    expect(legendItems).toHaveLength(5);
+  });
+
+  it("版本的最後一個有值的點不是陣列最後一個索引（第6天）時，終點標籤座標對齊該較早的點，而非第6天的位置", () => {
+    // 7 天中只有索引 0-3（date 10-14 ~ 10-17）有值，索引 4-6（10-18~10-20）
+    // 皆缺席；anchorDate=10-20 => dates = [10-14..10-20]，tailIndex 應為 3。
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [
+        { date: "2026-10-14", value: 100 },
+        { date: "2026-10-15", value: 120 },
+        { date: "2026-10-16", value: 140 },
+        { date: "2026-10-17", value: 160 },
+        // 10-18, 10-19, 10-20 缺席 => byDate 回傳 null
+      ]),
+    ];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-20" />,
+    );
+
+    const CHART_PADDING = 24;
+    const innerWidth = 480 - CHART_PADDING * 2;
+    const innerHeight = 160 - CHART_PADDING * 2;
+    // max === min 情境不適用（只有 1 個 entry 但 4 個不同值 100/120/140/160）
+    // => max=160, min=100。yFor(160) 對齊圖表頂端 CHART_PADDING，但這裡只
+    // 需驗證 x（座標對齊索引 3，非索引 6）與 y（對齊值 160 本身）。
+    const expectedX = CHART_PADDING + (3 / 6) * innerWidth; // dateIndex=3 of 7
+    const expectedY = CHART_PADDING; // value=160=max -> top of plot (yFor(max))
+    void innerHeight;
+
+    const tailText = container.querySelector('svg g[data-labels="tail"] text');
+    expect(tailText?.textContent).toBe("v1 US$ 160");
+    expect(Number(tailText?.getAttribute("x"))).not.toBeCloseTo(
+      CHART_PADDING + (6 / 6) * innerWidth,
+      1,
+    );
+    // x 包含 ±6 的 dx 位移；expectedX=240（恰好 plotMidX），anchor 應為 "end"
+    // (見下一個測試對 anchor 方向邊界的專門驗證)，故 dx=-6。
+    expect(Number(tailText?.getAttribute("x"))).toBeCloseTo(expectedX - 6, 1);
+    expect(Number(tailText?.getAttribute("y"))).toBeCloseTo(expectedY, 1);
+  });
+
+  it("全 null 版本與正常版本混合：全 null 版本不渲染標籤也不崩潰，其餘版本標籤座標/文字正確且互不影響", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [
+        { date: "2026-10-14", value: null },
+        { date: "2026-10-15", value: null },
+      ]),
+      entry("v2", [
+        { date: "2026-10-14", value: 50 },
+        { date: "2026-10-15", value: 200 },
+      ]),
+      entry("v3", [
+        { date: "2026-10-14", value: null },
+        { date: "2026-10-15", value: null },
+      ]),
+    ];
+
+    expect(() =>
+      render(<VersionCostChart entries={entries} anchorDate="2026-10-15" />),
+    ).not.toThrow();
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-15" />,
+    );
+    const tailTexts = Array.from(
+      container.querySelectorAll('svg g[data-labels="tail"] text'),
+    );
+    expect(tailTexts).toHaveLength(1);
+    expect(tailTexts[0]?.textContent).toBe("v2 US$ 200");
+  });
+
+  it("每個終點標籤的 fill 與「同一個」entry 的 polyline stroke 精確配對（而非僅驗證色票集合相等）", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("alpha", [
+        { date: "2026-10-14", value: 10 },
+        { date: "2026-10-15", value: 20 },
+      ]),
+      entry("beta", [
+        { date: "2026-10-14", value: 30 },
+        { date: "2026-10-15", value: 40 },
+      ]),
+      entry("gamma", [
+        { date: "2026-10-14", value: 50 },
+        { date: "2026-10-15", value: 60 },
+      ]),
+    ];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-15" />,
+    );
+
+    // 直接用 textContent 前綴（version 名稱）比對對應的折線顏色：取得每條
+    // polyline 的 stroke，依照 entries 順序一一對應（元件渲染順序與
+    // entries 順序相同，見實作第 137 行 entries.map）。
+    const polylines = Array.from(container.querySelectorAll("svg polyline"));
+    expect(polylines).toHaveLength(3);
+    const strokesByEntryOrder = polylines.map((p) => p.getAttribute("stroke"));
+
+    const tailTexts = Array.from(
+      container.querySelectorAll('svg g[data-labels="tail"] text'),
+    );
+    expect(tailTexts).toHaveLength(3);
+
+    entries.forEach((e, i) => {
+      const label = tailTexts.find((el) => el.textContent?.startsWith(`${e.version} `));
+      expect(label).toBeTruthy();
+      expect(label?.getAttribute("fill")).toBe(strokesByEntryOrder[i]);
+    });
+  });
+
+  it("anchor 方向邊界值：終點 x 恰好等於 plotMidX（240）時，採用 \"end\"（而非 \"start\"），與設計文件 x >= plotMidX 規則一致", () => {
+    // dateIndex=3（7天陣列的正中央索引）對應 x = 24 + 3/6*432 = 240，
+    // 恰好等於 plotMidX。
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [
+        { date: "2026-10-14", value: 10 },
+        { date: "2026-10-15", value: 20 },
+        { date: "2026-10-16", value: 30 },
+        { date: "2026-10-17", value: 40 },
+        // 10-18, 10-19, 10-20 缺席 -> tailIndex = 3 -> x = 240
+      ]),
+    ];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-20" />,
+    );
+
+    const tailText = container.querySelector('svg g[data-labels="tail"] text');
+    expect(tailText?.getAttribute("text-anchor")).toBe("end");
+    // anchor="end" => dx=-6 => rendered x = 240 - 6 = 234
+    expect(Number(tailText?.getAttribute("x"))).toBeCloseTo(234, 1);
+  });
+});
