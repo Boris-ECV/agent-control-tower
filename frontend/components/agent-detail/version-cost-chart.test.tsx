@@ -928,3 +928,258 @@ describe("VersionCostChart Hover Tooltip／十字線／可存取性備援 (SDLCC
     expect(row2Cells).toEqual(["v2", "US$ 50.00", "—", "—", "—", "—", "—", "—"]);
   });
 });
+
+// 以下為測試者（非開發者）獨立補寫的驗證案例（SDLCCT-80），涵蓋設計
+// 文件/開發者測試未明確覆蓋的邊界條件：7 個索引中的其他端點、剛好落
+// 在兩個索引中點的最近鄰決定性、>4 版本時 tooltip 不受 showTailLabels
+// 門檻限制、null entry 在 tooltip 內仍逐行列出、anchor 方向邊界值
+// （x === plotMidX）、以及 hoveredIndex 在未離開 overlay 前連續移動時
+// 正確更新。
+describe("VersionCostChart Hover Tooltip — 測試者獨立補充驗證（邊界值）(SDLCCT-80)", () => {
+  const CHART_WIDTH = 480;
+  const CHART_PADDING = 24;
+  const innerWidth = CHART_WIDTH - CHART_PADDING * 2; // 432
+  const plotMidX = CHART_PADDING + innerWidth / 2; // 240
+
+  function xForIndex(dateIndex: number, totalDates = 7): number {
+    return CHART_PADDING + (dateIndex / (totalDates - 1)) * innerWidth;
+  }
+
+  function mockOverlayRectWidth(container: HTMLElement) {
+    const svg = container.querySelector("svg");
+    if (!svg) throw new Error("svg not found");
+    svg.getBoundingClientRect = () =>
+      ({
+        width: CHART_WIDTH,
+        height: 160,
+        left: 0,
+        top: 0,
+        right: CHART_WIDTH,
+        bottom: 160,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    const overlayRect = svg.querySelector(":scope > rect");
+    if (!overlayRect) throw new Error("overlay rect not found");
+    return overlayRect;
+  }
+
+  function tooltipLines(container: HTMLElement): string[] {
+    const tooltip = container.querySelector('svg g[data-tooltip="active"]');
+    return Array.from(tooltip?.querySelectorAll("text") ?? []).map(
+      (el) => el.textContent ?? "",
+    );
+  }
+
+  it("索引 0（D-6，繪圖區最左端）hover 時命中 dateIndex=0，而非被誤判為其他索引", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [{ date: "2026-10-14", value: 10 }]),
+    ];
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-20" />,
+    );
+    const overlayRect = mockOverlayRectWidth(container);
+    fireEvent.mouseMove(overlayRect, { clientX: xForIndex(0) });
+
+    const lines = tooltipLines(container);
+    // dateIndex=0 対應 2026-10-14；v1 在該日有值 10。
+    expect(lines).toContain("v1: US$ 10.00");
+
+    const crosshair = container.querySelector("svg line[stroke-dasharray]");
+    expect(Number(crosshair?.getAttribute("x1"))).toBeCloseTo(xForIndex(0), 1);
+  });
+
+  it("索引 6（D，繪圖區最右端）hover 時命中 dateIndex=6", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [{ date: "2026-10-20", value: 99 }]),
+    ];
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-20" />,
+    );
+    const overlayRect = mockOverlayRectWidth(container);
+    fireEvent.mouseMove(overlayRect, { clientX: xForIndex(6) });
+
+    const lines = tooltipLines(container);
+    expect(lines).toContain("v1: US$ 99.00");
+
+    const crosshair = container.querySelector("svg line[stroke-dasharray]");
+    expect(Number(crosshair?.getAttribute("x1"))).toBeCloseTo(xForIndex(6), 1);
+  });
+
+  it("游標恰好落在索引 2 與索引 3 之間的正中點時，最近鄰比對具決定性地固定選擇其中一側（嚴格 < 比較下為較小索引），而非隨機/不穩定", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [
+        { date: "2026-10-16", value: 20 }, // dateIndex 2
+        { date: "2026-10-17", value: 30 }, // dateIndex 3
+      ]),
+    ];
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-20" />,
+    );
+    const overlayRect = mockOverlayRectWidth(container);
+    const midpoint = (xForIndex(2) + xForIndex(3)) / 2;
+
+    fireEvent.mouseMove(overlayRect, { clientX: midpoint });
+    const firstPick = tooltipLines(container);
+
+    fireEvent.mouseLeave(overlayRect);
+    fireEvent.mouseMove(overlayRect, { clientX: midpoint });
+    const secondPick = tooltipLines(container);
+
+    // 兩次在完全相同座標的結果必須一致（具決定性，不是隨機命中）。
+    expect(firstPick).toEqual(secondPick);
+    // 迴圈用嚴格 `<` 比較、從 i=0 往後掃描，等距時不會被後面的索引覆蓋，
+    // 固定選擇較小索引（index 2）。
+    expect(firstPick).toContain("v1: US$ 20.00");
+    expect(firstPick).not.toContain("v1: US$ 30.00");
+  });
+
+  it("5 個版本（> SDLCCT-79 的 4 門檻、此時圖例取代終點標籤）時，tooltip 仍列出全部 5 個版本，不受 showTailLabels 門檻限制", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [{ date: "2026-10-18", value: 100 }]),
+      entry("v2", [{ date: "2026-10-18", value: 200 }]),
+      entry("v3", [{ date: "2026-10-18", value: 300 }]),
+      entry("v4", [{ date: "2026-10-18", value: 400 }]),
+      entry("v5", [{ date: "2026-10-18", value: 500 }]),
+    ];
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-20" />,
+    );
+
+    // 先確認此情境確實落在 >4 的圖例分支（終點標籤不渲染）。
+    expect(container.querySelectorAll('svg g[data-labels="tail"]')).toHaveLength(0);
+    expect(container.querySelectorAll("ul li")).toHaveLength(5);
+
+    const overlayRect = mockOverlayRectWidth(container);
+    fireEvent.mouseMove(overlayRect, { clientX: xForIndex(4) }); // 2026-10-18
+
+    const lines = tooltipLines(container);
+    expect(lines).toContain("v1: US$ 100");
+    expect(lines).toContain("v2: US$ 200");
+    expect(lines).toContain("v3: US$ 300");
+    expect(lines).toContain("v4: US$ 400");
+    expect(lines).toContain("v5: US$ 500");
+    // 日期標題 + 5 個版本行 = 6 個 <text>。
+    expect(lines).toHaveLength(6);
+  });
+
+  it("hover 到的日期中，某個 entry 當天缺席（非 null 值，整個 point 不存在）時，tooltip 仍顯示該 entry 一行，金額為「—」，而非整行省略", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [{ date: "2026-10-18", value: 55 }]),
+      entry("v2", [{ date: "2026-10-14", value: 10 }]), // 10-18 當天完全缺席
+    ];
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-20" />,
+    );
+    const overlayRect = mockOverlayRectWidth(container);
+    fireEvent.mouseMove(overlayRect, { clientX: xForIndex(4) });
+
+    const lines = tooltipLines(container);
+    // 日期標題 + 2 個版本行（v2 缺席但仍列出，顯示「—」）。
+    expect(lines).toHaveLength(3);
+    expect(lines).toContain("v1: US$ 55.00");
+    expect(lines).toContain("v2: —");
+  });
+
+  it("anchor 方向邊界值：hoveredIndex 的 xFor 恰好等於 plotMidX（240）時，tooltip 向左延伸（採用與 11.2 相同的 >= 規則）", () => {
+    // dateIndex=3（7 天陣列正中央）對應 x = 24 + 3/6*432 = 240 = plotMidX。
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [{ date: "2026-10-17", value: 10 }]), // dateIndex 3
+    ];
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-20" />,
+    );
+    const overlayRect = mockOverlayRectWidth(container);
+    fireEvent.mouseMove(overlayRect, { clientX: plotMidX });
+
+    const tooltip = container.querySelector('svg g[data-tooltip="active"]');
+    const tooltipRect = tooltip?.querySelector("rect");
+    const tooltipWidth = 140;
+    const tooltipX = Number(tooltipRect?.getAttribute("x"));
+    // >= plotMidX ⇒ 向左延伸：tooltipX = xFor(3) - tooltipWidth - 8 = 240 - 148 = 92。
+    expect(tooltipX).toBeCloseTo(plotMidX - tooltipWidth - 8, 1);
+  });
+
+  it("連續 hover 移動到不同索引（未先觸發 mouseLeave）時，tooltip／十字線正確更新為最新索引，不會卡在舊索引", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [
+        { date: "2026-10-14", value: 11 }, // dateIndex 0
+        { date: "2026-10-20", value: 77 }, // dateIndex 6
+      ]),
+    ];
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-20" />,
+    );
+    const overlayRect = mockOverlayRectWidth(container);
+
+    fireEvent.mouseMove(overlayRect, { clientX: xForIndex(0) });
+    expect(tooltipLines(container)).toContain("v1: US$ 11.00");
+    let crosshair = container.querySelector("svg line[stroke-dasharray]");
+    expect(Number(crosshair?.getAttribute("x1"))).toBeCloseTo(xForIndex(0), 1);
+
+    // 不觸發 mouseLeave，直接移動到另一個索引。
+    fireEvent.mouseMove(overlayRect, { clientX: xForIndex(6) });
+    const lines = tooltipLines(container);
+    expect(lines).toContain("v1: US$ 77.00");
+    expect(lines).not.toContain("v1: US$ 11.00");
+    crosshair = container.querySelector("svg line[stroke-dasharray]");
+    expect(Number(crosshair?.getAttribute("x1"))).toBeCloseTo(xForIndex(6), 1);
+
+    // 只會有一組 tooltip/十字線，不會疊加殘留舊的。
+    expect(container.querySelectorAll('svg g[data-tooltip="active"]')).toHaveLength(1);
+    expect(container.querySelectorAll("svg line[stroke-dasharray]")).toHaveLength(1);
+  });
+
+  it("可存取性備援獨立驗證：零 hover 互動下，表格完整呈現所有 7 個日期 × 全部版本的數值（含多版本、含 null）", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [
+        { date: "2026-10-14", value: 1 },
+        { date: "2026-10-15", value: null },
+        { date: "2026-10-16", value: 3 },
+        { date: "2026-10-17", value: 4 },
+        { date: "2026-10-18", value: 5 },
+        { date: "2026-10-19", value: 6 },
+        { date: "2026-10-20", value: 7 },
+      ]),
+      entry("v2", [{ date: "2026-10-14", value: 100 }]),
+      entry("v3", []),
+    ];
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-20" />,
+    );
+
+    // 完全未呼叫 fireEvent — 零 hover 互動。
+    const rows = container.querySelectorAll("tbody tr");
+    expect(rows).toHaveLength(3);
+
+    const headerCells = Array.from(container.querySelectorAll("thead th")).map(
+      (el) => el.textContent,
+    );
+    expect(headerCells).toHaveLength(8);
+
+    const row1 = Array.from(rows[0]?.querySelectorAll("td") ?? []).map(
+      (el) => el.textContent,
+    );
+    expect(row1).toEqual([
+      "v1",
+      "US$ 1.00",
+      "—",
+      "US$ 3.00",
+      "US$ 4.00",
+      "US$ 5.00",
+      "US$ 6.00",
+      "US$ 7.00",
+    ]);
+
+    const row2 = Array.from(rows[1]?.querySelectorAll("td") ?? []).map(
+      (el) => el.textContent,
+    );
+    expect(row2).toEqual(["v2", "US$ 100", "—", "—", "—", "—", "—", "—"]);
+
+    const row3 = Array.from(rows[2]?.querySelectorAll("td") ?? []).map(
+      (el) => el.textContent,
+    );
+    expect(row3).toEqual(["v3", "—", "—", "—", "—", "—", "—", "—"]);
+  });
+});
