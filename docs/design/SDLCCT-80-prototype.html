@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-80 — 版本成本圖表 Hover Tooltip／十字線與可存取性備援原型</title>
+<style>
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #FFFFFF;
+    color: #1F2937;
+    max-width: 960px;
+    margin: 32px auto;
+    padding: 0 24px;
+    line-height: 1.6;
+  }
+  h1 { font-size: 24px; font-weight: 700; }
+  h2 { font-size: 18px; font-weight: 600; margin-top: 48px; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px; }
+  p.meta { font-size: 12px; color: #4B5563; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 14px; }
+  th, td { border-bottom: 1px solid #E5E7EB; padding: 8px 12px; text-align: left; }
+  th { color: #4B5563; font-size: 12px; }
+  .box { border: 1px solid #E5E7EB; border-radius: 6px; padding: 16px; background: #FFFFFF; }
+  .note { font-size: 12px; color: #4B5563; margin: 8px 0 16px 0; }
+  .ok { color: #1baf7a; font-weight: 600; }
+  .warn { color: #eda100; font-weight: 600; }
+  code { background: #F3F4F6; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+  .toggle-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; }
+  .toggle-row input { width: 16px; height: 16px; }
+  .disclaimer {
+    border: 1px dashed #eda100;
+    background: #FFFBEB;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: #4B5563;
+    border-radius: 4px;
+    margin-bottom: 16px;
+  }
+  .hover-layer { display: none; }
+  #toggleHover:checked ~ .box .hover-layer { display: block; }
+</style>
+</head>
+<body>
+
+<h1>SDLCCT-80 — 版本成本圖表 Hover Tooltip／十字線與可存取性備援原型</h1>
+<p class="meta">
+  靜態原型，無需安裝任何套件，直接用瀏覽器開啟即可。下方兩個區塊分別對應
+  G1 已核准的 2 條 Gherkin 情境。SVG 幾何、座標公式與設計文件
+  <code>docs/design/SDLCCT-80.md</code>「關鍵技術決策」1-5 完全一致
+  （<code>CHART_WIDTH=480</code>、<code>CHART_HEIGHT=160</code>、
+  <code>CHART_PADDING=24</code>，繪圖區中點 <code>plotMidX=240</code>）。
+</p>
+
+<h2>情境一：Hover 顯示該日所有版本數值（十字線＋tooltip）</h2>
+
+<div class="disclaimer">
+  <span class="warn">⚠ 原型限制說明</span>：靜態 HTML 無法重現真實的
+  <code>onMouseMove</code>/<code>onMouseLeave</code> 事件（這是實作中唯一
+  驅動十字線／tooltip 顯示與隱藏的機制，詳見設計文件決策 1）。下方用一個
+  checkbox 切換「顯示 hover 狀態」，<strong>純粹是原型示範手法</strong>，
+  代表「游標移動到 D-2 位置時」畫面會是什麼樣子——實際元件中不存在任何
+  checkbox，游標移出繪圖區（<code>onMouseLeave</code>）時十字線／tooltip
+  會自動消失，游標移到其他日期位置時會自動切換到對應日期的數值。
+</div>
+
+<input type="checkbox" id="toggleHover" checked style="width:16px;height:16px;vertical-align:middle;" />
+<label class="toggle-row" for="toggleHover" style="display:inline;">
+  顯示 hover 狀態（模擬游標停在 2026年10月27日 對應的 X 座標）
+</label>
+
+<div class="box">
+  <svg viewBox="0 0 480 160" width="100%" height="160" role="img" aria-label="版本成本折線圖含 hover tooltip 原型">
+    <!-- 格線（SDLCCT-78 既有） -->
+    <line x1="24" y1="20" x2="456" y2="20" stroke="#E5E7EB" stroke-width="1"/>
+    <line x1="24" y1="110" x2="456" y2="110" stroke="#E5E7EB" stroke-width="1"/>
+
+    <!-- 三條版本折線（色票順位 1、2、3），v3 在 D-2（x=404）無資料形成斷點 -->
+    <polyline points="24,40 100,60 176,30 252,70 328,50 456,45" fill="none" stroke="#2a78d6" stroke-width="2"/>
+    <polyline points="24,90 100,80 176,100 252,85 328,110 404,95 456,100" fill="none" stroke="#eb6834" stroke-width="2"/>
+    <polyline points="24,70 100,65 176,75 252,60" fill="none" stroke="#1baf7a" stroke-width="2"/>
+
+    <!-- Y 軸金額標示（SDLCCT-73 既有） -->
+    <text x="2" y="20" text-anchor="start" font-size="10" fill="#4B5563" dominant-baseline="middle">US$ 150</text>
+    <text x="2" y="110" text-anchor="start" font-size="10" fill="#4B5563" dominant-baseline="middle">US$ 20</text>
+
+    <!-- X 軸日期標籤（SDLCCT-78 既有） -->
+    <text x="24" y="154" text-anchor="start" font-size="10" fill="#4B5563">2026年10月23日</text>
+    <text x="240" y="154" text-anchor="middle" font-size="10" fill="#4B5563">2026年10月26日</text>
+    <text x="456" y="154" text-anchor="end" font-size="10" fill="#4B5563">2026年10月29日</text>
+
+    <!-- hover-layer：checkbox 切換顯示，模擬 hoveredIndex !== null 狀態
+         （本票 dateIndex=4 → 2026年10月27日 → xFor(4) = 24 + (4/6)*432 = 312） -->
+    <g class="hover-layer">
+      <!-- 十字線（決策 3）：x 固定在 xFor(hoveredIndex)=312，虛線，次要文字色 -->
+      <line x1="312" y1="24" x2="312" y2="126" stroke="#4B5563" stroke-width="1" stroke-dasharray="2,2"/>
+
+      <!-- tooltip（決策 2）：x=312 < plotMidX=240？不成立（312>=240）→ 錨點右半 → 向左延伸 -->
+      <rect x="164" y="24" width="140" height="62" fill="#FFFFFF" stroke="#E5E7EB" rx="4"/>
+      <text x="172" y="38" font-size="10" fill="#1F2937" font-weight="600">2026年10月27日</text>
+      <text x="172" y="52" font-size="10" fill="#2a78d6">v1: US$ 130</text>
+      <text x="172" y="66" font-size="10" fill="#eb6834">v2: US$ 20</text>
+      <text x="172" y="80" font-size="10" fill="#1baf7a">v3: —</text>
+    </g>
+  </svg>
+</div>
+<p class="note">
+  <span class="ok">✓</span> Tooltip 列出 <code>entries</code> 全部三個版本
+  （v1、v2、v3），其中 v3 在該日無資料（<code>byDate(entry)[4] ===
+  null</code>）→ <code>formatCurrency(null)</code> 既有行為顯示「—」，不
+  是本票另外新增的 null 分支。十字線為虛線＋次要文字色，與三條實色折線視
+  覺上明顯區隔，不會被誤認為第四條資料序列。Tooltip 因游標位置落在繪圖區
+  右半（<code>x=312 ≥ plotMidX=240</code>）而向左延伸，避免被 viewBox 右
+  邊緣裁切（與 SDLCCT-79 終點標籤同一套方向判斷原則）。
+</p>
+
+<h2>情境二：鍵盤／螢幕閱讀器使用者仍可取得完整資料（表格備援）</h2>
+<p class="note">
+  下方表格與上方 <code>&lt;svg&gt;</code> 是同層 sibling DOM 元素（不是
+  SVG 內部節點），<strong>完全不依賴任何 hover 互動</strong>——即使把上方
+  checkbox 取消勾選（模擬「從未觸發任何 hover」的狀態，例如純鍵盤操作或
+  螢幕閱讀器使用情境），表格仍完整呈現所有日期與版本的數值：
+</p>
+<div class="box">
+  <table>
+    <thead>
+      <tr>
+        <th>版本</th>
+        <th>2026年10月23日</th>
+        <th>2026年10月24日</th>
+        <th>2026年10月25日</th>
+        <th>2026年10月26日</th>
+        <th>2026年10月27日</th>
+        <th>2026年10月28日</th>
+        <th>2026年10月29日</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>v1</td>
+        <td>US$ 150</td><td>US$ 120</td><td>US$ 160</td><td>US$ 100</td><td>US$ 130</td><td>US$ 170</td><td>—</td>
+      </tr>
+      <tr>
+        <td>v2</td>
+        <td>US$ 40</td><td>US$ 50</td><td>US$ 30</td><td>US$ 45</td><td>US$ 20</td><td>US$ 35</td><td>US$ 30</td>
+      </tr>
+      <tr>
+        <td>v3</td>
+        <td>US$ 60</td><td>US$ 55</td><td>US$ 65</td><td>US$ 50</td><td>—</td><td>—</td><td>—</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<p class="note">
+  <span class="ok">✓</span> 表格渲染路徑（<code>entries.map</code> →
+  <code>byDate(entry)</code> → <code>formatCurrency</code>）與上方 SVG 的
+  hover 狀態機（<code>hoveredIndex</code>）完全獨立，彼此不共用任何條件分
+  支——本票新增的互動層不需要對表格做任何程式碼變更即滿足此情境。
+</p>
+
+</body>
+</html>
