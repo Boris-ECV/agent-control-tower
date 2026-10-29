@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-78 — 版本成本圖表 X 軸日期刻度與淡化格線原型</title>
+<style>
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #FFFFFF;
+    color: #1F2937;
+    max-width: 960px;
+    margin: 32px auto;
+    padding: 0 24px;
+    line-height: 1.6;
+  }
+  h1 { font-size: 24px; font-weight: 700; }
+  h2 { font-size: 18px; font-weight: 600; margin-top: 48px; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px; }
+  p.meta { font-size: 12px; color: #4B5563; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 14px; }
+  th, td { border-bottom: 1px solid #E5E7EB; padding: 8px 12px; text-align: left; }
+  th { color: #4B5563; font-size: 12px; }
+  .box { border: 1px solid #E5E7EB; border-radius: 6px; padding: 16px; background: #FFFFFF; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 0; margin: 0 0 16px 0; list-style: none; }
+  .legend li { display: flex; align-items: center; font-size: 12px; color: #4B5563; }
+  .legend .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; display: inline-block; }
+  .swatch { display: inline-block; width: 16px; height: 16px; border-radius: 3px; vertical-align: middle; margin-right: 6px; border: 1px solid rgba(0,0,0,0.1); }
+  .note { font-size: 12px; color: #4B5563; margin: 8px 0 16px 0; }
+  .ok { color: #1baf7a; font-weight: 600; }
+  code { background: #F3F4F6; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<h1>SDLCCT-78 — 版本成本圖表 X 軸日期刻度與淡化格線原型</h1>
+<p class="meta">
+  靜態原型，無需安裝任何套件，直接用瀏覽器開啟即可。下方兩個區塊分別對應
+  G1 已核准的 2 條 Gherkin 情境。SVG 幾何、x/y 座標公式與設計文件
+  <code>docs/design/SDLCCT-78.md</code>「關鍵技術決策」1-3 完全一致
+  （<code>CHART_WIDTH=480</code>、<code>CHART_HEIGHT=160</code>、
+  <code>CHART_PADDING=24</code>）。
+</p>
+
+<h2>情境一：圖表底部顯示日期刻度（D-6 ／ D-3 ／ D，對齊下方表格）</h2>
+<p class="note">
+  X 軸標示 3 個日期標籤（頭、中、尾），<code>textAnchor</code> 分別為
+  <code>start</code>／<code>middle</code>／<code>end</code>，座標公式與既有折線
+  資料點共用同一個 <code>xFor(dateIndex)</code>，保證標籤與資料點對齊。
+</p>
+<div class="box">
+  <svg viewBox="0 0 480 160" width="100%" height="160" role="img" aria-label="版本成本折線圖原型">
+    <!-- 兩條版本折線（色票順位 1、2） -->
+    <polyline points="24,40 100,60 176,30 252,70 328,50 404,20 456,45" fill="none" stroke="#2a78d6" stroke-width="2"/>
+    <polyline points="24,90 100,80 176,100 252,85 328,110 404,95 456,100" fill="none" stroke="#eb6834" stroke-width="2"/>
+
+    <!-- Y 軸金額標示（SDLCCT-73 既有） -->
+    <text x="2" y="20" text-anchor="start" font-size="10" fill="#4B5563" dominant-baseline="middle">US$ 150</text>
+    <text x="2" y="110" text-anchor="start" font-size="10" fill="#4B5563" dominant-baseline="middle">US$ 20</text>
+
+    <!-- X 軸日期標籤（本票新增）：頭 start、中 middle、尾 end -->
+    <text x="24" y="154" text-anchor="start" font-size="10" fill="#4B5563">2026年10月23日</text>
+    <text x="240" y="154" text-anchor="middle" font-size="10" fill="#4B5563">2026年10月26日</text>
+    <text x="456" y="154" text-anchor="end" font-size="10" fill="#4B5563">2026年10月29日</text>
+  </svg>
+</div>
+<ul class="legend">
+  <li><span class="dot" style="background:#2a78d6"></span>v1.0</li>
+  <li><span class="dot" style="background:#eb6834"></span>v1.1</li>
+</ul>
+<table>
+  <thead>
+    <tr>
+      <th>版本</th>
+      <th>2026年10月23日</th>
+      <th>2026年10月24日</th>
+      <th>2026年10月25日</th>
+      <th>2026年10月26日</th>
+      <th>2026年10月27日</th>
+      <th>2026年10月28日</th>
+      <th>2026年10月29日</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>v1.0</td>
+      <td>US$ 150</td><td>US$ 120</td><td>US$ 160</td><td>US$ 100</td><td>US$ 130</td><td>US$ 170</td><td>US$ 140</td>
+    </tr>
+    <tr>
+      <td>v1.1</td>
+      <td>US$ 40</td><td>US$ 50</td><td>US$ 30</td><td>US$ 45</td><td>US$ 20</td><td>US$ 35</td><td>US$ 30</td>
+    </tr>
+  </tbody>
+</table>
+<p class="note">
+  <span class="ok">✓</span> SVG 內可見 3 個日期 <code>&lt;text&gt;</code>（含頭尾 D-6／D），文字
+  （「2026年10月23日」「2026年10月26日」「2026年10月29日」）與下方表格對應欄位完全一致——
+  兩者皆由同一個 <code>formatTaiwanDate()</code> 產生，天然保證一致。
+</p>
+
+<h2>情境二：格線對齊 Y 軸 max/min 標示，顏色非色票任何一色</h2>
+<p class="note">
+  兩條水平淡化格線（<code>--color-border</code> <code>#E5E7EB</code>）對齊既有
+  <code>US$ 150</code>／<code>US$ 20</code> 標示高度，橫跨繪圖區寬度
+  （<code>x=24</code> 到 <code>x=456</code>），繪製順序在資料折線之前（視覺上在底層，
+  不蓋過資料線）。
+</p>
+<div class="box">
+  <svg viewBox="0 0 480 160" width="100%" height="160" role="img" aria-label="版本成本折線圖含格線原型">
+    <!-- 格線（本票新增）：先畫，在折線之下 -->
+    <line x1="24" y1="20" x2="456" y2="20" stroke="#E5E7EB" stroke-width="1"/>
+    <line x1="24" y1="110" x2="456" y2="110" stroke="#E5E7EB" stroke-width="1"/>
+
+    <!-- 兩條版本折線（色票順位 1、2），蓋在格線之上 -->
+    <polyline points="24,40 100,60 176,30 252,70 328,50 404,20 456,45" fill="none" stroke="#2a78d6" stroke-width="2"/>
+    <polyline points="24,90 100,80 176,100 252,85 328,110 404,95 456,100" fill="none" stroke="#eb6834" stroke-width="2"/>
+
+    <!-- Y 軸金額標示（SDLCCT-73 既有） -->
+    <text x="2" y="20" text-anchor="start" font-size="10" fill="#4B5563" dominant-baseline="middle">US$ 150</text>
+    <text x="2" y="110" text-anchor="start" font-size="10" fill="#4B5563" dominant-baseline="middle">US$ 20</text>
+  </svg>
+</div>
+<p class="note">格線顏色與色票 8 色對照（確認肉眼可明顯區分，非任一色票顏色）：</p>
+<table>
+  <thead><tr><th>用途</th><th>Hex</th><th>色塊</th></tr></thead>
+  <tbody>
+    <tr><td>格線（本票，<code>--color-border</code>）</td><td>#E5E7EB</td><td><span class="swatch" style="background:#E5E7EB"></span></td></tr>
+    <tr><td>色票順位 1（v1.0 折線）</td><td>#2a78d6</td><td><span class="swatch" style="background:#2a78d6"></span></td></tr>
+    <tr><td>色票順位 2（v1.1 折線）</td><td>#eb6834</td><td><span class="swatch" style="background:#eb6834"></span></td></tr>
+    <tr><td>色票順位 3</td><td>#1baf7a</td><td><span class="swatch" style="background:#1baf7a"></span></td></tr>
+    <tr><td>色票順位 4</td><td>#eda100</td><td><span class="swatch" style="background:#eda100"></span></td></tr>
+    <tr><td>色票順位 5</td><td>#e87ba4</td><td><span class="swatch" style="background:#e87ba4"></span></td></tr>
+    <tr><td>色票順位 6</td><td>#008300</td><td><span class="swatch" style="background:#008300"></span></td></tr>
+    <tr><td>色票順位 7</td><td>#6250d6</td><td><span class="swatch" style="background:#6250d6"></span></td></tr>
+    <tr><td>色票順位 8</td><td>#e34948</td><td><span class="swatch" style="background:#e34948"></span></td></tr>
+  </tbody>
+</table>
+<p class="note">
+  <span class="ok">✓</span> 格線 <code>#E5E7EB</code> 為接近白的中性淡灰，與上表 8 個色票色值
+  在色相與明度上皆明顯區隔，不會被誤判為任何版本折線的顏色。
+</p>
+
+</body>
+</html>
