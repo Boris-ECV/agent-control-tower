@@ -24,7 +24,9 @@ describe("VersionCostChart Y 軸金額標示 (SDLCCT-73)", () => {
       ]),
     ];
 
-    const { container } = render(<VersionCostChart entries={entries} />);
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-15" />,
+    );
     const texts = container.querySelectorAll("svg text");
 
     expect(texts).toHaveLength(2);
@@ -56,7 +58,9 @@ describe("VersionCostChart Y 軸金額標示 (SDLCCT-73)", () => {
       ]),
     ];
 
-    const { container } = render(<VersionCostChart entries={entries} />);
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-15" />,
+    );
     const texts = container.querySelectorAll("svg text");
 
     expect(texts).toHaveLength(1);
@@ -71,7 +75,9 @@ describe("VersionCostChart Y 軸金額標示 (SDLCCT-73)", () => {
       ]),
     ];
 
-    const { container } = render(<VersionCostChart entries={entries} />);
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-15" />,
+    );
     const texts = container.querySelectorAll("svg text");
 
     expect(texts).toHaveLength(0);
@@ -79,15 +85,146 @@ describe("VersionCostChart Y 軸金額標示 (SDLCCT-73)", () => {
   });
 
   it("entries 為空時，不顯示任何 Y 軸金額標示", () => {
-    const { container } = render(<VersionCostChart entries={[]} />);
+    const { container } = render(
+      <VersionCostChart entries={[]} anchorDate="2026-10-15" />,
+    );
     const texts = container.querySelectorAll("svg text");
 
     expect(texts).toHaveLength(0);
   });
 });
 
+describe("VersionCostChart 日期軸固定 7 天 (SDLCCT-72)", () => {
+  it("情境1: 日期軸永遠涵蓋完整 7 天 (anchor_date - 6 到 anchor_date)，即使某版本的資料點只覆蓋其中一部分", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [
+        { date: "2026-10-18", value: 100 },
+        { date: "2026-10-19", value: 150 },
+      ]),
+    ];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-20" />,
+    );
+
+    const headerCells = container.querySelectorAll("thead th");
+    // 第一個 th 是「版本」欄標題，其餘 7 個才是日期欄。
+    expect(headerCells).toHaveLength(8);
+    const dateHeaderTexts = Array.from(headerCells)
+      .slice(1)
+      .map((el) => el.textContent);
+    expect(dateHeaderTexts).toHaveLength(7);
+
+    // 折線 X 軸資料點數量同樣以這 7 天為準：只有 2 個非 null 值，連成 1 條
+    // 折線，但其座標是以 7 天的間距（dates.length = 7）計算，不是以 2 天。
+    const polylines = container.querySelectorAll("svg polyline");
+    expect(polylines).toHaveLength(1);
+  });
+
+  it("情境2: 某一天某個 version 完全沒有回傳資料點（日期整個缺席）時，該格顯示「—」且折線在該日斷開", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [
+        { date: "2026-10-14", value: 100 },
+        // 2026-10-15 這天整個缺席（不是 value: null）。
+        { date: "2026-10-16", value: 150 },
+        { date: "2026-10-17", value: 160 },
+        { date: "2026-10-18", value: 170 },
+        { date: "2026-10-19", value: 180 },
+        { date: "2026-10-20", value: 190 },
+      ]),
+    ];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-20" />,
+    );
+
+    const row = container.querySelector("tbody tr");
+    const cells = Array.from(row?.querySelectorAll("td") ?? []).map(
+      (el) => el.textContent,
+    );
+    // cells[0] 是版本名，cells[1] 對應 2026-10-14 ... cells[7] 對應 2026-10-20。
+    expect(cells[0]).toBe("v1");
+    expect(cells[2]).toBe("—"); // 2026-10-15：日期缺席
+
+    // 折線在缺席日斷開：此版本只有一組非連續的資料，分成兩段折線。
+    const polylines = container.querySelectorAll("svg polyline");
+    expect(polylines).toHaveLength(2);
+    const pointCounts = Array.from(polylines).map(
+      (el) => (el.getAttribute("points") ?? "").trim().split(/\s+/).length,
+    );
+    expect(pointCounts.sort()).toEqual([1, 5]);
+  });
+
+  it("情境3: point 存在但 value 為 null 時，與日期缺席的畫面呈現一致（回歸）", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [
+        { date: "2026-10-14", value: 100 },
+        { date: "2026-10-15", value: null },
+        { date: "2026-10-16", value: 150 },
+        { date: "2026-10-17", value: 160 },
+        { date: "2026-10-18", value: 170 },
+        { date: "2026-10-19", value: 180 },
+        { date: "2026-10-20", value: 190 },
+      ]),
+    ];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-20" />,
+    );
+
+    const row = container.querySelector("tbody tr");
+    const cells = Array.from(row?.querySelectorAll("td") ?? []).map(
+      (el) => el.textContent,
+    );
+    expect(cells[2]).toBe("—"); // 2026-10-15：point 存在但 value 為 null
+
+    const polylines = container.querySelectorAll("svg polyline");
+    expect(polylines).toHaveLength(2);
+    const pointCounts = Array.from(polylines).map(
+      (el) => (el.getAttribute("points") ?? "").trim().split(/\s+/).length,
+    );
+    expect(pointCounts.sort()).toEqual([1, 5]);
+  });
+
+  it("情境4: 所有 version 當週完全沒有任何資料點時，仍顯示 7 個日期欄位，每格「—」，不拋例外", () => {
+    const entries: VersionCostSeriesEntry[] = [entry("v1", []), entry("v2", [])];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-20" />,
+    );
+
+    const headerCells = container.querySelectorAll("thead th");
+    expect(headerCells).toHaveLength(8);
+
+    const rows = container.querySelectorAll("tbody tr");
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      const cells = Array.from(row.querySelectorAll("td")).slice(1);
+      expect(cells).toHaveLength(7);
+      for (const cell of cells) {
+        expect(cell.textContent).toBe("—");
+      }
+    }
+
+    expect(container.querySelectorAll("svg polyline")).toHaveLength(0);
+  });
+
+  it("情境5: entries 本身為空陣列時，仍顯示 7 個日期欄位，不渲染任何資料列，不拋例外", () => {
+    const { container } = render(
+      <VersionCostChart entries={[]} anchorDate="2026-10-20" />,
+    );
+
+    const headerCells = container.querySelectorAll("thead th");
+    expect(headerCells).toHaveLength(8);
+
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(0);
+  });
+});
+
 describe("VersionCostChart 表格小額金額顯示精度 (SDLCCT-71)", () => {
   it("六天皆為小額（< US$100）的每日成本，表格儲存格各自顯示 2 位小數且不全部相同", () => {
+    // entries 只覆蓋 anchorDate 前 6 天；固定 7 天日期軸 (SDLCCT-72) 下第 1 欄
+    // （anchorDate - 6）無資料顯示「—」，其餘 6 欄驗證 SDLCCT-71 的小額精度格式。
     const entries: VersionCostSeriesEntry[] = [
       entry("v1", [
         { date: "2026-10-09", value: 2.1 },
@@ -99,12 +236,15 @@ describe("VersionCostChart 表格小額金額顯示精度 (SDLCCT-71)", () => {
       ]),
     ];
 
-    const { container } = render(<VersionCostChart entries={entries} />);
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-14" />,
+    );
     const row = container.querySelector("tbody tr");
     const cells = row ? Array.from(row.querySelectorAll("td")).slice(1) : [];
     const cellTexts = cells.map((c) => c.textContent);
 
     expect(cellTexts).toEqual([
+      "—",
       "US$ 2.10",
       "US$ 1.30",
       "US$ 2.80",
@@ -136,7 +276,9 @@ describe("VersionCostChart 色盲安全色票 (SDLCCT-75)", () => {
       entry("v6", [{ date: "2026-10-14", value: 600 }]),
     ];
 
-    const { container } = render(<VersionCostChart entries={entries} />);
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-14" />,
+    );
 
     const polylines = container.querySelectorAll("svg polyline");
     expect(polylines).toHaveLength(6);

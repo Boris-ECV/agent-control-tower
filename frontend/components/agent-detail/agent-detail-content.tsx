@@ -76,7 +76,10 @@ export function AgentDetailContent() {
               <h2 className="mb-3 text-lg leading-7 font-semibold text-text-primary">
                 {t("agentDetail.versionSeries.title")}
               </h2>
-              <VersionCostChart entries={state.data.version_cost_series} />
+              <VersionCostChart
+                entries={state.data.version_cost_series}
+                anchorDate={state.data.anchor_date}
+              />
             </section>
 
             <section aria-label={t("agentDetail.modelBreakdown.title")} className="mb-8">
