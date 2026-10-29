@@ -559,3 +559,85 @@ describe("VersionCostChart X 軸刻度與格線 — 測試者獨立補充驗證"
     expect(xAxisTexts.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe("VersionCostChart 線條終點直接標籤 (SDLCCT-79)", () => {
+  it("版本數 <= 4 時顯示終點直接標籤，且圖表下方不再顯示圖例色點＋文字", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [
+        { date: "2026-10-14", value: 100 },
+        { date: "2026-10-15", value: 140 },
+      ]),
+      entry("v2", [
+        { date: "2026-10-14", value: 300 },
+        { date: "2026-10-15", value: 400 },
+      ]),
+    ];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-15" />,
+    );
+
+    // 每條線最後一個有值的資料點旁有該版本名稱與金額的文字標籤。
+    const tailTexts = Array.from(
+      container.querySelectorAll('svg g[data-labels="tail"] text'),
+    );
+    expect(tailTexts).toHaveLength(2);
+    const tailContents = tailTexts.map((el) => el.textContent);
+    expect(tailContents).toContain("v1 US$ 140");
+    expect(tailContents).toContain("v2 US$ 400");
+
+    // 文字顏色採該版本折線自身的顏色（而非共用的次要文字色）。
+    const COLORBLIND_SAFE_COLORS = ["#2a78d6", "#eb6834"];
+    const fills = tailTexts.map((el) => el.getAttribute("fill"));
+    expect(fills.sort()).toEqual([...COLORBLIND_SAFE_COLORS].sort());
+
+    // 圖表下方不再顯示另一排圖例色點＋文字。
+    expect(container.querySelectorAll("ul li")).toHaveLength(0);
+  });
+
+  it("版本數 > 4 時退回純圖例顯示：線條終點不顯示直接標籤，圖例列出全部 5 個版本", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [{ date: "2026-10-14", value: 100 }]),
+      entry("v2", [{ date: "2026-10-14", value: 200 }]),
+      entry("v3", [{ date: "2026-10-14", value: 300 }]),
+      entry("v4", [{ date: "2026-10-14", value: 400 }]),
+      entry("v5", [{ date: "2026-10-14", value: 500 }]),
+    ];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-14" />,
+    );
+
+    // 線條終點不顯示直接標籤。
+    expect(container.querySelectorAll('svg g[data-labels="tail"]')).toHaveLength(0);
+    expect(container.querySelectorAll('svg g[data-labels="tail"] text')).toHaveLength(
+      0,
+    );
+
+    // 圖表下方顯示圖例色點＋文字列出全部 5 個版本。
+    const legendItems = container.querySelectorAll("ul li");
+    expect(legendItems).toHaveLength(5);
+    const legendTexts = Array.from(legendItems).map((el) => el.textContent);
+    expect(legendTexts).toEqual(["v1", "v2", "v3", "v4", "v5"]);
+  });
+
+  it("entry 全部 7 天皆為 null 時，不渲染該 entry 的終點標籤（本身也不會畫出折線）", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [
+        { date: "2026-10-14", value: null },
+        { date: "2026-10-15", value: null },
+      ]),
+      entry("v2", [{ date: "2026-10-14", value: 100 }]),
+    ];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-15" />,
+    );
+
+    const tailTexts = Array.from(
+      container.querySelectorAll('svg g[data-labels="tail"] text'),
+    );
+    expect(tailTexts).toHaveLength(1);
+    expect(tailTexts[0]?.textContent).toBe("v2 US$ 100");
+  });
+});

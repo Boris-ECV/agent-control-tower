@@ -137,9 +137,22 @@ test("AC2: a null point in the middle of a version's series breaks the line into
   expect(pointCounts.filter((n) => n === 1)).toHaveLength(2);
   expect(pointCounts.filter((n) => n === 3)).toHaveLength(1);
 
-  // The legend lists exactly one entry per version, matching the series count.
-  await expect(page.locator("ul li", { hasText: "v1" })).toHaveCount(1);
-  await expect(page.locator("ul li", { hasText: "v2" })).toHaveCount(1);
+  // SDLCCT-79: with 2 versions (<= 4), the legend is replaced by a direct
+  // text label at each line's tail (last non-null point) showing the
+  // version name and its formatted value, so each version is still
+  // identifiable without the legend. v1's last non-null value is 150 (on
+  // 2026-10-16); v2's last non-null value is 400 (on 2026-10-16).
+  await expect(
+    page.locator('svg g[data-labels="tail"] text', { hasText: "v1 US$ 150" }),
+  ).toHaveCount(1);
+  await expect(
+    page.locator('svg g[data-labels="tail"] text', { hasText: "v2 US$ 400" }),
+  ).toHaveCount(1);
+  // Scoped to the version-series section: the page also has other <ul><li>
+  // lists (e.g. model-breakdown, top-traces) unrelated to this chart's
+  // legend, so an unscoped "ul li" locator would count those too.
+  const versionSection = page.locator('section[aria-label="版本成本時間序列"]');
+  await expect(versionSection.locator("ul li")).toHaveCount(0);
 });
 
 test("SDLCCT-72: date axis always covers a full 7 days (anchor_date-6..anchor_date), even when a version's points cover only part of it", async ({
@@ -391,11 +404,19 @@ test("SDLCCT-73: chart shows exactly two Y-axis amount labels (max and min) when
   // unambiguous.
   const labels = page.locator('svg g[data-axis="y"] text');
   await expect(labels).toHaveCount(2);
-  await expect(page.locator("svg text", { hasText: "US$ 400" })).toHaveCount(1);
+  // SDLCCT-79 added a tail-label group (also containing "US$ 400" text for
+  // v1's endpoint), so scope these amount-text assertions to data-axis="y"
+  // specifically rather than any "svg text" to keep counting only the
+  // Y-axis labels these tests target.
+  await expect(
+    page.locator('svg g[data-axis="y"] text', { hasText: "US$ 400" }),
+  ).toHaveCount(1);
   // SDLCCT-71: 50 < US$100 threshold, formatCurrency now renders 2 decimals.
   // ("US$ 50" would still coincidentally match "US$ 50.00" via hasText's
   // substring semantics, so assert the exact post-fix string instead.)
-  await expect(page.locator("svg text", { hasText: "US$ 50.00" })).toHaveCount(1);
+  await expect(
+    page.locator('svg g[data-axis="y"] text', { hasText: "US$ 50.00" }),
+  ).toHaveCount(1);
 
   // Both labels sit in the left padding area (x < CHART_PADDING = 24).
   const xs = await labels.evaluateAll((els) =>
@@ -436,7 +457,12 @@ test("SDLCCT-73: chart shows exactly one Y-axis amount label when all values are
   await page.goto(`/agents/${MOCK_KEY}`);
 
   await expect(page.locator('svg g[data-axis="y"] text')).toHaveCount(1);
-  await expect(page.locator("svg text", { hasText: "US$ 100" })).toHaveCount(1);
+  // SDLCCT-79: scope to data-axis="y" — this entry's tail label also
+  // renders "v1 US$ 100" text, which would otherwise double-count via an
+  // unscoped "svg text" locator.
+  await expect(
+    page.locator('svg g[data-axis="y"] text', { hasText: "US$ 100" }),
+  ).toHaveCount(1);
 });
 
 test("SDLCCT-73: chart shows no Y-axis amount label and never fabricates US$ 0 when every value is null", async ({
