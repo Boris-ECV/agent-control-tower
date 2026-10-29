@@ -411,3 +411,151 @@ describe("VersionCostChart X 軸刻度與格線 (SDLCCT-78)", () => {
     expect(lastLineIndex).toBeLessThan(firstPolylineIndex);
   });
 });
+
+// 以下為測試者（非開發者）獨立補寫的驗證案例，涵蓋設計文件/開發者測試
+// 未明確覆蓋的邊界條件（SDLCCT-78 驗收情境的額外探測）。
+describe("VersionCostChart X 軸刻度與格線 — 測試者獨立補充驗證", () => {
+  it("X 軸標籤文字與表格對應欄位日期逐字相同（不同 anchorDate，獨立渲染比對，非僅同呼叫同一格式化函式）", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [{ date: "2026-01-01", value: 10 }]),
+    ];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-01-05" />,
+    );
+
+    const xAxisTexts = Array.from(
+      container.querySelectorAll('svg g[data-axis="x"] text'),
+    ).map((el) => el.textContent);
+
+    const headerCells = Array.from(
+      container.querySelectorAll("thead th"),
+    ).slice(1);
+    const dateHeaderTexts = headerCells.map((el) => el.textContent);
+
+    // D-6 (索引0) 與 D (索引6) 兩個端點文字必須與表格欄位文字完全相同
+    // （byte-for-byte），而不只是「兩邊都呼叫了 formatTaiwanDate」。
+    expect(xAxisTexts).toContain(dateHeaderTexts[0]);
+    expect(xAxisTexts).toContain(dateHeaderTexts[6]);
+    // 確認表格欄位文字本身非空字串，避免兩邊都是空字串造成偽陽性。
+    expect(dateHeaderTexts[0]).toBeTruthy();
+    expect(dateHeaderTexts[6]).toBeTruthy();
+  });
+
+  it("max === min（單一 Y 軸標示）時，格線恰好渲染 1 條，且高度對齊該單一標示", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [
+        { date: "2026-10-14", value: 100 },
+        { date: "2026-10-15", value: 100 },
+      ]),
+    ];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-15" />,
+    );
+
+    const svg = container.querySelector("svg");
+    const lines = Array.from(svg?.querySelectorAll("line") ?? []);
+    expect(lines).toHaveLength(1);
+
+    const singleLabel = container.querySelector('svg g[data-axis="y"] text');
+    expect(Number(lines[0]?.getAttribute("y1"))).toBeCloseTo(
+      Number(singleLabel?.getAttribute("y")),
+      1,
+    );
+    expect(lines[0]?.getAttribute("y1")).toBe(lines[0]?.getAttribute("y2"));
+  });
+
+  it("完全沒有任何非 null 數值時（labels 為空陣列），格線數量為 0，且不拋出例外", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [
+        { date: "2026-10-14", value: null },
+        { date: "2026-10-15", value: null },
+      ]),
+    ];
+
+    expect(() =>
+      render(<VersionCostChart entries={entries} anchorDate="2026-10-15" />),
+    ).not.toThrow();
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-15" />,
+    );
+    const svg = container.querySelector("svg");
+    expect(svg?.querySelectorAll("line")).toHaveLength(0);
+  });
+
+  it("entries 為空陣列時，格線數量為 0，且不拋出例外", () => {
+    expect(() =>
+      render(<VersionCostChart entries={[]} anchorDate="2026-10-15" />),
+    ).not.toThrow();
+
+    const { container } = render(
+      <VersionCostChart entries={[]} anchorDate="2026-10-15" />,
+    );
+    expect(container.querySelector("svg")?.querySelectorAll("line")).toHaveLength(
+      0,
+    );
+  });
+
+  it("多條版本折線時，所有格線 <line> 在 DOM 順序上皆先於所有 <polyline>（而非僅驗證『最後一條格線早於第一條折線』這一個邊界）", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [
+        { date: "2026-10-14", value: 100 },
+        { date: "2026-10-15", value: 400 },
+      ]),
+      entry("v2", [
+        { date: "2026-10-14", value: 50 },
+        { date: "2026-10-15", value: 200 },
+      ]),
+      entry("v3", [
+        { date: "2026-10-14", value: 300 },
+        { date: "2026-10-15", value: 350 },
+      ]),
+    ];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-15" />,
+    );
+
+    const svg = container.querySelector("svg");
+    const allChildren = Array.from(svg?.querySelectorAll("line, polyline") ?? []);
+    const lineIndices = allChildren
+      .map((el, i) => (el.tagName.toLowerCase() === "line" ? i : -1))
+      .filter((i) => i >= 0);
+    const polylineIndices = allChildren
+      .map((el, i) => (el.tagName.toLowerCase() === "polyline" ? i : -1))
+      .filter((i) => i >= 0);
+
+    expect(lineIndices.length).toBeGreaterThan(0);
+    expect(polylineIndices.length).toBeGreaterThanOrEqual(3);
+    const maxLineIndex = Math.max(...lineIndices);
+    const minPolylineIndex = Math.min(...polylineIndices);
+    expect(maxLineIndex).toBeLessThan(minPolylineIndex);
+  });
+
+  it("X 軸日期標籤列為固定渲染：entries 為空陣列時仍渲染 X 軸日期標籤（不依賴 hasValues/labels）", () => {
+    const { container } = render(
+      <VersionCostChart entries={[]} anchorDate="2026-10-15" />,
+    );
+
+    const xAxisTexts = container.querySelectorAll('svg g[data-axis="x"] text');
+    expect(xAxisTexts.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("X 軸日期標籤列為固定渲染：所有數值皆為 null 時仍渲染 X 軸日期標籤", () => {
+    const entries: VersionCostSeriesEntry[] = [
+      entry("v1", [
+        { date: "2026-10-14", value: null },
+        { date: "2026-10-15", value: null },
+      ]),
+    ];
+
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-15" />,
+    );
+
+    const xAxisTexts = container.querySelectorAll('svg g[data-axis="x"] text');
+    expect(xAxisTexts.length).toBeGreaterThanOrEqual(2);
+  });
+});
