@@ -460,6 +460,84 @@ def test_other_version_entry_not_appended_when_gap_within_threshold(monkeypatch)
     assert body["version_cost_series"][0]["version"] == "v1.2.0"
 
 
+def test_other_version_entry_not_appended_when_gap_exactly_at_threshold(monkeypatch):
+    """Boundary: a gap of exactly 0.01 (the stated 1-cent threshold itself,
+    bit-for-bit -- version_map is empty so the gap is the raw total value
+    with no subtraction-induced float noise) must NOT trigger the "其他"
+    entry anywhere: the comparison is strictly `gap > 0.01`, not `>=`."""
+    _patch_metrics(
+        monkeypatch,
+        version_map=_version_series_map({}),
+        model_map=_model_series_map({}),
+        total_map=_version_series_map({"total": [0.01] * 7}),
+    )
+    _patch_traces(monkeypatch, ())
+
+    resp = client.get(f"/api/agents/{AGENT_KEY}/cost-breakdown")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["version_cost_series"] == []
+
+
+def test_other_version_entry_appended_when_gap_just_above_threshold(monkeypatch):
+    """Boundary complement: on a single day where the (bit-exact, no
+    subtraction noise) gap is 0.02 while every other day is exactly 0.01
+    (at, not over, the threshold), only that one day triggers the "其他"
+    entry -- proving the boundary isn't rounded loosely in either
+    direction."""
+    _patch_metrics(
+        monkeypatch,
+        version_map=_version_series_map({}),
+        model_map=_model_series_map({}),
+        total_map=_version_series_map(
+            {"total": [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.02]}
+        ),
+    )
+    _patch_traces(monkeypatch, ())
+
+    resp = client.get(f"/api/agents/{AGENT_KEY}/cost-breakdown")
+    assert resp.status_code == 200
+    body = resp.json()
+    series = body["version_cost_series"]
+    assert len(series) == 1
+    other = series[0]
+    assert other["version"] == "其他／未標記版本"
+    by_date = {p["date"]: p["value"] for p in other["points"]}
+    assert by_date["2026-10-15"] == pytest.approx(0.02)
+    for date_iso, value in by_date.items():
+        if date_iso != "2026-10-15":
+            assert value is None
+
+
+def test_total_cost_query_failure_maps_to_502_even_when_version_and_model_succeed(
+    monkeypatch,
+):
+    """AC4/decision #2: the NEW third query (no-breakdown daily total,
+    added by SDLCCT-76) must propagate a failure to an explicit 502 exactly
+    like the pre-existing two queries do -- not be silently swallowed into
+    "no gap detected". Succeeds on the METADATA (version) and TAGS (model)
+    calls, fails only on the third (breakdown=None) call."""
+    exc = OpikHTTPError(
+        "non-2xx response", endpoint="/v1/private/projects/p1/metrics", status_code=503
+    )
+
+    def fake(keys, metric_type, *, interval, breakdown=None, **kw):
+        if breakdown is not None and breakdown.field == BreakdownField.METADATA:
+            return _version_series_map({"v1.2.0": [1.0] * 7})
+        if breakdown is not None and breakdown.field == BreakdownField.TAGS:
+            return _model_series_map({"gpt-4o": 10.0})
+        raise exc
+
+    monkeypatch.setattr(agent_detail_module, "get_project_metrics_cached", fake)
+    _patch_traces(monkeypatch, ())
+
+    resp = client.get(f"/api/agents/{AGENT_KEY}/cost-breakdown")
+    assert resp.status_code == 502
+    body = resp.json()
+    assert body["error"]["message"] == str(exc)
+    assert body["error"]["endpoint"] == "/v1/private/projects/p1/metrics"
+
+
 def test_other_version_entry_covers_whole_window_when_all_untagged(monkeypatch):
     """Scenario 3: the version-breakdown query returns no series at all
     (every trace untagged) -> version_cost_series contains exactly one
