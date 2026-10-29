@@ -386,7 +386,10 @@ test("SDLCCT-73: chart shows exactly two Y-axis amount labels (max and min) when
 
   await page.goto(`/agents/${MOCK_KEY}`);
 
-  const labels = page.locator("svg text");
+  // SDLCCT-78 added a separate always-rendered X-axis date label group;
+  // scope to data-axis="y" so this Y-axis-label-count assertion stays
+  // unambiguous.
+  const labels = page.locator('svg g[data-axis="y"] text');
   await expect(labels).toHaveCount(2);
   await expect(page.locator("svg text", { hasText: "US$ 400" })).toHaveCount(1);
   // SDLCCT-71: 50 < US$100 threshold, formatCurrency now renders 2 decimals.
@@ -432,7 +435,7 @@ test("SDLCCT-73: chart shows exactly one Y-axis amount label when all values are
 
   await page.goto(`/agents/${MOCK_KEY}`);
 
-  await expect(page.locator("svg text")).toHaveCount(1);
+  await expect(page.locator('svg g[data-axis="y"] text')).toHaveCount(1);
   await expect(page.locator("svg text", { hasText: "US$ 100" })).toHaveCount(1);
 });
 
@@ -465,7 +468,7 @@ test("SDLCCT-73: chart shows no Y-axis amount label and never fabricates US$ 0 w
 
   await page.goto(`/agents/${MOCK_KEY}`);
 
-  await expect(page.locator("svg text")).toHaveCount(0);
+  await expect(page.locator('svg g[data-axis="y"] text')).toHaveCount(0);
   await expect(page.locator("svg", { hasText: "US$ 0" })).toHaveCount(0);
 });
 

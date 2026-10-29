@@ -47,14 +47,32 @@ export function VersionCostChart({
       ? CHART_PADDING + innerHeight / 2
       : CHART_PADDING + innerHeight - ((value - min) / (max - min)) * innerHeight;
 
+  const xFor = (dateIndex: number) =>
+    dates.length > 1
+      ? CHART_PADDING + (dateIndex / (dates.length - 1)) * innerWidth
+      : CHART_PADDING + innerWidth / 2;
+
   const toXY = (dateIndex: number, value: number) => {
-    const x =
-      dates.length > 1
-        ? CHART_PADDING + (dateIndex / (dates.length - 1)) * innerWidth
-        : CHART_PADDING + innerWidth / 2;
+    const x = xFor(dateIndex);
     const y = yFor(value);
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   };
+
+  // X 軸日期標示（SDLCCT-78）：固定取 7 天日期陣列的頭／中／尾三個索引
+  // [0, 3, 6]，避免標籤過密互相重疊。
+  const xAxisLabelIndices = [0, 3, 6];
+  const xAxisLabels = xAxisLabelIndices
+    .filter((i) => i < dates.length)
+    .map((dateIndex, position, arr) => ({
+      key: dates[dateIndex],
+      x: xFor(dateIndex),
+      text: formatTaiwanDate(dates[dateIndex]),
+      textAnchor: (position === 0
+        ? "start"
+        : position === arr.length - 1
+          ? "end"
+          : "middle") as "start" | "middle" | "end",
+    }));
 
   // Y 軸金額標示（SDLCCT-73）：僅在有非 null 數值時顯示，絕不臆測 0
   // (CONSTITUTION「缺值顯示未知，不顯示 0」)。max === min 時僅顯示一個標示。
@@ -83,6 +101,23 @@ export function VersionCostChart({
         aria-label={t("agentDetail.versionSeries.title")}
         className="mb-3"
       >
+        {/* 格線（SDLCCT-78）：必須在資料折線之前渲染，確保視覺上位於折線
+            後方。對齊既有 Y 軸金額標示（labels）的高度，重用 labels[].y，
+            不重新呼叫 yFor()。 */}
+        <g>
+          {labels.map((label) => (
+            <line
+              key={label.key}
+              x1={CHART_PADDING}
+              x2={CHART_WIDTH - CHART_PADDING}
+              y1={label.y}
+              y2={label.y}
+              stroke="var(--color-border)"
+              strokeWidth={1}
+            />
+          ))}
+        </g>
+
         {entries.map((entry, entryIndex) => {
           const values = byDate(entry);
           const segments: string[][] = [];
@@ -113,7 +148,7 @@ export function VersionCostChart({
           );
         })}
 
-        <g>
+        <g data-axis="y">
           {labels.map((label) => (
             <text
               key={label.key}
@@ -125,6 +160,22 @@ export function VersionCostChart({
               dominantBaseline="middle"
             >
               {formatCurrency(label.value)}
+            </text>
+          ))}
+        </g>
+
+        {/* X 軸日期標示（SDLCCT-78）：頭／中／尾三個索引 [0, 3, 6]。 */}
+        <g data-axis="x">
+          {xAxisLabels.map((label) => (
+            <text
+              key={label.key}
+              x={label.x}
+              y={CHART_HEIGHT - 6}
+              textAnchor={label.textAnchor}
+              fontSize={10}
+              fill="var(--color-text-secondary)"
+            >
+              {label.text}
             </text>
           ))}
         </g>
