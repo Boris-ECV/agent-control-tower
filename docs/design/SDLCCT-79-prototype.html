@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-79 — 版本成本圖表線條終點直接標籤原型</title>
+<style>
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #FFFFFF;
+    color: #1F2937;
+    max-width: 960px;
+    margin: 32px auto;
+    padding: 0 24px;
+    line-height: 1.6;
+  }
+  h1 { font-size: 24px; font-weight: 700; }
+  h2 { font-size: 18px; font-weight: 600; margin-top: 48px; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px; }
+  p.meta { font-size: 12px; color: #4B5563; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 14px; }
+  th, td { border-bottom: 1px solid #E5E7EB; padding: 8px 12px; text-align: left; }
+  th { color: #4B5563; font-size: 12px; }
+  .box { border: 1px solid #E5E7EB; border-radius: 6px; padding: 16px; background: #FFFFFF; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 0; margin: 0 0 16px 0; list-style: none; }
+  .legend li { display: flex; align-items: center; font-size: 12px; color: #4B5563; }
+  .legend .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; display: inline-block; }
+  .note { font-size: 12px; color: #4B5563; margin: 8px 0 16px 0; }
+  .ok { color: #1baf7a; font-weight: 600; }
+  .absent { color: #e34948; font-weight: 600; }
+  code { background: #F3F4F6; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<h1>SDLCCT-79 — 版本成本圖表線條終點直接標籤原型</h1>
+<p class="meta">
+  靜態原型，無需安裝任何套件，直接用瀏覽器開啟即可。下方兩個區塊分別對應
+  G1 已核准的 2 條 Gherkin 情境。SVG 幾何、座標公式與設計文件
+  <code>docs/design/SDLCCT-79.md</code>「關鍵技術決策」1-4 完全一致
+  （<code>CHART_WIDTH=480</code>、<code>CHART_HEIGHT=160</code>、
+  <code>CHART_PADDING=24</code>，繪圖區中點 <code>plotMidX=240</code>）。
+</p>
+
+<h2>情境一：版本數 2（≤ 4）— 終點直接標籤，無圖例</h2>
+<p class="note">
+  每條線最後一個有值的資料點旁顯示「版本名稱＋金額」文字標籤，文字顏色與
+  該條折線 <code>stroke</code> 同色；v1 終點落在繪圖區右半（<code>x=456 ≥
+  plotMidX=240</code>）故 <code>text-anchor="end"</code>、<code>dx=-6</code>
+  向左延伸；v2 同理落在右半，示範的另一個版本（v3，假設因資料較早結束）終
+  點落在左半，<code>text-anchor="start"</code>、<code>dx=+6</code> 向右延
+  伸。圖表下方<strong>不</strong>再出現另一排圖例色點＋文字。
+</p>
+<div class="box">
+  <svg viewBox="0 0 480 160" width="100%" height="160" role="img" aria-label="版本成本折線圖含終點直接標籤原型">
+    <!-- 格線（SDLCCT-78 既有） -->
+    <line x1="24" y1="20" x2="456" y2="20" stroke="#E5E7EB" stroke-width="1"/>
+    <line x1="24" y1="110" x2="456" y2="110" stroke="#E5E7EB" stroke-width="1"/>
+
+    <!-- 兩條版本折線（色票順位 1、2） -->
+    <polyline points="24,40 100,60 176,30 252,70 328,50 404,20 456,45" fill="none" stroke="#2a78d6" stroke-width="2"/>
+    <polyline points="24,90 100,80 176,100 252,85 328,110 404,95 456,100" fill="none" stroke="#eb6834" stroke-width="2"/>
+
+    <!-- Y 軸金額標示（SDLCCT-73 既有） -->
+    <text x="2" y="20" text-anchor="start" font-size="10" fill="#4B5563" dominant-baseline="middle">US$ 150</text>
+    <text x="2" y="110" text-anchor="start" font-size="10" fill="#4B5563" dominant-baseline="middle">US$ 20</text>
+
+    <!-- X 軸日期標籤（SDLCCT-78 既有） -->
+    <text x="24" y="154" text-anchor="start" font-size="10" fill="#4B5563">2026年10月23日</text>
+    <text x="240" y="154" text-anchor="middle" font-size="10" fill="#4B5563">2026年10月26日</text>
+    <text x="456" y="154" text-anchor="end" font-size="10" fill="#4B5563">2026年10月29日</text>
+
+    <!-- 終點直接標籤（本票新增）：終點 x=456 ≥ plotMidX=240 → textAnchor=end, dx=-6 -->
+    <text x="450" y="45" text-anchor="end" font-size="10" fill="#2a78d6" dominant-baseline="middle">v1 US$ 140</text>
+    <text x="450" y="100" text-anchor="end" font-size="10" fill="#eb6834" dominant-baseline="middle">v2 US$ 30</text>
+  </svg>
+</div>
+<p class="note">
+  另一個示範：某版本終點落在繪圖區左半（例如第 2 天即無更多資料，終點
+  x=100 &lt; plotMidX=240）時，<code>text-anchor="start"</code>、
+  <code>dx=+6</code> 向右延伸：
+</p>
+<div class="box">
+  <svg viewBox="0 0 480 160" width="100%" height="160" role="img" aria-label="終點落在左半時的標籤方向原型">
+    <polyline points="24,60 100,80" fill="none" stroke="#1baf7a" stroke-width="2"/>
+    <text x="106" y="80" text-anchor="start" font-size="10" fill="#1baf7a" dominant-baseline="middle">v3 US$ 95</text>
+  </svg>
+</div>
+<p class="note">
+  <span class="ok">✓</span> 圖表下方<strong>沒有</strong> <code>&lt;ul&gt;</code>
+  圖例色點＋文字（情境一字面要求：終點直接標籤取代圖例，不是兩者並存）。
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>版本</th>
+      <th>2026年10月23日</th>
+      <th>2026年10月24日</th>
+      <th>2026年10月25日</th>
+      <th>2026年10月26日</th>
+      <th>2026年10月27日</th>
+      <th>2026年10月28日</th>
+      <th>2026年10月29日</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>v1</td>
+      <td>US$ 150</td><td>US$ 120</td><td>US$ 160</td><td>US$ 100</td><td>US$ 130</td><td>US$ 170</td><td>US$ 140</td>
+    </tr>
+    <tr>
+      <td>v2</td>
+      <td>US$ 40</td><td>US$ 50</td><td>US$ 30</td><td>US$ 45</td><td>US$ 20</td><td>US$ 35</td><td>US$ 30</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>情境二：版本數 5（> 4）— 退回純圖例顯示，無終點標籤</h2>
+<p class="note">
+  版本數超過門檻（4），線條終點<strong>不</strong>顯示任何直接標籤（避免 5
+  條線互相重疊、難以閱讀）；圖表下方恢復現狀的圖例色點＋文字，列出全部 5
+  個版本。
+</p>
+<div class="box">
+  <svg viewBox="0 0 480 160" width="100%" height="160" role="img" aria-label="五版本折線圖，無終點標籤，有圖例">
+    <line x1="24" y1="20" x2="456" y2="20" stroke="#E5E7EB" stroke-width="1"/>
+    <line x1="24" y1="110" x2="456" y2="110" stroke="#E5E7EB" stroke-width="1"/>
+
+    <polyline points="24,30 100,40 176,25 252,45 328,35 404,20 456,30" fill="none" stroke="#2a78d6" stroke-width="2"/>
+    <polyline points="24,50 100,55 176,60 252,50 328,65 404,55 456,50" fill="none" stroke="#eb6834" stroke-width="2"/>
+    <polyline points="24,70 100,75 176,65 252,80 328,70 404,85 456,75" fill="none" stroke="#1baf7a" stroke-width="2"/>
+    <polyline points="24,90 100,85 176,95 252,90 328,100 404,92 456,95" fill="none" stroke="#eda100" stroke-width="2"/>
+    <polyline points="24,105 100,108 176,100 252,106 328,110 404,103 456,108" fill="none" stroke="#e87ba4" stroke-width="2"/>
+
+    <text x="2" y="20" text-anchor="start" font-size="10" fill="#4B5563" dominant-baseline="middle">US$ 200</text>
+    <text x="2" y="110" text-anchor="start" font-size="10" fill="#4B5563" dominant-baseline="middle">US$ 10</text>
+
+    <text x="24" y="154" text-anchor="start" font-size="10" fill="#4B5563">2026年10月23日</text>
+    <text x="240" y="154" text-anchor="middle" font-size="10" fill="#4B5563">2026年10月26日</text>
+    <text x="456" y="154" text-anchor="end" font-size="10" fill="#4B5563">2026年10月29日</text>
+
+    <!-- 無終點直接標籤：本情境版本數 5 > 4，不渲染 -->
+  </svg>
+</div>
+<ul class="legend">
+  <li><span class="dot" style="background:#2a78d6"></span>v1</li>
+  <li><span class="dot" style="background:#eb6834"></span>v2</li>
+  <li><span class="dot" style="background:#1baf7a"></span>v3</li>
+  <li><span class="dot" style="background:#eda100"></span>v4</li>
+  <li><span class="dot" style="background:#e87ba4"></span>v5</li>
+</ul>
+<p class="note">
+  <span class="absent">✗</span> SVG 內<strong>沒有</strong>任何終點直接標籤
+  <code>&lt;text&gt;</code>（避免 5 條線互相重疊）。
+  <span class="ok">✓</span> 圖例 <code>&lt;ul&gt;</code> 列出全部 5 個版本，
+  樣式與現狀（SDLCCT-72）完全相同。
+</p>
+
+</body>
+</html>
