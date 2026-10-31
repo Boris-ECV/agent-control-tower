@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>原型 — SDLCCT-97 頂列麵包屑</title>
+<style>
+  /* Tokens 取自 frontend/app/globals.css；不載入 web font，系統字體堆疊。離線可開。 */
+  :root {
+    --color-bg: #ffffff;
+    --color-text-primary: #1f2937;
+    --color-text-secondary: #4b5563;
+    --color-border: #e5e7eb;
+    --color-accent: #2563eb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px; max-width: 1152px; margin-inline: auto;
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #f9fafb; color: var(--color-text-primary);
+  }
+  h1 { margin: 0 0 4px; font-size: 24px; line-height: 32px; font-weight: 700; }
+  h2 { margin: 32px 0 12px; font-size: 18px; line-height: 26px; font-weight: 600; }
+  p.subtitle, .note { font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  p.subtitle { margin: 0 0 24px; }
+  .note { margin: 8px 0 0; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background: #f3f4f6; padding: 0 4px; border-radius: 4px; }
+  .url { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .tag { display: inline-block; margin-bottom: 8px; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 600; border: 1px solid var(--color-accent); color: var(--color-accent); }
+  .panel { border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-bg); padding: 12px; margin-bottom: 16px; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+
+  /* 頁面框（桌面）：只畫 sticky header 與標題 */
+  .page { border: 1px solid var(--color-border); border-radius: 6px; background: #f9fafb; overflow: hidden; }
+  .phone { width: 390px; max-width: 100%; border: 2px solid var(--color-text-secondary); border-radius: 16px; background: #f9fafb; overflow: hidden; }
+  .trigger { display: flex; padding: 8px; }           /* layout.tsx:37 md:hidden 的 SidebarTrigger 列 */
+  .trigger i { width: 28px; height: 28px; border: 1px solid var(--color-border); border-radius: 6px; background: #fff; }
+
+  /* header：flex flex-col gap-2 border-b border-border bg-bg px-6 py-3 */
+  header { display: flex; flex-direction: column; gap: 8px; background: var(--color-bg); border-bottom: 1px solid var(--color-border); padding: 12px 24px; }
+  header .line { display: flex; align-items: center; justify-content: space-between; }
+  .back { display: flex; align-items: center; gap: 4px; font-size: 14px; line-height: 22px; color: var(--color-accent); text-decoration: none; }
+  .back:hover { text-decoration: underline; }
+  .back svg { width: 16px; height: 16px; fill: currentColor; }
+  .date { font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  main { padding: 16px 24px; }
+  main h1 { font-size: 24px; margin: 0 0 12px; }
+  .skel { height: 40px; border: 1px solid var(--color-border); border-radius: 8px; background: #f9fafb; margin-bottom: 8px; }
+
+  /* Breadcrumbs：flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm leading-[22px] */
+  nav.bc ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; row-gap: 2px; font-size: 14px; line-height: 22px; }
+  nav.bc li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  nav.bc a, nav.bc .cur { display: block; max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  nav.bc a { color: var(--color-accent); text-decoration: none; border-radius: 2px; }
+  nav.bc a:hover { text-decoration: underline; }
+  nav.bc a:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  nav.bc .cur { color: var(--color-text-primary); font-weight: 500; }
+  nav.bc .sep { color: var(--color-text-secondary); }
+  @media (min-width: 768px) { nav.bc a, nav.bc .cur { max-width: 20rem; } }  /* md:max-w-xs */
+  .phone nav.bc a, .phone nav.bc .cur { max-width: 10rem; }                  /* 手機框內強制 <768px 規則 */
+  .fb a { font-style: normal; }
+</style>
+</head>
+<body>
+  <h1>SDLCCT-97 頂列麵包屑</h1>
+  <p class="subtitle">靜態原型。麵包屑放在各頁既有 sticky header 的第一列；其下保留原本的「返回連結＋日期」列（文字不變，SDLCCT-98 才會改）。<code>nav[aria-label="麵包屑"]</code> &gt; <code>ol</code> &gt; <code>li</code>；分隔符 <code>aria-hidden</code>；最後一層純文字且 <code>aria-current="page"</code>。藍色 = 連結，深色粗體 = 目前頁。「治理」連到 <code>/agents</code>（無落地頁，連到群組第一個可導覽項目，見設計決策 1）。</p>
+
+  <h2>1. Agent 詳情頁（桌面）— 情境 2</h2>
+  <div class="panel"><span class="tag">改後</span><p class="url">/agents/sales-copilot</p>
+    <div class="page">
+      <header>
+        <nav class="bc" aria-label="麵包屑"><ol>
+          <li><a href="#" title="治理">治理</a><span class="sep" aria-hidden="true">/</span></li>
+          <li><a href="#" title="Agent 清單">Agent 清單</a><span class="sep" aria-hidden="true">/</span></li>
+          <li><span class="cur" aria-current="page" title="Sales Copilot">Sales Copilot</span></li>
+        </ol></nav>
+        <div class="line">
+          <a class="back" href="#"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.78 2.22a.75.75 0 0 1 0 1.06L5.06 8l4.72 4.72a.75.75 0 1 1-1.06 1.06L3.47 8.53a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 0 1 1.06 0Z"/></svg><span>返回 Agent 清單</span></a>
+          <span class="date">2026年10月20日</span>
+        </div>
+      </header>
+      <main><h1>Sales Copilot</h1><div class="skel"></div><div class="skel"></div></main>
+    </div>
+    <p class="note">三層：治理 / Agent 清單（皆為連結）/ Sales Copilot（目前頁，純文字）。返回連結文字不變。</p>
+  </div>
+
+  <h2>2. 執行詳情頁（桌面）— 情境 1</h2>
+  <div class="panel"><span class="tag">改後</span><p class="url">/agents/sales-copilot/traces/trace-0123456789abcdef</p>
+    <div class="page">
+      <header>
+        <nav class="bc" aria-label="麵包屑"><ol>
+          <li><a href="#" title="治理">治理</a><span class="sep" aria-hidden="true">/</span></li>
+          <li><a href="#" title="Agent 清單">Agent 清單</a><span class="sep" aria-hidden="true">/</span></li>
+          <li><a href="#" title="Sales Copilot">Sales Copilot</a><span class="sep" aria-hidden="true">/</span></li>
+          <li><span class="cur" aria-current="page" title="trace-0123456789abcdef">trace-01…</span></li>
+        </ol></nav>
+        <div class="line">
+          <a class="back" href="#"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.78 2.22a.75.75 0 0 1 0 1.06L5.06 8l4.72 4.72a.75.75 0 1 1-1.06 1.06L3.47 8.53a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 0 1 1.06 0Z"/></svg><span>返回 Agent 明細</span></a>
+        </div>
+      </header>
+      <main><h1>執行詳情 — trace-0123456789abcdef</h1><div class="skel"></div><div class="skel"></div></main>
+    </div>
+    <p class="note">截短規則：前 8 個字元 + <code>…</code>（<code>trace-0123456789abcdef</code> -> <code>trace-01…</code>）；長度 &lt;= 8 原樣（<code>trc_123</code> 不加省略號）。完整 ID 在 title 與頁面 h1。</p>
+  </div>
+
+  <h2>3. 載入中／失敗 fallback（Agent 名稱層顯示 key，永不空白）</h2>
+  <div class="row">
+    <div class="panel" style="flex:1 1 420px"><span class="tag">執行詳情・名稱查詢中或失敗</span><p class="url">/agents/sales-copilot/traces/trc_123</p>
+      <div class="page"><header>
+        <nav class="bc fb" aria-label="麵包屑"><ol>
+          <li><a href="#">治理</a><span class="sep" aria-hidden="true">/</span></li>
+          <li><a href="#">Agent 清單</a><span class="sep" aria-hidden="true">/</span></li>
+          <li><a href="#">sales-copilot</a><span class="sep" aria-hidden="true">/</span></li>
+          <li><span class="cur" aria-current="page">trc_123</span></li>
+        </ol></nav></header></div>
+      <p class="note">第三層以 key 顯示、仍可點；查詢成功後換成「Sales Copilot」。失敗不顯示錯誤、不重試。</p></div>
+    <div class="panel" style="flex:1 1 420px"><span class="tag">Agent 詳情・載入中或失敗</span><p class="url">/agents/sales-copilot</p>
+      <div class="page"><header>
+        <nav class="bc fb" aria-label="麵包屑"><ol>
+          <li><a href="#">治理</a><span class="sep" aria-hidden="true">/</span></li>
+          <li><a href="#">Agent 清單</a><span class="sep" aria-hidden="true">/</span></li>
+          <li><span class="cur" aria-current="page">sales-copilot</span></li>
+        </ol></nav></header></div>
+      <p class="note">目前頁以 key 顯示（純文字）；h1 同時顯示既有的「Agent 明細」。</p></div>
+  </div>
+
+  <h2>4. 長 Agent 名稱截斷（桌面，上限 20rem = 320px）</h2>
+  <div class="panel"><span class="tag">改後</span><p class="url">display = "Enterprise Customer Success Renewal Forecasting Copilot (APAC)"</p>
+    <div class="page"><header>
+      <nav class="bc" aria-label="麵包屑"><ol>
+        <li><a href="#">治理</a><span class="sep" aria-hidden="true">/</span></li>
+        <li><a href="#">Agent 清單</a><span class="sep" aria-hidden="true">/</span></li>
+        <li><a href="#" title="Enterprise Customer Success Renewal Forecasting Copilot (APAC)">Enterprise Customer Success Renewal Forecasting Copilot (APAC)</a><span class="sep" aria-hidden="true">/</span></li>
+        <li><span class="cur" aria-current="page" title="trace-0123456789abcdef">trace-01…</span></li>
+      </ol></nav></header></div>
+    <p class="note">過長名稱以 … 截斷（truncate + max-w），完整名稱在 title；不撐開 header。</p></div>
+
+  <h2>5. 手機 390px（header 內寬 342px，不溢位）</h2>
+  <div class="row">
+    <div>
+      <span class="tag">Agent 詳情</span>
+      <div class="phone">
+        <div class="trigger"><i></i></div>
+        <header>
+          <nav class="bc" aria-label="麵包屑"><ol>
+            <li><a href="#">治理</a><span class="sep" aria-hidden="true">/</span></li>
+            <li><a href="#">Agent 清單</a><span class="sep" aria-hidden="true">/</span></li>
+            <li><span class="cur" aria-current="page">Sales Copilot</span></li>
+          </ol></nav>
+          <div class="line">
+            <a class="back" href="#"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.78 2.22a.75.75 0 0 1 0 1.06L5.06 8l4.72 4.72a.75.75 0 1 1-1.06 1.06L3.47 8.53a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 0 1 1.06 0Z"/></svg><span>返回 Agent 清單</span></a>
+            <span class="date">2026年10月20日</span>
+          </div>
+        </header>
+        <main><h1 style="font-size:20px">Sales Copilot</h1><div class="skel"></div></main>
+      </div>
+    </div>
+    <div>
+      <span class="tag">執行詳情・最壞情況（長名稱，自動換行）</span>
+      <div class="phone">
+        <div class="trigger"><i></i></div>
+        <header>
+          <nav class="bc" aria-label="麵包屑"><ol>
+            <li><a href="#">治理</a><span class="sep" aria-hidden="true">/</span></li>
+            <li><a href="#">Agent 清單</a><span class="sep" aria-hidden="true">/</span></li>
+            <li><a href="#" title="Enterprise Customer Success Renewal Forecasting Copilot (APAC)">Enterprise Customer Success Renewal Forecasting Copilot (APAC)</a><span class="sep" aria-hidden="true">/</span></li>
+            <li><span class="cur" aria-current="page" title="trace-0123456789abcdef">trace-01…</span></li>
+          </ol></nav>
+          <div class="line">
+            <a class="back" href="#"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.78 2.22a.75.75 0 0 1 0 1.06L5.06 8l4.72 4.72a.75.75 0 1 1-1.06 1.06L3.47 8.53a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 0 1 1.06 0Z"/></svg><span>返回 Agent 明細</span></a>
+          </div>
+        </header>
+        <main><h1 style="font-size:20px">執行詳情 — trace-0123456789abcdef</h1><div class="skel"></div></main>
+      </div>
+    </div>
+    <p class="note" style="max-width:320px">手機：<code>flex-wrap</code> 放不下就換行，不隱藏任何層級（四層都是導覽路徑）；每層文字 <code>max-w-[10rem]</code> + <code>truncate</code>；<code>document.documentElement.scrollWidth &lt;= clientWidth</code> 由 e2e 驗證。</p>
+  </div>
+</body>
+</html>
