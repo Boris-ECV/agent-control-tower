@@ -1290,3 +1290,85 @@ test("SDLCCT-89 (tester): narrow 390px viewport keeps 4 gridlines, 2 Y labels an
     )
     .toBe(true);
 });
+
+test("SDLCCT-90: version-cost chart draws gradient areas under each continuous run, behind the lines, without blocking hover", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const days = [
+    "2026-10-14",
+    "2026-10-15",
+    "2026-10-16",
+    "2026-10-17",
+    "2026-10-18",
+    "2026-10-19",
+    "2026-10-20",
+  ];
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [
+          {
+            version: "v1",
+            points: days.map((date, i) => ({ date, value: i === 2 ? null : 100 + i * 20 })),
+          },
+          {
+            version: "v2",
+            points: days.map((date, i) => ({ date, value: 50 + i * 10 })),
+          },
+        ],
+        model_cost_breakdown: [],
+        top_traces: [],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+  const areas = page.locator("svg g[data-areas] path[data-area]");
+  await expect(areas).toHaveCount(3);
+  await expect(page.locator('svg g[data-areas] path[data-area="v1"]')).toHaveCount(2);
+  await expect(page.locator('svg g[data-areas] path[data-area="v2"]')).toHaveCount(1);
+  await expect(page.locator("svg polyline")).toHaveCount(3);
+
+  expect(await areas.first().evaluate((el) => getComputedStyle(el).pointerEvents)).toBe(
+    "none",
+  );
+  await expect(page.locator("svg g[data-areas]")).toHaveAttribute("aria-hidden", "true");
+
+  const ordered = await page.evaluate(() => {
+    const g = document.querySelector("svg g[data-gridlines]") as Element;
+    const a = document.querySelector("svg g[data-areas]") as Element;
+    const p = document.querySelector("svg polyline") as Element;
+    return (
+      !!(g.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+      !!(a.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING)
+    );
+  });
+  expect(ordered).toBe(true);
+
+  const svg = page.locator('svg[role="img"]');
+  const box = await svg.boundingBox();
+  if (!box) throw new Error("svg has no box");
+  await page.mouse.move(box.x + box.width * 0.7, box.y + 120);
+  await expect(page.locator('svg g[data-tooltip="active"]')).toBeVisible();
+  await expect(page.locator("svg line[stroke-dasharray]")).toHaveCount(1);
+
+  await expect(svg).toHaveAttribute("aria-label", "版本成本時間序列");
+  await expect(page.locator("table").first().locator("tbody tr")).toHaveCount(2);
+
+  const colors = await page.evaluate(() => {
+    const path = document.querySelector('svg path[data-area="v1"]') as Element;
+    const id = /url\(#(.+)\)/.exec(path.getAttribute("fill") ?? "")?.[1] ?? "";
+    const stop = document.getElementById(id)?.querySelector("stop");
+    const line = document.querySelector("svg polyline");
+    return [stop?.getAttribute("stop-color"), line?.getAttribute("stroke")];
+  });
+  expect(colors[0]).toBeTruthy();
+  expect(colors[0]).toBe(colors[1]);
+});

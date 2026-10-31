@@ -8,6 +8,7 @@ import {
   fallbackLayout,
 } from "@/components/agent-detail/version-cost-chart";
 import type { VersionCostSeriesEntry } from "@/lib/agent-detail-api";
+import { t } from "@/lib/i18n/t";
 
 function entry(
   version: string,
@@ -2021,5 +2022,272 @@ describe("測試者獨立補充驗證 (SDLCCT-89)", () => {
     expect(ysOf(container)).toEqual(before);
     fireEvent.mouseLeave(overlay);
     expect(ysOf(container)).toEqual(before);
+  });
+});
+
+describe("VersionCostChart 折線下方面積漸層 (SDLCCT-90)", () => {
+  const DATES = [
+    "2026-10-14",
+    "2026-10-15",
+    "2026-10-16",
+    "2026-10-17",
+    "2026-10-18",
+    "2026-10-19",
+    "2026-10-20",
+  ];
+  const ANCHOR = "2026-10-20";
+  const PALETTE = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300"];
+  const centers = fallbackLayout(7).centers;
+
+  function series(version: string, values: (number | null)[]) {
+    return entry(
+      version,
+      values.map((value, i) => ({ date: DATES[i], value })),
+    );
+  }
+  const full = (version: string, base = 10) =>
+    series(version, [0, 1, 2, 3, 4, 5, 6].map((i) => base + i * 5));
+
+  function paths(container: HTMLElement) {
+    return Array.from(container.querySelectorAll("svg g[data-areas] path[data-area]"));
+  }
+  function verts(d: string): { x: number; y: number }[] {
+    return (d.match(/-?\d+(\.\d+)?,-?\d+(\.\d+)?/g) ?? []).map((s) => {
+      const [x, y] = s.split(",").map(Number);
+      return { x, y };
+    });
+  }
+  function gradientOf(path: Element) {
+    const m = /^url\(#(.+)\)$/.exec(path.getAttribute("fill") ?? "");
+    expect(m).toBeTruthy();
+    const svg = (path as SVGElement).ownerSVGElement as SVGSVGElement;
+    const grad = Array.from(svg.querySelectorAll("linearGradient")).find(
+      (g) => g.getAttribute("id") === (m as RegExpExecArray)[1],
+    );
+    expect(grad).toBeTruthy();
+    return grad as Element;
+  }
+
+  it("Scenario 1: 連續線段有一個面積，色票色與折線相同、由上往下淡出", () => {
+    const { container } = render(
+      <VersionCostChart entries={[full("v1")]} anchorDate={ANCHOR} />,
+    );
+    const ps = paths(container);
+    expect(ps).toHaveLength(1);
+    const d = ps[0].getAttribute("d") as string;
+    expect(d.startsWith("M")).toBe(true);
+    expect(d.endsWith("Z")).toBe(true);
+    const grad = gradientOf(ps[0]);
+    expect(grad.getAttribute("x1")).toBe("0");
+    expect(grad.getAttribute("y1")).toBe("0");
+    expect(grad.getAttribute("x2")).toBe("0");
+    expect(grad.getAttribute("y2")).toBe("1");
+    const stops = grad.querySelectorAll("stop");
+    const stroke = container.querySelector("svg polyline")?.getAttribute("stroke");
+    expect(stops[0].getAttribute("stop-color")).toBe(stroke);
+    expect(stops[0].getAttribute("stop-opacity")).toBe("0.15");
+    expect(stops[1].getAttribute("stop-color")).toBe(stroke);
+    expect(stops[1].getAttribute("stop-opacity")).toBe("0");
+  });
+
+  it("Scenario 1: 面積頂點與折線逐點相等，底部封至繪圖區底部", () => {
+    const { container } = render(
+      <VersionCostChart entries={[full("v1")]} anchorDate={ANCHOR} />,
+    );
+    const pts = (container.querySelector("svg polyline")?.getAttribute("points") ?? "")
+      .split(" ")
+      .map((s) => s.split(",").map(Number));
+    const v = verts(paths(container)[0].getAttribute("d") as string);
+    expect(v).toHaveLength(pts.length + 2);
+    pts.forEach(([x, y], i) => {
+      expect(v[i].x).toBeCloseTo(x, 1);
+      expect(v[i].y).toBeCloseTo(y, 1);
+    });
+    const n = pts.length;
+    expect(v[n].y).toBeCloseTo(160 - 24, 1);
+    expect(v[n + 1].y).toBeCloseTo(160 - 24, 1);
+    expect(v[n].x).toBeCloseTo(pts[n - 1][0], 1);
+    expect(v[n + 1].x).toBeCloseTo(pts[0][0], 1);
+  });
+
+  it("Scenario 1: 多序列面積色與各自折線一致，第 7 個序列輪替回第 1 色", () => {
+    const three = [full("v1", 10), full("v2", 20), full("v3", 30)];
+    const r3 = render(<VersionCostChart entries={three} anchorDate={ANCHOR} />);
+    const ps = paths(r3.container);
+    expect(ps).toHaveLength(3);
+    const strokes = Array.from(r3.container.querySelectorAll("svg polyline")).map((p) =>
+      p.getAttribute("stroke"),
+    );
+    ps.forEach((p, i) => {
+      const c = gradientOf(p).querySelector("stop")?.getAttribute("stop-color");
+      expect(c).toBe(PALETTE[i]);
+      expect(c).toBe(strokes[i]);
+    });
+    r3.unmount();
+
+    const seven = Array.from({ length: 7 }, (_, i) => full(`v${i + 1}`, 10 + i));
+    const r7 = render(<VersionCostChart entries={seven} anchorDate={ANCHOR} />);
+    const p7 = paths(r7.container);
+    expect(p7).toHaveLength(7);
+    expect(gradientOf(p7[6]).querySelector("stop")?.getAttribute("stop-color")).toBe(
+      PALETTE[0],
+    );
+  });
+
+  it("Scenario 2: null 日把面積切成兩塊，不跨缺值、不當 0、無 NaN", () => {
+    const { container } = render(
+      <VersionCostChart
+        entries={[series("v1", [10, 20, null, 30, 40, 50, 60])]}
+        anchorDate={ANCHOR}
+      />,
+    );
+    const ps = paths(container);
+    expect(ps.map((p) => p.getAttribute("data-run"))).toEqual(["0", "1"]);
+    const xs = ps.map((p) => verts(p.getAttribute("d") as string).map((v) => v.x));
+    expect(Math.max(...xs[0])).toBeLessThan(Math.min(...xs[1]));
+    for (const list of xs) {
+      for (const x of list) expect(Math.abs(x - centers[2])).toBeGreaterThan(0.2);
+    }
+    expect(container.innerHTML).not.toContain("NaN");
+  });
+
+  it("Scenario 2: 缺日（points 內沒有該日）同樣斷開", () => {
+    const e = entry("v1", [
+      { date: DATES[0], value: 10 },
+      { date: DATES[1], value: 20 },
+      { date: DATES[3], value: 30 },
+      { date: DATES[4], value: 40 },
+    ]);
+    const { container } = render(<VersionCostChart entries={[e]} anchorDate={ANCHOR} />);
+    expect(paths(container).map((p) => p.getAttribute("data-run"))).toEqual(["0", "1"]);
+  });
+
+  it("Scenario 3: 單點線段不產生面積，其餘線段正常（data-run 與折線索引對應）", () => {
+    const { container } = render(
+      <VersionCostChart
+        entries={[series("v1", [10, null, 20, 30, 40, 50, 60])]}
+        anchorDate={ANCHOR}
+      />,
+    );
+    expect(paths(container).map((p) => p.getAttribute("data-run"))).toEqual(["1"]);
+    expect(container.querySelectorAll("svg polyline")).toHaveLength(2);
+  });
+
+  it("Scenario 3: 整條序列僅 1 點 => 無 path、無漸層、不報錯", () => {
+    const { container } = render(
+      <VersionCostChart
+        entries={[series("v1", [null, null, 5, null, null, null, null])]}
+        anchorDate={ANCHOR}
+      />,
+    );
+    expect(paths(container)).toHaveLength(0);
+    expect(container.querySelectorAll("linearGradient")).toHaveLength(0);
+  });
+
+  it("全 null 與 entries=[]：面積群組存在但為空，無 NaN", () => {
+    const a = render(
+      <VersionCostChart
+        entries={[series("v1", [null, null, null, null, null, null, null])]}
+        anchorDate={ANCHOR}
+      />,
+    );
+    expect(a.container.querySelector("g[data-areas]")).toBeTruthy();
+    expect(paths(a.container)).toHaveLength(0);
+    expect(a.container.querySelectorAll("linearGradient")).toHaveLength(0);
+    expect(a.container.innerHTML).not.toContain("NaN");
+    a.unmount();
+    const b = render(<VersionCostChart entries={[]} anchorDate={ANCHOR} />);
+    expect(b.container.querySelector("g[data-areas]")).toBeTruthy();
+    expect(paths(b.container)).toHaveLength(0);
+    expect(b.container.innerHTML).not.toContain("NaN");
+  });
+
+  it("max === min：面積存在且頂點 Y 為 80", () => {
+    const { container } = render(
+      <VersionCostChart
+        entries={[series("v1", [7, 7, 7, 7, 7, 7, 7])]}
+        anchorDate={ANCHOR}
+      />,
+    );
+    const v = verts(paths(container)[0].getAttribute("d") as string);
+    expect(v[0].y).toBeCloseTo(80, 1);
+  });
+
+  it("Scenario 4: DOM 順序為格線、面積、折線；不攔截滑鼠事件", () => {
+    const { container } = render(
+      <VersionCostChart entries={[full("v1"), full("v2", 20)]} anchorDate={ANCHOR} />,
+    );
+    const svg = container.querySelector("svg") as SVGSVGElement;
+    expect(
+      svg.querySelector(":scope > g:first-of-type")?.hasAttribute("data-gridlines"),
+    ).toBe(true);
+    const grid = svg.querySelector("g[data-gridlines]") as Element;
+    const areas = svg.querySelector("g[data-areas]") as Element;
+    const poly = svg.querySelector("polyline") as Element;
+    expect(grid.compareDocumentPosition(areas) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    for (const p of paths(container)) {
+      expect(p.compareDocumentPosition(poly) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(p.getAttribute("pointer-events")).toBe("none");
+    }
+    expect(areas.getAttribute("pointer-events")).toBe("none");
+  });
+
+  it("Scenario 4: hover 十字線與 tooltip 照常運作", () => {
+    const { container } = render(
+      <VersionCostChart entries={[full("v1")]} anchorDate={ANCHOR} />,
+    );
+    const svg = container.querySelector("svg") as SVGSVGElement;
+    svg.getBoundingClientRect = () =>
+      ({
+        width: 480,
+        height: 160,
+        left: 0,
+        top: 0,
+        right: 480,
+        bottom: 160,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    const overlay = svg.querySelector(":scope > rect") as Element;
+    fireEvent.mouseMove(overlay, { clientX: centers[3] });
+    expect(container.querySelectorAll("svg line[stroke-dasharray]")).toHaveLength(1);
+    expect(container.querySelector('svg g[data-tooltip="active"]')).toBeTruthy();
+    fireEvent.mouseLeave(overlay);
+    expect(container.querySelectorAll("svg line[stroke-dasharray]")).toHaveLength(0);
+    expect(container.querySelector('svg g[data-tooltip="active"]')).toBeNull();
+  });
+
+  it("Scenario 5: 面積為裝飾（aria-hidden、無文字與 role），svg aria-label 與表格不變", () => {
+    const { container } = render(
+      <VersionCostChart entries={[full("v1")]} anchorDate={ANCHOR} />,
+    );
+    const areas = container.querySelector("g[data-areas]") as Element;
+    expect(areas.getAttribute("aria-hidden")).toBe("true");
+    expect(areas.querySelectorAll("text, title, desc, [role]")).toHaveLength(0);
+    expect(areas.textContent).toBe("");
+    const svg = container.querySelector("svg") as SVGSVGElement;
+    expect(svg.getAttribute("role")).toBe("img");
+    expect(svg.getAttribute("aria-label")).toBe(t("agentDetail.versionSeries.title"));
+    expect(container.querySelectorAll("thead th")).toHaveLength(8);
+    expect(container.querySelectorAll("tbody td")).toHaveLength(8);
+  });
+
+  it("漸層 id 在同一文件多張圖與 StrictMode 下皆不重複", () => {
+    const entries = [full("v1"), full("v2", 20)];
+    const a = render(<VersionCostChart entries={entries} anchorDate={ANCHOR} />);
+    const b = render(
+      <React.StrictMode>
+        <VersionCostChart entries={entries} anchorDate={ANCHOR} />
+      </React.StrictMode>,
+    );
+    const ids = [a.container, b.container]
+      .flatMap((c) => Array.from(c.querySelectorAll("linearGradient")))
+      .map((g) => g.getAttribute("id"));
+    expect(ids).toHaveLength(4);
+    expect(new Set(ids).size).toBe(4);
+    for (const c of [a.container, b.container]) {
+      for (const p of paths(c)) gradientOf(p);
+    }
   });
 });
