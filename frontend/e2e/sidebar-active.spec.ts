@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const KEY = "sales-copilot";
 const TRACE_ID = "trc_123";
@@ -28,15 +28,21 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+// Scoped to the sidebar: detail pages also render a breadcrumb link named "Agent 清單".
+const sidebarAgentList = (page: Page) =>
+  page
+    .getByRole("link", { name: "Agent 清單", exact: true })
+    .and(page.locator('[data-sidebar="menu-button"]'));
+
 test("Agent detail page highlights Agent 清單", async ({ page }) => {
   await page.goto(`/agents/${KEY}`);
-  await expect(page.getByRole("link", { name: "Agent 清單", exact: true })).toHaveAttribute("data-active");
+  await expect(sidebarAgentList(page)).toHaveAttribute("data-active");
   await expect(page.getByRole("link", { name: "成本儀表板", exact: true })).not.toHaveAttribute("data-active");
 });
 
 test("Trace detail page highlights Agent 清單", async ({ page }) => {
   await page.goto(`/agents/${KEY}/traces/${TRACE_ID}`);
-  await expect(page.getByRole("link", { name: "Agent 清單", exact: true })).toHaveAttribute("data-active");
+  await expect(sidebarAgentList(page)).toHaveAttribute("data-active");
   await expect(page.getByRole("link", { name: "成本儀表板", exact: true })).not.toHaveAttribute("data-active");
 });
 
@@ -49,7 +55,7 @@ for (const path of ["/cost-dashboard", "/anomalies", "/settings/system"]) {
 
 test("clicking Agent 清單 from detail navigates to /agents and stays active", async ({ page }) => {
   await page.goto(`/agents/${KEY}`);
-  const link = page.getByRole("link", { name: "Agent 清單", exact: true });
+  const link = sidebarAgentList(page);
   await link.click();
   await expect(page).toHaveURL(/\/agents$/);
   await expect(link).toHaveAttribute("data-active");

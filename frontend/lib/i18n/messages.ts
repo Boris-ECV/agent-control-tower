@@ -18,6 +18,9 @@ export const messages = {
       system: "系統",
     },
   },
+  breadcrumb: {
+    ariaLabel: "麵包屑",
+  },
   costOverview: {
     header: {
       today: "今天（台灣時間）：",

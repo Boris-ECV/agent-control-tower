@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import { useCallback } from "react";
 
+import { TraceBreadcrumbs } from "@/components/trace-detail/trace-breadcrumbs";
 import { SpanTreeRow } from "@/components/trace-detail/span-tree-row";
 import { BackLink } from "@/components/common/back-link";
 import { ErrorCard } from "@/components/cost-overview/error-card";
@@ -31,8 +32,11 @@ export function TraceDetailContent() {
 
   return (
     <div className="flex min-h-full flex-col bg-gray-50">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-bg px-6 py-3">
-        <BackLink href={`/agents/${key}`} label={t("traceDetail.header.backToAgent")} />
+      <header className="sticky top-0 z-10 flex flex-col gap-2 border-b border-border bg-bg px-6 py-3">
+        <TraceBreadcrumbs key={key} agentKey={key} traceId={traceId} />
+        <div className="flex items-center justify-between">
+          <BackLink href={`/agents/${key}`} label={t("traceDetail.header.backToAgent")} />
+        </div>
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-6">

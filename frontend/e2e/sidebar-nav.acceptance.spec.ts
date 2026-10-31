@@ -67,7 +67,10 @@ test("navigating from agent detail to trace page keeps Agent 清單 active", asy
 
 test("keyboard Tab/Enter on Agent 清單 link navigates to /agents", async ({ page }) => {
   await page.goto(`/agents/${KEY}`);
-  const link = page.getByRole("link", { name: "Agent 清單", exact: true });
+  // Scoped to the sidebar: the detail page also has a breadcrumb link named "Agent 清單".
+  const link = page
+    .getByRole("link", { name: "Agent 清單", exact: true })
+    .and(page.locator('[data-sidebar="menu-button"]'));
   await link.focus();
   await expect(link).toBeFocused();
   await page.keyboard.press("Enter");
