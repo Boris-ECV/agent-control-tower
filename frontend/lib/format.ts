@@ -81,6 +81,7 @@ export function formatSignedCurrency(value: number | null | undefined): string {
  * UTC-midnight date is always the same calendar day in UTC+8 as well (no
  * day ever rolls over), so this is a straightforward display-format
  * conversion, not a timezone-crossing recalculation. */
+/** @deprecated Use formatSlashDate. */
 export function formatTaiwanDate(isoDate: string): string {
   const utcMidnight = new Date(`${isoDate}T00:00:00Z`);
   return new Intl.DateTimeFormat("zh-TW", {
@@ -97,6 +98,7 @@ export function formatTaiwanDate(isoDate: string): string {
  * would malform them. null/missing renders as "—" (docs/design/SDLCCT-56.md
  * decision 5), matching formatCurrency/formatPercent's "missing value is an
  * em dash, never 0 or blank" convention. */
+/** @deprecated Use formatSlashDateTime. */
 export function formatTaiwanDateTime(iso: string | null | undefined): string {
   if (!iso) return "—";
   return new Intl.DateTimeFormat("zh-TW", {
@@ -117,4 +119,63 @@ export function formatDateRange(startIso: string, endIso: string): string {
     return `${Number(m)}/${Number(d)}`;
   };
   return `${fmt(startIso)}–${fmt(endIso)}`;
+}
+
+const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
+
+/** Parse a plain YYYY-MM-DD calendar date (no timezone conversion).
+ * Returns null for missing, malformed or non-existent dates. */
+function parseCalendarDate(
+  isoDate: string | null | undefined,
+): { y: number; m: number; d: number; weekday: number } | null {
+  if (!isoDate) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
+  if (!match) return null;
+  const y = Number(match[1]);
+  const m = Number(match[2]);
+  const d = Number(match[3]);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  if (
+    date.getUTCFullYear() !== y ||
+    date.getUTCMonth() !== m - 1 ||
+    date.getUTCDate() !== d
+  ) {
+    return null;
+  }
+  return { y, m, d, weekday: date.getUTCDay() };
+}
+
+/** Plain date: "2026-10-06" -> "2026/10/06". Missing/invalid -> "—". */
+export function formatSlashDate(isoDate: string | null | undefined): string {
+  if (!parseCalendarDate(isoDate)) return "—";
+  return (isoDate as string).replace(/-/g, "/");
+}
+
+/** Datetime in Asia/Taipei, 24-hour:
+ * "2026-10-06T09:18:13Z" -> "2026/10/06 17:18:13". Missing/invalid -> "—". */
+export function formatSlashDateTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const get = (type: string) =>
+    (parts.find((p) => p.type === type)?.value ?? "").padStart(2, "0");
+  const year = parts.find((p) => p.type === "year")?.value ?? "";
+  return `${year}/${get("month")}/${get("day")} ${get("hour")}:${get("minute")}:${get("second")}`;
+}
+
+/** Daily column header: "2026-10-09" -> "10/9 (五)". Missing/invalid -> "—". */
+export function formatDayColumnHeader(isoDate: string | null | undefined): string {
+  const parsed = parseCalendarDate(isoDate);
+  if (!parsed) return "—";
+  return `${parsed.m}/${parsed.d} (${WEEKDAYS[parsed.weekday]})`;
 }
