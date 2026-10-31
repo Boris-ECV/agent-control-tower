@@ -1,6 +1,113 @@
 import { describe, expect, it } from "vitest";
 
-import { formatCurrency, formatSignedCurrency } from "@/lib/format";
+import {
+  formatCardCurrency,
+  formatCurrency,
+  formatPercent,
+  formatPercentGrouped,
+  formatSignedCurrency,
+  formatTableCurrency,
+} from "@/lib/format";
+
+describe("formatTableCurrency", () => {
+  it("renders two decimals with grouping (1234.5)", () => {
+    expect(formatTableCurrency(1234.5)).toBe("US$ 1,234.50");
+  });
+  it("renders zero as US$ 0.00", () => {
+    expect(formatTableCurrency(0)).toBe("US$ 0.00");
+  });
+  it("renders small amount 0.02", () => {
+    expect(formatTableCurrency(0.02)).toBe("US$ 0.02");
+  });
+  it("rounds up keeping two decimals", () => {
+    expect(formatTableCurrency(99.999)).toBe("US$ 100.00");
+  });
+  it("groups multiple thousands", () => {
+    expect(formatTableCurrency(1234567.891)).toBe("US$ 1,234,567.89");
+  });
+  it("places minus before US$ for negatives", () => {
+    expect(formatTableCurrency(-1234.5)).toBe("-US$ 1,234.50");
+  });
+  it("drops sign when rounded value is zero", () => {
+    expect(formatTableCurrency(-0.004)).toBe("US$ 0.00");
+    expect(formatTableCurrency(-0)).toBe("US$ 0.00");
+  });
+  it("renders null/undefined as em dash", () => {
+    expect(formatTableCurrency(null)).toBe("—");
+    expect(formatTableCurrency(undefined)).toBe("—");
+  });
+  it("renders non-finite as em dash", () => {
+    expect(formatTableCurrency(NaN)).toBe("—");
+    expect(formatTableCurrency(Infinity)).toBe("—");
+    expect(formatTableCurrency(-Infinity)).toBe("—");
+  });
+});
+
+describe("formatCardCurrency", () => {
+  it("rounds to integer (1746.4)", () => {
+    expect(formatCardCurrency(1746.4)).toBe("US$ 1,746");
+  });
+  it("rounds half away from zero", () => {
+    expect(formatCardCurrency(1746.5)).toBe("US$ 1,747");
+  });
+  it("renders zero and 0.4 as US$ 0", () => {
+    expect(formatCardCurrency(0)).toBe("US$ 0");
+    expect(formatCardCurrency(0.4)).toBe("US$ 0");
+  });
+  it("groups large values", () => {
+    expect(formatCardCurrency(1234567.8)).toBe("US$ 1,234,568");
+  });
+  it("handles negatives", () => {
+    expect(formatCardCurrency(-1746.4)).toBe("-US$ 1,746");
+    expect(formatCardCurrency(-0.4)).toBe("US$ 0");
+  });
+  it("renders null/undefined as em dash", () => {
+    expect(formatCardCurrency(null)).toBe("—");
+    expect(formatCardCurrency(undefined)).toBe("—");
+  });
+  it("renders non-finite as em dash", () => {
+    expect(formatCardCurrency(NaN)).toBe("—");
+    expect(formatCardCurrency(Infinity)).toBe("—");
+  });
+});
+
+describe("formatPercentGrouped", () => {
+  it("signed positive with grouping", () => {
+    expect(formatPercentGrouped(1893.8, { signed: true })).toBe("+1,893.8%");
+  });
+  it("unsigned positive with grouping", () => {
+    expect(formatPercentGrouped(1893.8)).toBe("1,893.8%");
+  });
+  it("keeps minus for negatives with or without signed", () => {
+    expect(formatPercentGrouped(-12.34, { signed: true })).toBe("-12.3%");
+    expect(formatPercentGrouped(-12.34)).toBe("-12.3%");
+  });
+  it("zero and rounded-to-zero carry no sign", () => {
+    expect(formatPercentGrouped(0, { signed: true })).toBe("0.0%");
+    expect(formatPercentGrouped(0.04, { signed: true })).toBe("0.0%");
+  });
+  it("honours digits option", () => {
+    expect(formatPercentGrouped(12.5, { digits: 0, signed: true })).toBe("+13%");
+  });
+  it("groups large values", () => {
+    expect(formatPercentGrouped(1234567.8, { digits: 1 })).toBe("1,234,567.8%");
+  });
+  it("renders null/undefined as em dash", () => {
+    expect(formatPercentGrouped(null)).toBe("—");
+    expect(formatPercentGrouped(undefined, { signed: true })).toBe("—");
+  });
+  it("renders non-finite as em dash", () => {
+    expect(formatPercentGrouped(NaN)).toBe("—");
+    expect(formatPercentGrouped(Infinity)).toBe("—");
+  });
+});
+
+describe("legacy outputs unchanged", () => {
+  it("formatPercent has no grouping and no sign", () => {
+    expect(formatPercent(12.34)).toBe("12.3%");
+    expect(formatPercent(1893.8)).toBe("1893.8%");
+  });
+});
 
 describe("formatCurrency", () => {
   it("renders a non-zero small amount that would round to zero with 2 decimals (AC1)", () => {
