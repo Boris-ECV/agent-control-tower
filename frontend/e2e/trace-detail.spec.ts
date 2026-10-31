@@ -1,7 +1,25 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const MOCK_KEY = "sales-copilot";
 const MOCK_TRACE_ID = "trc_123";
+
+async function mockCostBreakdown(page: Page) {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [],
+        model_cost_breakdown: [],
+        top_traces: [],
+      }),
+    });
+  });
+}
 
 test("Scenario 1: clicking a top_traces row navigates to /agents/[key]/traces/[traceId]", async ({
   page,
@@ -235,6 +253,7 @@ test("Scenario 6: no screen text contains 'Opik' or any other underlying observa
 test("SDLCCT-64: header back link points to the owning agent (not the agent list) and works via click/Enter/Space", async ({
   page,
 }) => {
+  await mockCostBreakdown(page);
   await page.route(`**/api/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}/spans`, async (route) => {
     await route.fulfill({
       status: 200,
@@ -245,20 +264,20 @@ test("SDLCCT-64: header back link points to the owning agent (not the agent list
 
   await page.goto(`/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}`);
 
-  const backLink = page.getByRole("link", { name: "返回 Agent 明細" });
+  const backLink = page.getByRole("link", { name: "返回 Sales Copilot", exact: true });
   await expect(backLink).toHaveAttribute("href", `/agents/${MOCK_KEY}`);
   await backLink.click();
   await expect(page).toHaveURL(`/agents/${MOCK_KEY}`);
 
   await page.goto(`/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}`);
-  const backLinkForEnter = page.getByRole("link", { name: "返回 Agent 明細" });
+  const backLinkForEnter = page.getByRole("link", { name: "返回 Sales Copilot", exact: true });
   await backLinkForEnter.focus();
   await expect(backLinkForEnter).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(`/agents/${MOCK_KEY}`);
 
   await page.goto(`/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}`);
-  const backLinkForSpace = page.getByRole("link", { name: "返回 Agent 明細" });
+  const backLinkForSpace = page.getByRole("link", { name: "返回 Sales Copilot", exact: true });
   await backLinkForSpace.focus();
   await expect(backLinkForSpace).toBeFocused();
   await page.keyboard.press(" ");
@@ -268,13 +287,14 @@ test("SDLCCT-64: header back link points to the owning agent (not the agent list
 test("SDLCCT-64: header back link remains visible and usable while the spans request is pending", async ({
   page,
 }) => {
+  await mockCostBreakdown(page);
   await page.route(`**/api/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}/spans`, async () => {
     // Never fulfill: simulates an indefinitely pending request.
   });
 
   await page.goto(`/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}`);
 
-  const backLink = page.getByRole("link", { name: "返回 Agent 明細" });
+  const backLink = page.getByRole("link", { name: "返回 Sales Copilot", exact: true });
   await expect(backLink).toBeVisible();
   await expect(backLink).toHaveAttribute("href", `/agents/${MOCK_KEY}`);
   await backLink.click();
@@ -284,6 +304,7 @@ test("SDLCCT-64: header back link remains visible and usable while the spans req
 test("SDLCCT-64: header back link remains visible and usable when the spans request errors", async ({
   page,
 }) => {
+  await mockCostBreakdown(page);
   await page.route(`**/api/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}/spans`, async (route) => {
     await route.fulfill({
       status: 502,
@@ -294,7 +315,7 @@ test("SDLCCT-64: header back link remains visible and usable when the spans requ
 
   await page.goto(`/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}`);
 
-  const backLink = page.getByRole("link", { name: "返回 Agent 明細" });
+  const backLink = page.getByRole("link", { name: "返回 Sales Copilot", exact: true });
   await expect(backLink).toBeVisible();
   await expect(backLink).toHaveAttribute("href", `/agents/${MOCK_KEY}`);
   await backLink.click();
