@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { t } from "@/lib/i18n/t";
+import { isNavItemActive } from "@/lib/nav";
 
 import {
   Sidebar,
@@ -77,7 +78,7 @@ export function AppSidebar() {
                     <SidebarMenuItem key={item.label}>
                       <SidebarMenuButton
                         render={<Link href={item.href} />}
-                        isActive={pathname === item.href}
+                        isActive={isNavItemActive(pathname, item.href)}
                       >
                         {item.label}
                       </SidebarMenuButton>
