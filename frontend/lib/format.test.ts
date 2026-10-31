@@ -7,6 +7,7 @@ import {
   formatPercent,
   formatPercentGrouped,
   formatSignedCurrency,
+  formatSignedTableCurrency,
   formatSlashDate,
   formatSlashDateTime,
   formatTableCurrency,
@@ -279,4 +280,25 @@ describe("formatDayColumnHeader", () => {
   it.each(["2026-02-30", "abc"])("renders invalid %j as em dash", (v) => {
     expect(formatDayColumnHeader(v)).toBe("—");
   });
+});
+
+describe("formatSignedTableCurrency", () => {
+  it.each([
+    [250, "+US$ 250.00"],
+    [-1234.5, "-US$ 1,234.50"],
+    [0, "US$ 0.00"],
+    [-0, "US$ 0.00"],
+    [0.004, "US$ 0.00"],
+    [-0.004, "US$ 0.00"],
+    [0.02, "+US$ 0.02"],
+    [1234567.891, "+US$ 1,234,567.89"],
+  ])("renders %j as %j", (v, expected) => {
+    expect(formatSignedTableCurrency(v)).toBe(expected);
+  });
+  it.each([null, undefined, Number.NaN, Number.POSITIVE_INFINITY])(
+    "renders %j as em dash",
+    (v) => {
+      expect(formatSignedTableCurrency(v)).toBe("—");
+    },
+  );
 });

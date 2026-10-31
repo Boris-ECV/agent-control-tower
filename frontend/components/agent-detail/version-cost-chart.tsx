@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import type { VersionCostSeriesEntry } from "@/lib/agent-detail-api";
-import { formatCurrency, formatTaiwanDate } from "@/lib/format";
+import { formatCurrency, formatTableCurrency, formatTaiwanDate } from "@/lib/format";
 import { t } from "@/lib/i18n/t";
 
 // 多序列折線圖：手刻 inline SVG，延伸 frontend/app/agents/page.tsx 的
@@ -471,7 +471,7 @@ export function VersionCostChart({
               {t("agentDetail.versionSeries.table.columns.version")}
             </th>
             {dates.map((date) => (
-              <th key={date} data-date-col={date} className="py-2 pr-3">
+              <th key={date} data-date-col={date} className="py-2 pr-1 sm:pr-3 text-right">
                 {formatTaiwanDate(date)}
               </th>
             ))}
@@ -484,8 +484,8 @@ export function VersionCostChart({
               <tr key={entry.version} className="border-b border-border last:border-b-0">
                 <td className="py-2 pr-3 font-medium text-text-primary">{entry.version}</td>
                 {values.map((value, i) => (
-                  <td key={dates[i]} className="py-2 pr-3">
-                    {formatCurrency(value)}
+                  <td key={dates[i]} className="py-2 pr-1 sm:pr-3 text-right tabular-nums">
+                    {formatTableCurrency(value)}
                   </td>
                 ))}
               </tr>

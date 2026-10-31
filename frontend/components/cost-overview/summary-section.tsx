@@ -1,7 +1,7 @@
 "use client";
 
 import { fetchCostOverviewSummary } from "@/lib/cost-overview-api";
-import { formatCurrency, formatPercent } from "@/lib/format";
+import { formatCardCurrency, formatPercent, formatTableCurrency } from "@/lib/format";
 import { t } from "@/lib/i18n/t";
 import { useFetchOnce } from "@/lib/use-fetch-once";
 
@@ -68,12 +68,12 @@ export function SummarySection({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card
           label={t("costOverview.summary.totalSpend.label")}
-          value={formatCurrency(summary.total_spend)}
+          value={formatCardCurrency(summary.total_spend)}
           sub={t("costOverview.summary.totalSpend.sub")}
         />
         <Card
           label={t("costOverview.summary.totalBudget.label")}
-          value={formatCurrency(summary.total_budget)}
+          value={formatCardCurrency(summary.total_budget)}
           sub={t("costOverview.summary.totalBudget.sub")}
         />
         <Card
@@ -88,7 +88,7 @@ export function SummarySection({
         />
         <Card
           label={t("costOverview.summary.projectedOverspend.label")}
-          value={formatCurrency(summary.projected_overspend)}
+          value={formatCardCurrency(summary.projected_overspend)}
           sub={t("costOverview.summary.projectedOverspend.sub")(summary.days_in_month)}
           danger={overspend}
         />
@@ -118,7 +118,7 @@ export function SummarySection({
                     {t("costOverview.summary.unregisteredBadge")}
                   </span>
                 </span>
-                <span className="text-right font-semibold">{formatCurrency(a.spend)}</span>
+                <span className="text-right font-semibold tabular-nums">{formatTableCurrency(a.spend)}</span>
               </li>
             ))}
           </ul>

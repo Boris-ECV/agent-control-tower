@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ErrorCard } from "@/components/cost-overview/error-card";
 import type { AgentRegistryEntry, AgentTrendPoint } from "@/lib/agents-api";
 import { fetchAgentsList } from "@/lib/agents-api";
-import { formatCurrency, formatPercent, formatTaiwanDate } from "@/lib/format";
+import { formatTableCurrency, formatPercent, formatTaiwanDate } from "@/lib/format";
 import { t } from "@/lib/i18n/t";
 import { useFetchOnce } from "@/lib/use-fetch-once";
 
@@ -93,8 +93,8 @@ function AgentTable({ agents }: { agents: AgentRegistryEntry[] }) {
           <th className="py-2 pr-3">{t("agents.table.columns.agent")}</th>
           <th className="py-2 pr-3">{t("agents.table.columns.dept")}</th>
           <th className="py-2 pr-3">{t("agents.table.columns.owner")}</th>
-          <th className="py-2 pr-3">{t("agents.table.columns.budget")}</th>
-          <th className="py-2 pr-3">{t("agents.table.columns.currentPeriodSpend")}</th>
+          <th className="py-2 pr-3 text-right">{t("agents.table.columns.budget")}</th>
+          <th className="py-2 pr-3 text-right">{t("agents.table.columns.currentPeriodSpend")}</th>
           <th className="py-2 pr-3">{t("agents.table.columns.budgetConsumedPct")}</th>
           <th className="py-2 pr-3">{t("agents.table.columns.trend")}</th>
           <th className="py-2 pr-3">{t("agents.table.columns.governance")}</th>
@@ -118,10 +118,10 @@ function AgentTable({ agents }: { agents: AgentRegistryEntry[] }) {
             <td className="py-2 pr-3 font-medium text-text-primary">{agent.display}</td>
             <td className="py-2 pr-3">{agent.dept}</td>
             <td className="py-2 pr-3">{agent.owner ?? t("agents.unknownOwner")}</td>
-            <td className="py-2 pr-3">
-              {agent.budget !== null ? formatCurrency(agent.budget) : t("agents.unknownBudget")}
+            <td className="py-2 pr-3 text-right tabular-nums">
+              {agent.budget !== null ? formatTableCurrency(agent.budget) : t("agents.unknownBudget")}
             </td>
-            <td className="py-2 pr-3">{formatCurrency(agent.current_period_spend)}</td>
+            <td className="py-2 pr-3 text-right tabular-nums">{formatTableCurrency(agent.current_period_spend)}</td>
             <td className="py-2 pr-3">{formatPercent(agent.budget_consumed_pct)}</td>
             <td className="py-2 pr-3">
               <Sparkline trend={agent.trend} />
@@ -154,12 +154,12 @@ function AgentCardList({ agents }: { agents: AgentRegistryEntry[] }) {
                 {agent.owner ?? t("agents.unknownOwner")}
               </dd>
               <dt>{t("agents.table.columns.budget")}</dt>
-              <dd className="text-right text-text-primary">
-                {agent.budget !== null ? formatCurrency(agent.budget) : t("agents.unknownBudget")}
+              <dd className="text-right tabular-nums text-text-primary">
+                {agent.budget !== null ? formatTableCurrency(agent.budget) : t("agents.unknownBudget")}
               </dd>
               <dt>{t("agents.table.columns.currentPeriodSpend")}</dt>
-              <dd className="text-right text-text-primary">
-                {formatCurrency(agent.current_period_spend)}
+              <dd className="text-right tabular-nums text-text-primary">
+                {formatTableCurrency(agent.current_period_spend)}
               </dd>
               <dt>{t("agents.table.columns.budgetConsumedPct")}</dt>
               <dd className="text-right text-text-primary">

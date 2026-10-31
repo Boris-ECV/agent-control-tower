@@ -135,3 +135,60 @@ test("AC1: mobile viewport -- clicking an agent card also navigates to that agen
 
   await expect(page).toHaveURL(/\/agents\/sales-copilot$/);
 });
+
+async function mockSingleAgent(page: import("@playwright/test").Page) {
+  await page.route("**/api/agents", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        agents: [
+          {
+            key: "sales-copilot",
+            display: "Sales Copilot",
+            dept: "Sales",
+            owner: "alice",
+            budget: 1000,
+            current_period_spend: 500,
+            budget_consumed_pct: 50,
+            has_governance_gap: false,
+            registered: true,
+            trend: [{ date: "2026-10-18", value: 100 }],
+          },
+        ],
+      }),
+    });
+  });
+}
+
+test("SDLCCT-94: desktop table amounts use two decimals, right-aligned with tabular-nums", async ({
+  page,
+}) => {
+  await mockSingleAgent(page);
+  await page.goto("/agents");
+
+  for (const text of ["US$ 1,000.00", "US$ 500.00"]) {
+    const cell = page.locator("table tbody td", { hasText: text });
+    await expect(cell).toBeVisible();
+    const style = await cell.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { align: cs.textAlign, numeric: cs.fontVariantNumeric };
+    });
+    expect(style.align).toBe("right");
+    expect(style.numeric).toContain("tabular-nums");
+  }
+});
+
+test("SDLCCT-94: mobile agent card shows the same two-decimal amounts", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockSingleAgent(page);
+  await page.goto("/agents");
+
+  const card = page.getByRole("link", { name: "Sales Copilot" });
+  await expect(card.getByText("US$ 1,000.00")).toBeVisible();
+  await expect(card.getByText("US$ 500.00")).toBeVisible();
+});

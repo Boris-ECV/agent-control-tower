@@ -1,7 +1,7 @@
 "use client";
 
 import { fetchPeriodComparison } from "@/lib/cost-overview-api";
-import { formatDateRange, formatPercent, formatSignedCurrency } from "@/lib/format";
+import { formatDateRange, formatPercent, formatSignedTableCurrency, formatTableCurrency } from "@/lib/format";
 import { t } from "@/lib/i18n/t";
 import { useFetchOnce } from "@/lib/use-fetch-once";
 
@@ -61,18 +61,18 @@ export function PeriodComparisonSection() {
                 </span>
                 {agent.display}
               </td>
-              <td className="border-b border-border p-3 text-right text-sm">
-                {formatSignedCurrency(agent.current_cost).replace(/^[+-]/, "")}
+              <td className="border-b border-border p-3 text-right text-sm tabular-nums">
+                {formatTableCurrency(agent.current_cost)}
               </td>
-              <td className="border-b border-border p-3 text-right text-sm">
-                {formatSignedCurrency(agent.previous_cost).replace(/^[+-]/, "")}
+              <td className="border-b border-border p-3 text-right text-sm tabular-nums">
+                {formatTableCurrency(agent.previous_cost)}
               </td>
               <td
-                className={`border-b border-border p-3 text-right text-sm font-semibold ${
+                className={`border-b border-border p-3 text-right text-sm font-semibold tabular-nums ${
                   agent.delta > 0 ? "text-red-700" : "text-text-secondary"
                 }`}
               >
-                {formatSignedCurrency(agent.delta)}
+                {formatSignedTableCurrency(agent.delta)}
                 {agent.previous_cost < NOTABLE_NEW_SPEND_THRESHOLD_USD ? (
                   <span className="ml-1.5 inline-flex items-center rounded-full border border-red-300 bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">
                     {t("costOverview.period.notableNewSpendBadge")}
