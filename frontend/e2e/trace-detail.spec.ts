@@ -85,6 +85,7 @@ test("Scenario 2: 200 with a non-empty span tree renders name/type/time for each
   await expect(page.getByText("Agent Control Tower")).toBeVisible();
 
   await expect(page.getByText("root-chain")).toBeVisible();
+  await expect(page.getByText("2026/10/01 08:00:00–2026/10/01 08:00:05")).toBeVisible();
   await expect(page.getByText("general")).toBeVisible();
   await expect(page.getByText("summarize")).toBeVisible();
   await expect(page.getByText("llm")).toBeVisible();

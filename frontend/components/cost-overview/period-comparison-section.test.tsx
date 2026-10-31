@@ -102,3 +102,14 @@ describe("PeriodComparisonSection current/previous cost cells", () => {
     expect(container.querySelectorAll("tbody td")[3]?.className).toContain("tabular-nums");
   });
 });
+
+describe("PeriodComparisonSection period headers (SDLCCT-95 scope boundary)", () => {
+  it("keeps the legacy formatDateRange header text", async () => {
+    fetchPeriodComparison.mockResolvedValueOnce(makeComparison(750, 500, 250, 50.0));
+
+    const { container } = render(<PeriodComparisonSection />);
+
+    await waitFor(() => expect(container.querySelector("thead")).not.toBeNull());
+    expect(container.querySelector("thead")?.textContent ?? "").toContain("本期花費（10/1–10/28）");
+  });
+});

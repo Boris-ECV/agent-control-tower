@@ -192,16 +192,16 @@ test("SDLCCT-72: date axis always covers a full 7 days (anchor_date-6..anchor_da
   const headerRow = versionSection.locator("thead tr");
   await expect(headerRow.locator("th")).toHaveCount(8);
   const dateHeaders = await headerRow.locator("th").allTextContents();
-  // formatTaiwanDate renders dates as e.g. "2026年10月14日"; assert the full
+  // formatDayColumnHeader renders dates as e.g. "10/14 (三)"; assert the full
   // ordered set of day labels for 2026-10-14..2026-10-20.
   expect(dateHeaders.slice(1)).toEqual([
-    "2026年10月14日",
-    "2026年10月15日",
-    "2026年10月16日",
-    "2026年10月17日",
-    "2026年10月18日",
-    "2026年10月19日",
-    "2026年10月20日",
+    "10/14 (三)",
+    "10/15 (四)",
+    "10/16 (五)",
+    "10/17 (六)",
+    "10/18 (日)",
+    "10/19 (一)",
+    "10/20 (二)",
   ]);
 });
 
@@ -981,7 +981,7 @@ test("SDLCCT-80: hovering the version-cost chart at D-2 shows a tooltip listing 
   // No hover yet: tooltip absent, but the table below already has the full
   // dataset (accessibility fallback requires zero interaction).
   await expect(svg.locator('g[data-tooltip="active"]')).toHaveCount(0);
-  await expect(page.getByText("2026年10月18日")).toBeVisible();
+  await expect(versionSection.locator('thead th[data-date-col="2026-10-18"]')).toHaveText("10/18 (日)");
 
   // SDLCCT-88: data points sit on the table's date column centers. D-2
   // (anchor_date - 2 = 2026-10-18) is the th[data-date-col="2026-10-18"] center.
