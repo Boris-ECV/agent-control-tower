@@ -30,26 +30,26 @@ test.beforeEach(async ({ page }) => {
 
 test("Agent detail page highlights Agent 清單", async ({ page }) => {
   await page.goto(`/agents/${KEY}`);
-  await expect(page.getByRole("link", { name: "Agent 清單" })).toHaveAttribute("data-active");
-  await expect(page.getByRole("link", { name: "成本儀表板" })).not.toHaveAttribute("data-active");
+  await expect(page.getByRole("link", { name: "Agent 清單", exact: true })).toHaveAttribute("data-active");
+  await expect(page.getByRole("link", { name: "成本儀表板", exact: true })).not.toHaveAttribute("data-active");
 });
 
 test("Trace detail page highlights Agent 清單", async ({ page }) => {
   await page.goto(`/agents/${KEY}/traces/${TRACE_ID}`);
-  await expect(page.getByRole("link", { name: "Agent 清單" })).toHaveAttribute("data-active");
-  await expect(page.getByRole("link", { name: "成本儀表板" })).not.toHaveAttribute("data-active");
+  await expect(page.getByRole("link", { name: "Agent 清單", exact: true })).toHaveAttribute("data-active");
+  await expect(page.getByRole("link", { name: "成本儀表板", exact: true })).not.toHaveAttribute("data-active");
 });
 
 for (const path of ["/cost-dashboard", "/anomalies", "/settings/system"]) {
   test(`${path} does not highlight Agent 清單`, async ({ page }) => {
     await page.goto(path);
-    await expect(page.getByRole("link", { name: "Agent 清單" })).not.toHaveAttribute("data-active");
+    await expect(page.getByRole("link", { name: "Agent 清單", exact: true })).not.toHaveAttribute("data-active");
   });
 }
 
 test("clicking Agent 清單 from detail navigates to /agents and stays active", async ({ page }) => {
   await page.goto(`/agents/${KEY}`);
-  const link = page.getByRole("link", { name: "Agent 清單" });
+  const link = page.getByRole("link", { name: "Agent 清單", exact: true });
   await link.click();
   await expect(page).toHaveURL(/\/agents$/);
   await expect(link).toHaveAttribute("data-active");
@@ -62,6 +62,6 @@ test.describe("mobile", () => {
     await page.goto(`/agents/${KEY}`);
     await page.getByRole("button", { name: /sidebar/i }).first().click();
     const sheet = page.locator('[data-mobile="true"]');
-    await expect(sheet.getByRole("link", { name: "Agent 清單" })).toHaveAttribute("data-active");
+    await expect(sheet.getByRole("link", { name: "Agent 清單", exact: true })).toHaveAttribute("data-active");
   });
 });
