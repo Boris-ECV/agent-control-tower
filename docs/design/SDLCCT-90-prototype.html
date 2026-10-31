@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-90 — 版本成本圖折線下方面積漸層填色原型</title>
+<style>
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #FFFFFF;
+    color: #1F2937;
+    max-width: 1100px;
+    margin: 32px auto;
+    padding: 0 24px;
+    line-height: 1.6;
+  }
+  h1 { font-size: 24px; font-weight: 700; }
+  h2 { font-size: 18px; font-weight: 600; margin-top: 40px; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px; }
+  p.meta, .note { font-size: 12px; color: #4B5563; }
+  code { background: #F3F4F6; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+  .disclaimer {
+    border: 1px dashed #eda100; background: #FFFBEB; padding: 8px 12px;
+    font-size: 12px; color: #4B5563; border-radius: 4px; margin: 12px 0;
+  }
+  .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-size: 13px; margin: 12px 0; }
+  .controls button { padding: 4px 10px; border: 1px solid #E5E7EB; background: #F9FAFB; border-radius: 4px; cursor: pointer; }
+  .controls button.active { background: #2a78d6; color: #fff; border-color: #2a78d6; }
+  #panel { font-size: 13px; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 4px; padding: 8px 12px; margin: 8px 0; }
+  #panel b { color: #1baf7a; }
+  #panel b.bad { color: #e34948; }
+  #wrap { border: 1px solid #E5E7EB; border-radius: 6px; padding: 16px; background: #FFFFFF; position: relative; }
+  svg { display: block; margin-bottom: 12px; overflow: visible; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { border-bottom: 1px solid #E5E7EB; padding: 8px 12px 8px 0; text-align: left; }
+  th { color: #4B5563; font-size: 12px; font-weight: 600; }
+  td.ver { font-weight: 500; }
+  ul.legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 0; list-style: none; font-size: 12px; color: #4B5563; margin: 0 0 12px; }
+  ul.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+</style>
+</head>
+<body>
+
+<h1>SDLCCT-90 — 版本成本圖折線下方面積漸層填色原型</h1>
+<p class="meta">
+  靜態原型，無需安裝任何套件，直接用瀏覽器開啟即可。規則與設計文件
+  <code>docs/design/SDLCCT-90.md</code> 一致：每個連續（非 null）且至少 2 點的線段下方畫一個封閉面積，
+  由線段各點向下封到繪圖區底部（Y = <code>CHART_HEIGHT − CHART_PADDING = 136</code>）；
+  顏色取自該序列的色票顏色，頂端不透明度 0.15 線性淡出到底端 0；單點線段不畫面積；null 日斷開、不內插、不當 0。
+  DOM 順序：格線 → <code>&lt;g data-areas&gt;</code>（含 <code>&lt;defs&gt;</code>）→ 折線 → Y 軸標示 → 終點標籤 → hover 覆蓋層。
+</p>
+
+<h2>情境一至五：切換資料情境觀察面積</h2>
+
+<div class="disclaimer">
+  原型限制說明：下方情境按鈕、讀數面板與「隱藏面積」勾選僅供原型示範與驗證用，實作中不存在。
+  讀數由頁面即時掃描 SVG 產生，並非寫死的數字。滑鼠移到圖上會出現與實作相同的虛線十字線，用來驗證面積不攔截滑鼠事件。
+</div>
+
+<div class="controls">
+  <span>資料情境：</span>
+  <button data-s="normal" class="active">一般資料（含缺值斷開）</button>
+  <button data-s="single">含單點線段</button>
+  <button data-s="onlyone">整條序列僅 1 點</button>
+  <button data-s="null">全部為 null</button>
+  <button data-s="many">7 個序列（色票輪替）</button>
+  <label><input type="checkbox" id="hide" /> 隱藏面積（僅供對照有無面積）</label>
+</div>
+
+<div id="panel">—</div>
+
+<div id="wrap">
+  <svg id="chart" width="100%" height="160" role="img" aria-label="版本成本時間序列"></svg>
+  <ul class="legend" id="legend"></ul>
+  <table id="tbl">
+    <thead><tr id="thead"></tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<h2>補充說明</h2>
+<p class="note">
+  面積為純裝飾：<code>aria-hidden="true"</code>、<code>pointer-events="none"</code>、無任何文字或 role；
+  折線、格線、Y 軸標示、終點標籤、tooltip 與表格皆不變。每個序列一個 <code>&lt;linearGradient&gt;</code>，
+  id 帶有圖表實例唯一前綴（實作用 <code>React.useId</code>），同頁多張圖或重複渲染不會撞 id。
+  序列超過 6 個時色票以相同取模規則輪替，面積色與折線色永遠一致。
+</p>
+
+<script>
+(function () {
+  var COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300"];
+  var dates = ["2026年10月14日","2026年10月15日","2026年10月16日","2026年10月17日","2026年10月18日","2026年10月19日","2026年10月20日"];
+  var scenarios = {
+    normal: [
+      { v: "v1", vals: [100, 120, null, 150, 170, 160, 190] },
+      { v: "v2", vals: [50, 60, 80, 70, 95, null, 90] }
+    ],
+    single: [
+      { v: "v1", vals: [100, null, 140, 150, null, 170, 190] },
+      { v: "v2", vals: [60, 70, 80, null, 95, null, 90] }
+    ],
+    onlyone: [
+      { v: "v1", vals: [null, null, null, 150, null, null, null] },
+      { v: "v2", vals: [50, 60, 80, 70, 95, 90, 100] }
+    ],
+    "null": [
+      { v: "v1", vals: [null, null, null, null, null, null, null] }
+    ],
+    many: [0, 1, 2, 3, 4, 5, 6].map(function (k) {
+      return { v: "v" + (k + 1), vals: [10, 20, 15, 30, 25, 40, 35].map(function (x) { return x + k * 12; }) };
+    })
+  };
+  var current = "normal";
+  var H = 160, P = 24, B = H - P, TOP_OPACITY = 0.15;
+  function fmt(x) {
+    if (x === null) return "—";
+    if (x !== 0 && Math.abs(x) < 100) return "US$ " + x.toFixed(2);
+    return "US$ " + x.toLocaleString("en-US");
+  }
+
+  var svg = document.getElementById("chart");
+  var thead = document.getElementById("thead");
+  var tbody = document.getElementById("tbody");
+  var panel = document.getElementById("panel");
+  var legend = document.getElementById("legend");
+  var hoverIdx = null, lastCenters = [], lastW = 0, lastL = 0;
+
+  function buildTable(series) {
+    var h = '<th>版本</th>';
+    dates.forEach(function (d) { h += '<th>' + d + '</th>'; });
+    thead.innerHTML = h;
+    var rows = "";
+    series.forEach(function (s) {
+      rows += '<tr><td class="ver">' + s.v + '</td>';
+      s.vals.forEach(function (x) { rows += '<td>' + fmt(x) + '</td>'; });
+      rows += '</tr>';
+    });
+    tbody.innerHTML = rows;
+  }
+
+  function draw() {
+    var series = scenarios[current];
+    buildTable(series);
+    legend.innerHTML = series.length > 4 ? series.map(function (s, i) {
+      return '<li><i style="background:' + COLORS[i % COLORS.length] + '"></i>' + s.v + '</li>';
+    }).join("") : "";
+    var sr = svg.getBoundingClientRect();
+    var ths = thead.querySelectorAll("th");
+    var W = sr.width, L = ths[0].getBoundingClientRect().right - sr.left;
+    var cs = [];
+    for (var i = 1; i < ths.length; i++) {
+      var r = ths[i].getBoundingClientRect();
+      cs.push(r.left + r.width / 2 - sr.left);
+    }
+    lastCenters = cs; lastW = W; lastL = L;
+    var all = [];
+    series.forEach(function (s) { s.vals.forEach(function (x) { if (x !== null) all.push(x); }); });
+    var has = all.length > 0;
+    var min = has ? Math.min.apply(null, all) : 0, max = has ? Math.max.apply(null, all) : 0;
+    var innerH = H - P * 2;
+    function y(x) { return max === min ? P + innerH / 2 : P + innerH - ((x - min) / (max - min)) * innerH; }
+    function f(n) { return n.toFixed(1); }
+
+    // 1. 格線（SDLCCT-89，不變）
+    var out = '<g data-gridlines>';
+    if (has) {
+      var keys = max === min ? ["single"] : ["max", "upper", "lower", "min"];
+      keys.forEach(function (key, k) {
+        var gy = max === min ? y(max) : P + (k * innerH) / 3;
+        out += '<line data-gridline="' + key + '" x1="' + f(L) + '" x2="' + f(W) + '" y1="' + f(gy) + '" y2="' + f(gy) + '" stroke="#E5E7EB" stroke-width="1"/>';
+      });
+    }
+    out += '</g>';
+
+    // 以同一份 runs 產生面積與折線（兩者不可能不一致）
+    var runsBySeries = series.map(function (s) {
+      var runs = [], cur = [];
+      s.vals.forEach(function (x, i) {
+        if (x === null) { if (cur.length) runs.push(cur); cur = []; return; }
+        cur.push({ x: cs[i], y: y(x) });
+      });
+      if (cur.length) runs.push(cur);
+      return runs;
+    });
+
+    // 2. 面積群組（含 defs）
+    var hide = document.getElementById("hide").checked;
+    var defs = "", paths = "";
+    series.forEach(function (s, si) {
+      var color = COLORS[si % COLORS.length];
+      var gid = "proto-area-" + si;
+      var hasArea = false;
+      runsBySeries[si].forEach(function (run, ri) {
+        if (run.length < 2) return;
+        hasArea = true;
+        var d = "M" + run.map(function (p) { return f(p.x) + "," + f(p.y); }).join(" L") +
+          " L" + f(run[run.length - 1].x) + "," + f(B) + " L" + f(run[0].x) + "," + f(B) + " Z";
+        paths += '<path data-area="' + s.v + '" data-run="' + ri + '" d="' + d + '" fill="url(#' + gid + ')" stroke="none" pointer-events="none"/>';
+      });
+      if (hasArea) {
+        defs += '<linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0" stop-color="' + color + '" stop-opacity="' + TOP_OPACITY + '"/>' +
+          '<stop offset="1" stop-color="' + color + '" stop-opacity="0"/></linearGradient>';
+      }
+    });
+    out += '<g data-areas aria-hidden="true" pointer-events="none"' + (hide ? ' style="display:none"' : '') + '><defs>' + defs + '</defs>' + paths + '</g>';
+
+    // 3. 折線
+    series.forEach(function (s, si) {
+      out += '<g>';
+      runsBySeries[si].forEach(function (run) {
+        out += '<polyline points="' + run.map(function (p) { return f(p.x) + "," + f(p.y); }).join(" ") + '" fill="none" stroke="' + COLORS[si % COLORS.length] + '" stroke-width="2"/>';
+      });
+      out += '</g>';
+    });
+
+    // 4. Y 軸標示
+    out += '<g data-axis="y">';
+    (!has ? [] : (max === min ? [max] : [max, min])).forEach(function (x) {
+      out += '<text x="2" y="' + f(y(x)) + '" font-size="10" fill="#4B5563" dominant-baseline="middle">' + fmt(x) + '</text>';
+    });
+    out += '</g>';
+
+    // 5. 終點標籤（<= 4 序列）
+    if (series.length <= 4) {
+      var midX = (L + W) / 2;
+      out += '<g data-labels="tail">';
+      series.forEach(function (s, si) {
+        var last = -1;
+        s.vals.forEach(function (x, i) { if (x !== null) last = i; });
+        if (last < 0) return;
+        var anchor = cs[last] >= midX ? "end" : "start";
+        out += '<text x="' + f(cs[last] + (anchor === "end" ? -6 : 6)) + '" y="' + f(y(s.vals[last])) + '" text-anchor="' + anchor + '" font-size="10" fill="' + COLORS[si % COLORS.length] + '" dominant-baseline="middle">' + s.v + " " + fmt(s.vals[last]) + '</text>';
+      });
+      out += '</g>';
+    }
+
+    // 6. hover 覆蓋層與十字線
+    out += '<rect id="ov" x="' + f(L) + '" y="0" width="' + f(W - L) + '" height="' + H + '" fill="transparent"/>';
+    if (hoverIdx !== null) {
+      out += '<line x1="' + f(cs[hoverIdx]) + '" x2="' + f(cs[hoverIdx]) + '" y1="' + P + '" y2="' + B + '" stroke="#4B5563" stroke-width="1" stroke-dasharray="2,2"/>';
+    }
+    svg.setAttribute("viewBox", "0 0 " + W.toFixed(2) + " " + H);
+    svg.innerHTML = out;
+    var ov = document.getElementById("ov");
+    ov.addEventListener("mousemove", function (e) {
+      var rect = svg.getBoundingClientRect();
+      var sx = (e.clientX - rect.left) * (lastW / rect.width);
+      var best = 0, bd = Infinity;
+      lastCenters.forEach(function (c, i) { var d = Math.abs(c - sx); if (d < bd) { bd = d; best = i; } });
+      if (best !== hoverIdx) { hoverIdx = best; draw(); }
+    });
+    ov.addEventListener("mouseleave", function () { hoverIdx = null; draw(); });
+
+    // 讀數：由實際渲染的 DOM 即時掃描
+    var areaPaths = svg.querySelectorAll("g[data-areas] path[data-area]");
+    var expectedAreas = 0, singles = 0;
+    runsBySeries.forEach(function (runs) {
+      runs.forEach(function (run) { if (run.length >= 2) expectedAreas++; else singles++; });
+    });
+    var polys = svg.querySelectorAll("polyline").length;
+    var nodes = Array.prototype.slice.call(svg.querySelectorAll("*"));
+    var idxOf = function (sel) { return nodes.indexOf(svg.querySelector(sel)); };
+    var gi = idxOf("g[data-gridlines]"), ai = idxOf("g[data-areas]"), pi = idxOf("polyline");
+    var orderOk = ai > gi && (pi < 0 || ai < pi);
+    var lastAreaIdx = -1;
+    nodes.forEach(function (el, k) { if (el.tagName.toLowerCase() === "path") lastAreaIdx = k; });
+    var pathsBeforePoly = pi < 0 || lastAreaIdx < pi;
+    var grp = svg.querySelector("g[data-areas]");
+    var textInAreas = grp.querySelectorAll("text").length + (grp.textContent.replace(/\s/g, "") ? 1 : 0);
+    var roleInAreas = grp.querySelectorAll("[role]").length;
+    var ids = Array.prototype.map.call(svg.querySelectorAll("linearGradient"), function (g) { return g.id; });
+    var uniq = ids.every(function (id, k) { return ids.indexOf(id) === k; });
+    var refsOk = Array.prototype.every.call(areaPaths, function (p) {
+      return !!svg.querySelector(p.getAttribute("fill").replace(/^url\((#.*)\)$/, "$1").replace("#", "#"));
+    });
+    // 近似驗證：每個面積路徑的最後兩個頂點 y 皆為基線
+    var baseOk = Array.prototype.every.call(areaPaths, function (p) {
+      var v = p.getAttribute("d").match(/L[\d.]+,[\d.]+/g);
+      return v.slice(-2).every(function (s) { return Math.abs(parseFloat(s.split(",")[1]) - B) < 0.06; });
+    });
+    function mark(ok, s) { return '<b class="' + (ok ? "" : "bad") + '">' + s + '</b>'; }
+    panel.innerHTML =
+      '面積區塊數：' + mark(areaPaths.length === expectedAreas, areaPaths.length) + '（預期 ' + expectedAreas + '＝所有 ≥2 點線段；折線共 ' + polys + ' 條，其中單點線段 ' + singles + ' 條不產生面積）<br>' +
+      'DOM 順序 格線 → 面積 → 折線：' + mark(orderOk && pathsBeforePoly, orderOk && pathsBeforePoly ? "是" : "否") + '　' +
+      '漸層 id 唯一：' + mark(uniq, uniq ? "是" : "否") + '（共 ' + ids.length + ' 個）　' +
+      '面積底邊皆在基線 y=' + B + '：' + mark(baseOk, baseOk ? "是" : "否") + '<br>' +
+      '面積群組 aria-hidden：' + mark(grp.getAttribute("aria-hidden") === "true", grp.getAttribute("aria-hidden")) + '　' +
+      'pointer-events：' + mark(grp.getAttribute("pointer-events") === "none", grp.getAttribute("pointer-events")) + '　' +
+      '面積內文字／role 數：' + mark(textInAreas === 0 && roleInAreas === 0, textInAreas + " / " + roleInAreas) + '　' +
+      'svg aria-label：' + mark(svg.getAttribute("aria-label") === "版本成本時間序列", svg.getAttribute("aria-label")) +
+      '　hover 十字線：' + (hoverIdx === null ? "（滑鼠移到圖上試試）" : mark(true, "第 " + (hoverIdx + 1) + " 日"));
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll("button[data-s]"), function (b) {
+    b.addEventListener("click", function () {
+      current = b.getAttribute("data-s");
+      hoverIdx = null;
+      Array.prototype.forEach.call(document.querySelectorAll("button[data-s]"), function (x) {
+        x.classList.toggle("active", x === b);
+      });
+      draw();
+    });
+  });
+  document.getElementById("hide").addEventListener("change", draw);
+  window.addEventListener("resize", draw);
+  draw();
+})();
+</script>
+
+</body>
+</html>
