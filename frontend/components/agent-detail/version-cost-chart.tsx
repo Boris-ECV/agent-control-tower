@@ -9,9 +9,69 @@ import { t } from "@/lib/i18n/t";
 // 多序列折線圖：手刻 inline SVG，延伸 frontend/app/agents/page.tsx 的
 // Sparkline 手法為多條 <polyline>（見 docs/design/SDLCCT-48.md 決策 3）。
 // 不引入圖表函式庫。value === null 的點造成線段斷點，不內插、不當作 0。
-const CHART_WIDTH = 480;
+// SDLCCT-88：資料點 X 座標對齊下方表格各日期欄中心，機制為量測真實 <th>
+// 欄中心（getBoundingClientRect + ResizeObserver），詳見
+// docs/design/SDLCCT-88.md。圖表內不再繪製 X 軸日期文字。
 const CHART_HEIGHT = 160;
 const CHART_PADDING = 24;
+const FALLBACK_WIDTH = 480;
+const FALLBACK_LABEL_COL = 72;
+
+export type ChartLayout = {
+  width: number;
+  plotLeft: number;
+  centers: number[];
+};
+
+type RectLike = { left: number; right: number; width: number };
+
+export function fallbackLayout(n: number): ChartLayout {
+  const span = FALLBACK_WIDTH - FALLBACK_LABEL_COL;
+  return {
+    width: FALLBACK_WIDTH,
+    plotLeft: FALLBACK_LABEL_COL,
+    centers: Array.from(
+      { length: n },
+      (_, i) => FALLBACK_LABEL_COL + ((i + 0.5) * span) / n,
+    ),
+  };
+}
+
+// 純函式：由 svg / 「版本」欄 / 各日期欄 rect 計算版面；不可量測回傳 null。
+export function computeLayout(
+  svgRect: RectLike,
+  firstThRect: RectLike | null,
+  thRects: RectLike[],
+): ChartLayout | null {
+  if (svgRect.width <= 0 || !firstThRect || thRects.length === 0) return null;
+  if (thRects.some((r) => r.width <= 0)) return null;
+  return {
+    width: svgRect.width,
+    plotLeft: firstThRect.right - svgRect.left,
+    centers: thRects.map((r) => r.left + r.width / 2 - svgRect.left),
+  };
+}
+
+function measureLayout(svg: SVGSVGElement, table: HTMLTableElement): ChartLayout | null {
+  const ths = Array.from(
+    table.querySelectorAll<HTMLElement>("thead th[data-date-col]"),
+  );
+  const first = table.querySelector<HTMLElement>("thead th:first-child");
+  return computeLayout(
+    svg.getBoundingClientRect(),
+    first ? first.getBoundingClientRect() : null,
+    ths.map((th) => th.getBoundingClientRect()),
+  );
+}
+
+function sameLayout(a: ChartLayout, b: ChartLayout): boolean {
+  return (
+    a.centers.length === b.centers.length &&
+    Math.abs(a.width - b.width) < 0.01 &&
+    Math.abs(a.plotLeft - b.plotLeft) < 0.01 &&
+    a.centers.every((c, i) => Math.abs(c - b.centers[i]) < 0.01)
+  );
+}
 
 // 固定色票，依 version 的索引輪替（不依賴任何圖表函式庫的調色盤）。
 const COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300"];
@@ -45,6 +105,30 @@ export function VersionCostChart({
 
   const dates = fixedSevenDates(anchorDate);
 
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const svgRef = React.useRef<SVGSVGElement>(null);
+  const tableRef = React.useRef<HTMLTableElement>(null);
+  const [layout, setLayout] = React.useState<ChartLayout>(() =>
+    fallbackLayout(dates.length),
+  );
+
+  React.useLayoutEffect(() => {
+    const update = () => {
+      const svg = svgRef.current;
+      const table = tableRef.current;
+      if (!svg || !table) return;
+      const next = measureLayout(svg, table);
+      if (!next) return;
+      setLayout((prev) => (sameLayout(prev, next) ? prev : next));
+    };
+    update();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    if (containerRef.current) observer.observe(containerRef.current);
+    if (tableRef.current) observer.observe(tableRef.current);
+    return () => observer.disconnect();
+  }, [entries, anchorDate]);
+
   const allValues = entries
     .flatMap((entry) => entry.points)
     .map((p) => p.value)
@@ -52,7 +136,6 @@ export function VersionCostChart({
   const min = allValues.length > 0 ? Math.min(...allValues) : 0;
   const max = allValues.length > 0 ? Math.max(...allValues) : 0;
 
-  const innerWidth = CHART_WIDTH - CHART_PADDING * 2;
   const innerHeight = CHART_HEIGHT - CHART_PADDING * 2;
 
   const yFor = (value: number) =>
@@ -60,32 +143,13 @@ export function VersionCostChart({
       ? CHART_PADDING + innerHeight / 2
       : CHART_PADDING + innerHeight - ((value - min) / (max - min)) * innerHeight;
 
-  const xFor = (dateIndex: number) =>
-    dates.length > 1
-      ? CHART_PADDING + (dateIndex / (dates.length - 1)) * innerWidth
-      : CHART_PADDING + innerWidth / 2;
+  const xFor = (dateIndex: number) => layout.centers[dateIndex];
 
   const toXY = (dateIndex: number, value: number) => {
     const x = xFor(dateIndex);
     const y = yFor(value);
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   };
-
-  // X 軸日期標示（SDLCCT-78）：固定取 7 天日期陣列的頭／中／尾三個索引
-  // [0, 3, 6]，避免標籤過密互相重疊。
-  const xAxisLabelIndices = [0, 3, 6];
-  const xAxisLabels = xAxisLabelIndices
-    .filter((i) => i < dates.length)
-    .map((dateIndex, position, arr) => ({
-      key: dates[dateIndex],
-      x: xFor(dateIndex),
-      text: formatTaiwanDate(dates[dateIndex]),
-      textAnchor: (position === 0
-        ? "start"
-        : position === arr.length - 1
-          ? "end"
-          : "middle") as "start" | "middle" | "end",
-    }));
 
   // Y 軸金額標示（SDLCCT-73）：僅在有非 null 數值時顯示，絕不臆測 0
   // (CONSTITUTION「缺值顯示未知，不顯示 0」)。max === min 時僅顯示一個標示。
@@ -108,7 +172,7 @@ export function VersionCostChart({
   // 標籤取代圖例；> 4 時直接標籤互相重疊風險高，退回純圖例顯示。門檻值 4
   // 為 spec 定案數字。
   const showTailLabels = entries.length <= 4;
-  const plotMidX = CHART_PADDING + innerWidth / 2;
+  const plotMidX = (layout.plotLeft + layout.width) / 2;
   const tailLabels: { key: string; x: number; y: number; color: string; text: string }[] = [];
 
   // Hover hit-testing（SDLCCT-80）：單一全高透明 <rect> overlay，把游標的
@@ -117,7 +181,7 @@ export function VersionCostChart({
     const svg = event.currentTarget.ownerSVGElement;
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
-    const scaleX = CHART_WIDTH / rect.width;
+    const scaleX = layout.width / rect.width;
     const svgX = (event.clientX - rect.left) * scaleX;
     let closest = 0;
     let minDist = Infinity;
@@ -148,14 +212,16 @@ export function VersionCostChart({
   const tooltipY = CHART_PADDING;
 
   return (
-    <div>
+    <div ref={containerRef}>
       <svg
-        viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+        ref={svgRef}
+        viewBox={`0 0 ${layout.width} ${CHART_HEIGHT}`}
         width="100%"
         height={CHART_HEIGHT}
         role="img"
         aria-label={t("agentDetail.versionSeries.title")}
         className="mb-3"
+        style={{ overflow: "visible" }}
       >
         {/* 格線（SDLCCT-78）：必須在資料折線之前渲染，確保視覺上位於折線
             後方。對齊既有 Y 軸金額標示（labels）的高度，重用 labels[].y，
@@ -164,8 +230,8 @@ export function VersionCostChart({
           {labels.map((label) => (
             <line
               key={label.key}
-              x1={CHART_PADDING}
-              x2={CHART_WIDTH - CHART_PADDING}
+              x1={layout.plotLeft}
+              x2={layout.width}
               y1={label.y}
               y2={label.y}
               stroke="var(--color-border)"
@@ -238,22 +304,6 @@ export function VersionCostChart({
           ))}
         </g>
 
-        {/* X 軸日期標示（SDLCCT-78）：頭／中／尾三個索引 [0, 3, 6]。 */}
-        <g data-axis="x">
-          {xAxisLabels.map((label) => (
-            <text
-              key={label.key}
-              x={label.x}
-              y={CHART_HEIGHT - 6}
-              textAnchor={label.textAnchor}
-              fontSize={10}
-              fill="var(--color-text-secondary)"
-            >
-              {label.text}
-            </text>
-          ))}
-        </g>
-
         {/* 終點直接標籤（SDLCCT-79）：插入在既有順序最後（所有折線與軸線
             標籤之後），確保視覺堆疊順序上位於最上層。entries.length > 4
             時完全不渲染（連空 <g> 也不輸出）。 */}
@@ -283,9 +333,9 @@ export function VersionCostChart({
             確保在視覺/事件堆疊順序上位於最上層。fill="transparent"（非
             "none"）才能接收滑鼠事件。 */}
         <rect
-          x={CHART_PADDING}
+          x={layout.plotLeft}
           y={0}
-          width={innerWidth}
+          width={layout.width - layout.plotLeft}
           height={CHART_HEIGHT}
           fill="transparent"
           onMouseMove={handleMouseMove}
@@ -298,7 +348,7 @@ export function VersionCostChart({
             x1={xFor(hoveredIndex)}
             x2={xFor(hoveredIndex)}
             y1={CHART_PADDING}
-            y2={CHART_HEIGHT - CHART_PADDING - 10}
+            y2={CHART_HEIGHT - CHART_PADDING}
             stroke="var(--color-text-secondary)"
             strokeWidth={1}
             strokeDasharray="2,2"
@@ -356,14 +406,14 @@ export function VersionCostChart({
         </ul>
       )}
 
-      <table className="w-full border-collapse text-sm">
+      <table ref={tableRef} className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-border text-left text-xs text-text-secondary">
             <th className="py-2 pr-3">
               {t("agentDetail.versionSeries.table.columns.version")}
             </th>
             {dates.map((date) => (
-              <th key={date} className="py-2 pr-3">
+              <th key={date} data-date-col={date} className="py-2 pr-3">
                 {formatTaiwanDate(date)}
               </th>
             ))}

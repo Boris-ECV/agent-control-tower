@@ -983,12 +983,13 @@ test("SDLCCT-80: hovering the version-cost chart at D-2 shows a tooltip listing 
   await expect(svg.locator('g[data-tooltip="active"]')).toHaveCount(0);
   await expect(page.getByText("2026年10月18日")).toBeVisible();
 
-  // CHART_WIDTH=480, CHART_PADDING=24, innerWidth=432, dates.length=7.
-  // D-2 (anchor_date - 2 = 2026-10-18) is dateIndex=4:
-  // xFor(4) = 24 + (4/6)*432 = 312, as a fraction of the viewBox width: 312/480.
+  // SDLCCT-88: data points sit on the table's date column centers. D-2
+  // (anchor_date - 2 = 2026-10-18) is the th[data-date-col="2026-10-18"] center.
   const box = await svg.boundingBox();
-  if (!box) throw new Error("svg bounding box not available");
-  const targetX = (312 / 480) * box.width;
+  const th = versionSection.locator('thead th[data-date-col="2026-10-18"]');
+  const thBox = await th.boundingBox();
+  if (!box || !thBox) throw new Error("bounding box not available");
+  const targetX = thBox.x + thBox.width / 2 - box.x;
   await svg.hover({ position: { x: targetX, y: box.height / 2 } });
 
   const tooltip = svg.locator('g[data-tooltip="active"]');
@@ -1000,4 +1001,121 @@ test("SDLCCT-80: hovering the version-cost chart at D-2 shows a tooltip listing 
   // Moving the mouse off the chart clears the tooltip and crosshair.
   await page.mouse.move(0, 0);
   await expect(svg.locator('g[data-tooltip="active"]')).toHaveCount(0);
+});
+
+test("SDLCCT-88: version-cost chart data points align to the table date column centers at 1280 and 768, and the chart has no x-axis date text", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [
+          {
+            version: "v1",
+            points: [
+              { date: "2026-10-14", value: 100 },
+              { date: "2026-10-15", value: 120 },
+              { date: "2026-10-16", value: null },
+              { date: "2026-10-17", value: 140 },
+              { date: "2026-10-18", value: 160 },
+              { date: "2026-10-19", value: 150 },
+              { date: "2026-10-20", value: 170 },
+            ],
+          },
+          {
+            version: "v2",
+            points: [
+              { date: "2026-10-14", value: 50 },
+              { date: "2026-10-15", value: 60 },
+              { date: "2026-10-16", value: 70 },
+              { date: "2026-10-17", value: 80 },
+              { date: "2026-10-18", value: 90 },
+              { date: "2026-10-19", value: 85 },
+              { date: "2026-10-20", value: 95 },
+            ],
+          },
+        ],
+        model_cost_breakdown: [],
+        top_traces: [],
+      }),
+    });
+  });
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const versionSection = page.locator('section[aria-label="版本成本時間序列"]');
+  const svg = versionSection.locator("svg[role='img']");
+  await expect(svg).toBeVisible();
+
+  // Scenario 3: no x-axis group and no date text anywhere inside the SVG.
+  await expect(svg.locator('g[data-axis="x"]')).toHaveCount(0);
+  const svgTexts = await svg.locator("text").allTextContents();
+  expect(svgTexts.filter((txt) => /\d{4}年\d{1,2}月\d{1,2}日/.test(txt))).toHaveLength(0);
+
+  // Max |polyline point X - date column center| over all polylines. Date
+  // index per point is recovered by matching against the 7 th centers, so we
+  // compare every point to the closest column AND require the set of columns
+  // hit by v2 (a complete series) to be exactly all 7 in order.
+  const maxDeviation = async () =>
+    await versionSection.evaluate((section) => {
+      const svgEl = section.querySelector("svg[role='img']") as SVGSVGElement;
+      const svgLeft = svgEl.getBoundingClientRect().left;
+      const centers = Array.from(
+        section.querySelectorAll("thead th[data-date-col]"),
+      ).map((th) => {
+        const r = th.getBoundingClientRect();
+        return r.left + r.width / 2 - svgLeft;
+      });
+      const polylines = Array.from(svgEl.querySelectorAll("polyline"));
+      const complete = polylines.find(
+        (pl) => (pl.getAttribute("points") ?? "").split(" ").length === 7,
+      );
+      if (!complete || centers.length !== 7) return Infinity;
+      const xs = (complete.getAttribute("points") ?? "")
+        .split(" ")
+        .map((pt) => Number(pt.split(",")[0]));
+      let max = 0;
+      xs.forEach((x, i) => {
+        max = Math.max(max, Math.abs(x - centers[i]));
+      });
+      // Every other polyline point must also sit on some column center.
+      for (const pl of polylines) {
+        for (const pt of (pl.getAttribute("points") ?? "").split(" ")) {
+          const x = Number(pt.split(",")[0]);
+          max = Math.max(max, Math.min(...centers.map((c) => Math.abs(c - x))));
+        }
+      }
+      return max;
+    });
+
+  // Scenario 1: 1280px viewport.
+  await expect.poll(maxDeviation).toBeLessThanOrEqual(1);
+
+  // Scenario 2: shrink to 768px, still aligned.
+  await page.setViewportSize({ width: 768, height: 800 });
+  await expect.poll(maxDeviation).toBeLessThanOrEqual(1);
+
+  // Scenario 4: hover D-2 column center -> crosshair X equals that column center.
+  const th = versionSection.locator('thead th[data-date-col="2026-10-18"]');
+  const thBox = await th.boundingBox();
+  const svgBox = await svg.boundingBox();
+  if (!thBox || !svgBox) throw new Error("bounding boxes not available");
+  const colCenter = thBox.x + thBox.width / 2;
+  await svg.hover({ position: { x: colCenter - svgBox.x, y: svgBox.height / 2 } });
+  const tooltip = svg.locator('g[data-tooltip="active"]');
+  await expect(tooltip).toHaveCount(1);
+  await expect(tooltip.locator("text", { hasText: "v1: US$ 160" })).toHaveCount(1);
+  await expect(tooltip.locator("text", { hasText: "v2: US$ 90" })).toHaveCount(1);
+  const x1 = Number(await svg.locator("line[stroke-dasharray]").getAttribute("x1"));
+  expect(Math.abs(svgBox.x + x1 - colCenter)).toBeLessThanOrEqual(1);
+
+  // Scenario 5: null cell still renders as an em dash in the table.
+  await expect(versionSection.locator("tbody tr").first().locator("td").nth(3)).toHaveText("—");
 });
