@@ -2,6 +2,50 @@
 // here, never in bff (docs/design/SDLCCT-32.md "台灣時間換算在前端/展示層"
 // decision) -- bff returns plain UTC date strings (YYYY-MM-DD).
 
+function groupedAbs(abs: number, digits: number): string {
+  return abs.toLocaleString("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+}
+
+/** True when the value rounds to zero at the given number of decimals. */
+function roundsToZero(value: number, digits: number): boolean {
+  return Number(groupedAbs(Math.abs(value), digits).replace(/,/g, "")) === 0;
+}
+
+function formatMoney(value: number | null | undefined, digits: number): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+  const neg = value < 0 && !roundsToZero(value, digits);
+  return `${neg ? "-" : ""}US$ ${groupedAbs(Math.abs(value), digits)}`;
+}
+
+/** Table money: always two decimals, thousands separators.
+ * 1234.5 -> "US$ 1,234.50", 0 -> "US$ 0.00". */
+export function formatTableCurrency(value: number | null | undefined): string {
+  return formatMoney(value, 2);
+}
+
+/** Summary-card money: rounded to an integer, thousands separators.
+ * 1746.4 -> "US$ 1,746". */
+export function formatCardCurrency(value: number | null | undefined): string {
+  return formatMoney(value, 0);
+}
+
+/** Percent with thousands separators; `signed` adds "+" for positive values.
+ * 1893.8 + signed -> "+1,893.8%". Negative values always keep "-". */
+export function formatPercentGrouped(
+  value: number | null | undefined,
+  options: { digits?: number; signed?: boolean } = {},
+): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+  const { digits = 1, signed = false } = options;
+  const zero = roundsToZero(value, digits);
+  const sign = zero ? "" : value < 0 ? "-" : signed ? "+" : "";
+  return `${sign}${groupedAbs(Math.abs(value), digits)}%`;
+}
+
+/** @deprecated Use formatTableCurrency / formatCardCurrency. */
 export function formatCurrency(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
   if (Math.abs(value) < 100 && value !== 0) {
@@ -13,6 +57,7 @@ export function formatCurrency(value: number | null | undefined): string {
   return `US$ ${Math.round(value).toLocaleString("zh-TW")}`;
 }
 
+/** @deprecated Use formatPercentGrouped. */
 export function formatPercent(value: number | null | undefined, digits = 1): string {
   if (value === null || value === undefined) return "—";
   return `${value.toFixed(digits)}%`;
