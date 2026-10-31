@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>原型 — SDLCCT-94 金額欄位統一格式（改前／改後）</title>
+<style>
+  /* Tokens 取自 frontend/app/globals.css 與 docs/design-system.md；不載入 web font，系統字體堆疊。 */
+  :root {
+    --color-bg: #ffffff;
+    --color-text-primary: #1f2937;
+    --color-text-secondary: #4b5563;
+    --color-border: #e5e7eb;
+    --color-accent: #2563eb;
+    --color-danger: #b91c1c; /* Tailwind text-red-700 */
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px;
+    max-width: 1152px;
+    margin-inline: auto;
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #f9fafb;
+    color: var(--color-text-primary);
+  }
+  h1 { margin: 0 0 4px; font-size: 24px; line-height: 32px; font-weight: 700; }
+  p.subtitle { margin: 0 0 24px; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  h2 { margin: 32px 0 12px; font-size: 18px; line-height: 26px; font-weight: 600; }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 800px) { .compare { grid-template-columns: 1fr; } }
+  .panel { border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-bg); padding: 16px; }
+  .panel .tag {
+    display: inline-block; margin-bottom: 12px; padding: 2px 8px; border-radius: 9999px;
+    font-size: 12px; font-weight: 600; border: 1px solid var(--color-border);
+  }
+  .tag.before { color: var(--color-text-secondary); }
+  .tag.after { color: var(--color-accent); border-color: var(--color-accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead tr { border-bottom: 1px solid var(--color-border); text-align: left; font-size: 12px; color: var(--color-text-secondary); }
+  tbody tr { border-bottom: 1px solid var(--color-border); }
+  tbody tr:last-child { border-bottom: 0; }
+  th, td { padding: 8px 12px 8px 0; }
+  td.name { font-weight: 500; }
+  /* 改後：等同 Tailwind `text-right tabular-nums` */
+  th.num, td.num { text-align: right; }
+  td.num { font-variant-numeric: tabular-nums; }
+  td.delta-up { color: var(--color-danger); font-weight: 600; }
+  .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .card { border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-bg); padding: 16px; }
+  .card .label { margin: 0 0 8px; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  .card .value { margin: 0 0 4px; font-size: 24px; line-height: 32px; font-weight: 700; }
+  .card .value.danger { color: var(--color-danger); }
+  .card .sub { margin: 0; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  .note { margin-top: 12px; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background: #f3f4f6; padding: 0 4px; border-radius: 4px; }
+</style>
+</head>
+<body>
+  <h1>SDLCCT-94 金額欄位統一格式</h1>
+  <p class="subtitle">靜態原型：左為改前（舊 formatCurrency），右為改後（formatTableCurrency / formatCardCurrency）。資料為示意。</p>
+
+  <h2>1. 表格金額欄（Agent 清單：預算／本期花費）</h2>
+  <div class="compare">
+    <div class="panel">
+      <span class="tag before">改前</span>
+      <table>
+        <thead><tr><th>Agent</th><th>預算</th><th>本期花費</th></tr></thead>
+        <tbody>
+          <tr><td class="name">support-bot</td><td>US$ 1,000</td><td>US$ 500</td></tr>
+          <tr><td class="name">code-review</td><td>US$ 2,500</td><td>US$ 99.99</td></tr>
+          <tr><td class="name">etl-runner</td><td>US$ 12,000</td><td>US$ 1,234</td></tr>
+          <tr><td class="name">demo-agent</td><td>未知</td><td>US$ 0</td></tr>
+        </tbody>
+      </table>
+      <p class="note">靠左、位數不齊、小數位數不一（<code>US$ 99.99</code> 與 <code>US$ 500</code>）。</p>
+    </div>
+    <div class="panel">
+      <span class="tag after">改後</span>
+      <table>
+        <thead><tr><th>Agent</th><th class="num">預算</th><th class="num">本期花費</th></tr></thead>
+        <tbody>
+          <tr><td class="name">support-bot</td><td class="num">US$ 1,000.00</td><td class="num">US$ 500.00</td></tr>
+          <tr><td class="name">code-review</td><td class="num">US$ 2,500.00</td><td class="num">US$ 99.99</td></tr>
+          <tr><td class="name">etl-runner</td><td class="num">US$ 12,000.00</td><td class="num">US$ 1,234.56</td></tr>
+          <tr><td class="name">demo-agent</td><td class="num">未知</td><td class="num">US$ 0.00</td></tr>
+        </tbody>
+      </table>
+      <p class="note"><code>&lt;th&gt;</code> 與 <code>&lt;td&gt;</code> 皆 <code>text-right</code>，數字 <code>tabular-nums</code>，永遠兩位小數，小數點縱向對齊。</p>
+    </div>
+  </div>
+
+  <h2>2. 期間比較表（含漲幅金額 formatSignedTableCurrency）</h2>
+  <div class="compare">
+    <div class="panel">
+      <span class="tag before">改前</span>
+      <table>
+        <thead><tr><th>Agent</th><th class="num">本期</th><th class="num">上期</th><th class="num">漲幅</th></tr></thead>
+        <tbody>
+          <tr><td class="name">support-bot</td><td class="num" style="font-variant-numeric:normal">US$ 750</td><td class="num" style="font-variant-numeric:normal">US$ 500</td><td class="num delta-up" style="font-variant-numeric:normal">+US$ 250（50.0%）</td></tr>
+          <tr><td class="name">etl-runner</td><td class="num" style="font-variant-numeric:normal">US$ 20</td><td class="num" style="font-variant-numeric:normal">US$ 10</td><td class="num delta-up" style="font-variant-numeric:normal">+US$ 10.00（100.0%）</td></tr>
+        </tbody>
+      </table>
+      <p class="note">此表本來就靠右，但同欄混用 0 位與 2 位小數。</p>
+    </div>
+    <div class="panel">
+      <span class="tag after">改後</span>
+      <table>
+        <thead><tr><th>Agent</th><th class="num">本期</th><th class="num">上期</th><th class="num">漲幅</th></tr></thead>
+        <tbody>
+          <tr><td class="name">support-bot</td><td class="num">US$ 750.00</td><td class="num">US$ 500.00</td><td class="num delta-up">+US$ 250.00（50.0%）</td></tr>
+          <tr><td class="name">etl-runner</td><td class="num">US$ 20.00</td><td class="num">US$ 10.00</td><td class="num delta-up">+US$ 10.00（100.0%）</td></tr>
+        </tbody>
+      </table>
+      <p class="note">百分比括號內維持既有 <code>formatPercent</code>（範圍外）。</p>
+    </div>
+  </div>
+
+  <h2>3. 摘要卡片金額（整數）</h2>
+  <div class="compare">
+    <div class="panel">
+      <span class="tag before">改前</span>
+      <div class="cards">
+        <div class="card"><p class="label">本月總花費</p><p class="value">US$ 1,746</p><p class="sub">截至今日</p></div>
+        <div class="card"><p class="label">預估超支</p><p class="value danger">US$ 12.50</p><p class="sub">依本月趨勢推估</p></div>
+      </div>
+      <p class="note">舊規則：小於 US$ 100 才顯示兩位小數，卡片位數不一致。</p>
+    </div>
+    <div class="panel">
+      <span class="tag after">改後</span>
+      <div class="cards">
+        <div class="card"><p class="label">本月總花費</p><p class="value">US$ 1,746</p><p class="sub">截至今日</p></div>
+        <div class="card"><p class="label">預估超支</p><p class="value danger">US$ 13</p><p class="sub">依本月趨勢推估</p></div>
+      </div>
+      <p class="note">卡片一律四捨五入到整數（<code>formatCardCurrency</code>）；卡片不加 <code>tabular-nums</code>、不改對齊。</p>
+    </div>
+  </div>
+</body>
+</html>
