@@ -366,7 +366,7 @@ describe("VersionCostChart X 軸刻度與格線 (SDLCCT-78)", () => {
 
     const svg = container.querySelector("svg");
     const lines = Array.from(svg?.querySelectorAll("line") ?? []);
-    expect(lines).toHaveLength(2);
+    expect(lines).toHaveLength(4); // SDLCCT-89：4 層等距格線
 
     const texts = container.querySelectorAll("svg text");
     const maxText = Array.from(texts).find((el) => el.textContent === "US$ 400");
@@ -454,6 +454,7 @@ describe("VersionCostChart X 軸刻度與格線 — 測試者獨立補充驗證"
     const svg = container.querySelector("svg");
     const lines = Array.from(svg?.querySelectorAll("line") ?? []);
     expect(lines).toHaveLength(1);
+    expect(lines[0]?.getAttribute("data-gridline")).toBe("single");
 
     const singleLabel = container.querySelector('svg g[data-axis="y"] text');
     expect(Number(lines[0]?.getAttribute("y1"))).toBeCloseTo(
@@ -1401,7 +1402,7 @@ describe("VersionCostChart 欄中心對齊 (SDLCCT-88)", () => {
     expect(svg?.getAttribute("aria-label")).toBeTruthy();
     expect(container.querySelector('svg g[data-axis="x"]')).toBeNull();
     expect(container.querySelectorAll('svg g[data-axis="y"] text')).toHaveLength(2);
-    expect(container.querySelectorAll("svg > g:first-of-type > line")).toHaveLength(2);
+    expect(container.querySelectorAll("svg > g:first-of-type > line")).toHaveLength(4);
     expect(container.querySelector("table")).toBeTruthy();
     const headers = container.querySelectorAll("thead th");
     const secondDate = headers[2].textContent ?? "";
@@ -1673,5 +1674,173 @@ describe("測試者獨立補充驗證 (SDLCCT-88)", () => {
     const tail = container.querySelector('svg g[data-labels="tail"] text');
     expect(tail?.textContent).toContain("v1");
     expect(Math.abs(Number(tail?.getAttribute("x")) - centers()[5])).toBeCloseTo(6, 1);
+  });
+});
+
+describe("VersionCostChart 4 層等距格線 (SDLCCT-89)", () => {
+  const CHART_HEIGHT = 160;
+  const CHART_PADDING = 24;
+  const STEP = (CHART_HEIGHT - 2 * CHART_PADDING) / 3;
+
+  const diffEntries = (): VersionCostSeriesEntry[] => [
+    entry("v1", [
+      { date: "2026-10-14", value: 100 },
+      { date: "2026-10-15", value: 400 },
+    ]),
+    entry("v2", [
+      { date: "2026-10-14", value: 50 },
+      { date: "2026-10-15", value: 200 },
+    ]),
+    entry("v3", [
+      { date: "2026-10-14", value: 300 },
+      { date: "2026-10-15", value: 350 },
+    ]),
+  ];
+
+  const gridYs = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll("svg g[data-gridlines] > line")).map((l) =>
+      Number(l.getAttribute("y1")),
+    );
+
+  it("情境 1：max != min 時恰 4 條格線，順序 max/upper/lower/min，Y 嚴格遞增且等距，端點對齊 Y 標示", () => {
+    const { container } = render(
+      <VersionCostChart entries={diffEntries()} anchorDate="2026-10-15" />,
+    );
+    const lines = Array.from(container.querySelectorAll("svg g[data-gridlines] > line"));
+    expect(lines).toHaveLength(4);
+    expect(lines.map((l) => l.getAttribute("data-gridline"))).toEqual([
+      "max",
+      "upper",
+      "lower",
+      "min",
+    ]);
+    const ys = gridYs(container);
+    for (let i = 1; i < ys.length; i++) {
+      expect(ys[i]).toBeGreaterThan(ys[i - 1]);
+      expect(ys[i] - ys[i - 1]).toBeCloseTo(STEP, 1);
+    }
+    const texts = Array.from(container.querySelectorAll('svg g[data-axis="y"] text'));
+    const maxText = texts.find((el) => el.textContent === "US$ 400");
+    const minText = texts.find((el) => el.textContent === "US$ 50.00");
+    expect(ys[0]).toBeCloseTo(Number(maxText?.getAttribute("y")), 1);
+    expect(ys[3]).toBeCloseTo(Number(minText?.getAttribute("y")), 1);
+  });
+
+  it("情境 1 補強：中間兩條 Y 等於線性公式對 min+Δ/3、min+2Δ/3 的結果", () => {
+    const { container } = render(
+      <VersionCostChart entries={diffEntries()} anchorDate="2026-10-15" />,
+    );
+    const min = 50;
+    const max = 400;
+    const inner = CHART_HEIGHT - 2 * CHART_PADDING;
+    const yFor = (v: number) =>
+      CHART_PADDING + inner - ((v - min) / (max - min)) * inner;
+    const ys = gridYs(container);
+    const d = max - min;
+    expect(ys[1]).toBeCloseTo(yFor(min + (2 * d) / 3), 1);
+    expect(ys[2]).toBeCloseTo(yFor(min + d / 3), 1);
+  });
+
+  it("情境 2：max === min 時恰 1 條格線，data-gridline=single，Y 等於單一標示 Y", () => {
+    const entries = [
+      entry("v1", [
+        { date: "2026-10-14", value: 100 },
+        { date: "2026-10-15", value: 100 },
+      ]),
+    ];
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-15" />,
+    );
+    const lines = container.querySelectorAll("svg g[data-gridlines] > line");
+    expect(lines).toHaveLength(1);
+    expect(lines[0].getAttribute("data-gridline")).toBe("single");
+    const label = container.querySelector('svg g[data-axis="y"] text');
+    expect(Number(lines[0].getAttribute("y1"))).toBeCloseTo(
+      Number(label?.getAttribute("y")),
+      1,
+    );
+  });
+
+  it("情境 3：全 null 與空陣列皆無格線、無任何 Y 標示、無 0 刻度", () => {
+    const allNull = [
+      entry("v1", [
+        { date: "2026-10-14", value: null },
+        { date: "2026-10-15", value: null },
+      ]),
+    ];
+    for (const entries of [allNull, []]) {
+      const { container, unmount } = render(
+        <VersionCostChart entries={entries} anchorDate="2026-10-15" />,
+      );
+      expect(container.querySelectorAll("svg g[data-gridlines] > line")).toHaveLength(0);
+      expect(container.querySelectorAll('svg g[data-axis="y"] text')).toHaveLength(0);
+      const all = Array.from(container.querySelectorAll("svg text")).map(
+        (e) => e.textContent,
+      );
+      expect(all).not.toContain("US$ 0");
+      expect(all).not.toContain("0");
+      unmount();
+    }
+  });
+
+  it("情境 4：格線 stroke 為 var(--color-border)、無 stroke-dasharray，且全部先於所有 <polyline>", () => {
+    const { container } = render(
+      <VersionCostChart entries={diffEntries()} anchorDate="2026-10-15" />,
+    );
+    const lines = Array.from(container.querySelectorAll("svg g[data-gridlines] > line"));
+    expect(lines).toHaveLength(4);
+    for (const l of lines) {
+      expect(l.getAttribute("stroke")).toBe("var(--color-border)");
+      expect(l.hasAttribute("stroke-dasharray")).toBe(false);
+    }
+    const ordered = Array.from(
+      container.querySelectorAll("svg g[data-gridlines] > line, svg polyline"),
+    );
+    const lastLine = Math.max(
+      ...ordered.map((el, i) => (el.tagName.toLowerCase() === "line" ? i : -1)),
+    );
+    const polys = ordered
+      .map((el, i) => (el.tagName.toLowerCase() === "polyline" ? i : -1))
+      .filter((i) => i >= 0);
+    expect(polys.length).toBeGreaterThanOrEqual(3);
+    expect(lastLine).toBeLessThan(Math.min(...polys));
+  });
+
+  it("情境 5：Y 標示恰 2 個（max/min），格線群組無 <text>，中間層級金額不出現", () => {
+    const { container } = render(
+      <VersionCostChart entries={diffEntries()} anchorDate="2026-10-15" />,
+    );
+    const ytexts = Array.from(container.querySelectorAll('svg g[data-axis="y"] text'));
+    expect(ytexts.map((e) => e.textContent)).toEqual(["US$ 400", "US$ 50.00"]);
+    expect(container.querySelectorAll("svg g[data-gridlines] text")).toHaveLength(0);
+    const all = Array.from(container.querySelectorAll("svg text")).map((e) => e.textContent);
+    expect(all).not.toContain("US$ 167"); // min + Δ/3 ≈ 166.67
+    expect(all).not.toContain("US$ 283"); // min + 2Δ/3 ≈ 283.33
+  });
+
+  it("含 null 但仍有非 null 值（max != min）時仍為 4 條格線", () => {
+    const entries = [
+      entry("v1", [
+        { date: "2026-10-13", value: null },
+        { date: "2026-10-14", value: 10 },
+        { date: "2026-10-15", value: 70 },
+      ]),
+    ];
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-15" />,
+    );
+    expect(container.querySelectorAll("svg g[data-gridlines] > line")).toHaveLength(4);
+  });
+
+  it("hover 後 svg line[stroke-dasharray] 恆為 1 條（格線不被誤計）", () => {
+    const { container } = render(
+      <VersionCostChart entries={diffEntries()} anchorDate="2026-10-15" />,
+    );
+    expect(container.querySelectorAll("svg line[stroke-dasharray]")).toHaveLength(0);
+    const overlay = container.querySelector("svg > rect");
+    if (!overlay) throw new Error("overlay not found");
+    fireEvent.mouseMove(overlay, { clientX: 100 });
+    expect(container.querySelectorAll("svg line[stroke-dasharray]")).toHaveLength(1);
+    expect(container.querySelectorAll("svg g[data-gridlines] > line")).toHaveLength(4);
   });
 });

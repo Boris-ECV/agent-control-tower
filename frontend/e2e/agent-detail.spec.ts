@@ -1199,3 +1199,53 @@ test("SDLCCT-88 (tester): version-cost chart stays aligned to the table date col
     )
     .toBe(true);
 });
+
+test("SDLCCT-89: version-cost chart shows 4 evenly spaced gridlines aligned to the max and min Y labels", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [
+          {
+            version: "v1",
+            points: [
+              { date: "2026-10-19", value: 100 },
+              { date: "2026-10-20", value: 400 },
+            ],
+          },
+          {
+            version: "v2",
+            points: [
+              { date: "2026-10-19", value: 50 },
+              { date: "2026-10-20", value: 200 },
+            ],
+          },
+        ],
+        model_cost_breakdown: [],
+        top_traces: [],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+  const lines = page.locator("svg g[data-gridlines] > line");
+  await expect(lines).toHaveCount(4);
+  const ys = await lines.evaluateAll((els) => els.map((e) => Number(e.getAttribute("y1"))));
+  const step = (ys[3] - ys[0]) / 3;
+  for (let i = 1; i < 4; i++) {
+    expect(Math.abs(ys[i] - ys[i - 1] - step)).toBeLessThanOrEqual(1);
+  }
+  const labels = page.locator('svg g[data-axis="y"] text');
+  await expect(labels).toHaveCount(2);
+  const labelYs = await labels.evaluateAll((els) => els.map((e) => Number(e.getAttribute("y"))));
+  expect(Math.abs(ys[0] - Math.min(...labelYs))).toBeLessThanOrEqual(1);
+  expect(Math.abs(ys[3] - Math.max(...labelYs))).toBeLessThanOrEqual(1);
+});
