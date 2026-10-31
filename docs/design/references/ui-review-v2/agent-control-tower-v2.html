@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Control Tower</title>
+<!--
+  UI 改版樣稿 v2：依 ux-recommendations.md「三、視覺與細節」V1–V7 設計，涵蓋成本儀表板、異常與告警、
+  Agent 清單、Agent 詳情、執行詳情五個畫面。修改要點見 design-changes-v2.md。
+  一、二節（狀態判斷、風險排序、治理缺口操作等）刻意未套用，保留原系統的資料與狀態。
+-->
+<style>
+:root{
+  --bg:#f5f6f8; --surface:#ffffff; --surface-2:#f8fafc;
+  --border:#e4e7ec; --border-strong:#d0d5dd;
+  --text:#101828; --text-2:#475467; --text-3:#667085; --text-4:#98a2b3;
+  --accent:#2f5bea; --accent-soft:#eef3ff;
+  --success:#067647; --success-soft:#ecfdf3; --success-border:#abefc6;
+  --warn:#b54708; --warn-soft:#fffaeb; --warn-border:#fedf89;
+  --danger:#b42318; --danger-soft:#fef3f2; --danger-border:#fecdca;
+  --radius:12px; --shadow:0 1px 2px rgba(16,24,40,.05);
+  --font:"Inter","Segoe UI","Noto Sans TC","Microsoft JhengHei","PingFang TC",system-ui,sans-serif;
+  --mono:"JetBrains Mono","Cascadia Code",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:var(--font);font-size:14px;line-height:1.5;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased}
+.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code{font-family:var(--mono)}
+
+/* ---------- layout ---------- */
+.app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:20px 12px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 10px 8px}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#2f5bea,#6b93f5);display:grid;place-items:center;color:#fff}
+.brand-mark svg{width:16px;height:16px}
+.brand-name{font-weight:650;font-size:15px;letter-spacing:-.01em}
+.nav-section{margin-top:20px}
+.nav-label{font-size:12px;font-weight:600;color:var(--text-3);padding:0 10px 6px;letter-spacing:.06em}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;margin:1px 0;border-radius:8px;color:var(--text-2);text-decoration:none;font-weight:500;position:relative}
+.nav a svg{width:16px;height:16px;flex:none;color:var(--text-3)}
+.nav a:hover{background:var(--surface-2);color:var(--text)}
+.nav a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.nav a.active svg{color:var(--accent)}
+.nav a.active::before{content:"";position:absolute;left:-12px;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+
+.main{min-width:0;display:flex;flex-direction:column}
+.topbar{height:56px;background:rgba(255,255,255,.92);backdrop-filter:saturate(180%) blur(8px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 32px;position:sticky;top:0;z-index:10}
+.crumbs{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-3);min-width:0;white-space:nowrap;overflow:hidden}
+.crumbs a{color:var(--text-3);text-decoration:none}
+.crumbs a:hover{color:var(--accent)}
+.crumbs .sep{color:var(--text-4)}
+.crumbs .current{color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.freshness{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);white-space:nowrap}
+.freshness .dot{width:8px;height:8px;border-radius:50%;background:#17b26a;box-shadow:0 0 0 3px #dcfae6}
+.freshness time{font-variant-numeric:tabular-nums;color:var(--text);font-weight:500}
+
+.content{padding:28px 32px 56px;max-width:1320px;width:100%}
+.page-head{margin-bottom:20px}
+h1{font-size:22px;line-height:1.3;margin:0 0 4px;letter-spacing:-.01em;font-weight:650;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.subtitle{color:var(--text-2);margin:0}
+.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:32px 0 12px}
+.section-head:first-of-type{margin-top:0}
+.section-title{font-size:16px;font-weight:650;margin:0}
+.section-desc{font-size:13px;color:var(--text-3);margin:2px 0 0}
+.period{font-size:12px;color:var(--text-2);background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:3px 10px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.stack{display:grid;gap:20px}
+.footnote{font-size:12px;color:var(--text-3);margin:14px 2px 0}
+.source{font-size:12px;color:var(--text-3);margin:28px 0 0;padding-top:14px;border-top:1px solid var(--border)}
+.back{display:inline-flex;align-items:center;gap:4px;color:var(--text-2);text-decoration:none;font-weight:500;font-size:13px;margin-bottom:10px}
+.back svg{width:16px;height:16px}
+.back:hover{color:var(--accent)}
+
+/* ---------- controls ---------- */
+.toolbar{display:flex;gap:12px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.search{position:relative;flex:1;min-width:220px;max-width:340px}
+.search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--text-3);pointer-events:none}
+.search input{width:100%;height:36px;padding:0 12px 0 34px;border:1px solid var(--border-strong);border-radius:8px;font:inherit;color:var(--text);background:#fff}
+.search input::placeholder{color:var(--text-4)}
+.select{height:36px;padding:0 34px 0 12px;border:1px solid var(--border-strong);border-radius:8px;font:inherit;color:var(--text);background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;appearance:none;cursor:pointer}
+.seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;background:#fff}
+.seg button{border:0;background:transparent;font:inherit;font-size:13px;padding:0 14px;height:34px;color:var(--text-2);cursor:pointer;border-right:1px solid var(--border-strong);white-space:nowrap}
+.seg button:last-child{border-right:0}
+.seg button:hover{background:var(--surface-2)}
+.seg button[aria-pressed="true"]{background:var(--surface-2);color:var(--text);font-weight:600;box-shadow:inset 0 -2px 0 var(--accent)}
+.count{margin-left:auto;color:var(--text-3);font-size:13px;font-variant-numeric:tabular-nums}
+.copy{flex:none;display:inline-grid;place-items:center;width:26px;height:26px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text-3);cursor:pointer;padding:0}
+.copy:hover{color:var(--accent);border-color:var(--border-strong)}
+.copy.done{color:var(--success);border-color:var(--success-border)}
+.copy svg{width:14px;height:14px}
+
+/* ---------- table ---------- */
+table{width:100%;border-collapse:collapse}
+th{font-size:12px;font-weight:600;color:var(--text-3);text-align:left;padding:10px 16px;background:var(--surface-2);border-bottom:1px solid var(--border);white-space:nowrap}
+th.num{text-align:right}
+td{padding:13px 16px;border-bottom:1px solid var(--border);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+[data-href]{cursor:pointer;transition:background-color .12s}
+[data-href]:hover{background:#f9fafb}
+tr[data-href]:focus-visible{outline-offset:-2px}
+[data-href]:hover .chev,[data-href]:focus-visible .chev{color:var(--accent);transform:translateX(2px)}
+.chev{width:16px;height:16px;color:var(--text-4);transition:transform .12s,color .12s;display:block}
+.col-chev{width:40px}
+.agent-name{font-weight:600;color:var(--text)}
+.sub-id{display:block;font-size:12px;color:var(--text-3);margin-top:1px}
+.secondary{color:var(--text-2)}
+.unset{color:var(--text-3)}
+.empty-row td{padding:48px 16px;text-align:center;color:var(--text-3);cursor:default}
+.empty{padding:40px 20px;text-align:center;color:var(--text-3)}
+
+/* ---------- badges & chips ---------- */
+.badge{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid;white-space:nowrap}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.badge.ok{color:var(--success);background:var(--success-soft);border-color:var(--success-border)}
+.badge.warn{color:var(--warn);background:var(--warn-soft);border-color:var(--warn-border)}
+.badge.gap{color:var(--danger);background:var(--danger-soft);border-color:var(--danger-border)}
+.badge.flat::before{display:none}
+.pill{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;font-size:12px;font-weight:500;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2);white-space:nowrap}
+.tag{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);border:1px solid var(--border);padding:2px 8px;border-radius:6px;color:var(--text)}
+.id-chip{font-family:var(--mono);font-size:12.5px;font-weight:500;color:var(--text-2);background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2px 8px;letter-spacing:0}
+.inline-code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:var(--text)}
+
+/* ---------- list page ---------- */
+.usage{display:flex;align-items:center;gap:10px;justify-content:flex-end}
+.bar{width:56px;height:6px;border-radius:3px;background:#eaecf0;overflow:hidden;flex:none}
+.bar span{display:block;height:100%;background:#98a2b3;border-radius:3px}
+.trend{display:flex;align-items:center;gap:12px}
+.trend .total{font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ---------- dashboard ---------- */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.kpi{padding:18px 20px 16px}
+.kpi-label{font-size:13px;color:var(--text-2);font-weight:500}
+.kpi-value{font-size:28px;line-height:1.2;font-weight:650;letter-spacing:-.02em;margin:8px 0 6px;font-variant-numeric:tabular-nums}
+.kpi-value.danger{color:var(--danger)}
+.kpi-note{font-size:12px;color:var(--text-3)}
+.kpi-bar{height:6px;border-radius:3px;background:#eaecf0;overflow:hidden;margin:2px 0 8px}
+.kpi-bar span{display:block;height:100%;background:var(--accent);border-radius:3px}
+.gap-card{margin-top:16px}
+.gap-head{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--danger-soft);flex-wrap:wrap}
+.gap-head .note{font-size:13px;color:var(--text-2)}
+.list-row{display:flex;align-items:center;gap:10px;padding:14px 20px}
+.list-row .num{margin-left:auto;font-weight:500}
+.rank{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;background:var(--surface-2);border:1px solid var(--border);font-size:12px;font-weight:600;color:var(--text-2);font-variant-numeric:tabular-nums}
+.delta{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+.delta .bar{width:88px}
+.delta .bar span{background:#f97066}
+
+/* ---------- agent detail ---------- */
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.card-title{font-size:15px;font-weight:650;margin:0}
+.card-desc{font-size:12px;color:var(--text-3);margin:2px 0 0}
+.legend{display:flex;gap:16px;font-size:12px;color:var(--text-2);padding-top:3px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;background:var(--accent)}
+.card-body{padding:12px 20px 4px}
+.chart-wrap{position:relative}
+.chart{display:block;width:100%;height:240px;overflow:visible}
+.tip{position:absolute;left:0;top:0;pointer-events:none;background:#101828;color:#fff;border-radius:8px;padding:7px 10px;font-size:12px;line-height:1.4;box-shadow:0 8px 16px rgba(16,24,40,.18);transform:translate(-50%,calc(-100% - 14px));white-space:nowrap;opacity:0;transition:opacity .1s}
+.tip.show{opacity:1}
+.tip .tv{display:block;font-size:14px;font-weight:650;font-variant-numeric:tabular-nums}
+.tip .tl{color:#d0d5dd}
+.daily{display:grid;grid-template-columns:96px repeat(7,minmax(0,1fr));margin:0 -20px;padding:0 20px;border-top:1px solid var(--border)}
+.daily > div{padding:10px 6px;text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap;transition:background-color .1s}
+.daily .h{font-size:12px;color:var(--text-3);font-weight:600;border-bottom:1px solid var(--border)}
+.daily .h small{font-weight:500;color:var(--text-4);margin-left:3px;font-size:12px}
+.daily .first{text-align:left;padding-left:0}
+.daily .ver{font-weight:650}
+.daily .na{color:var(--text-4)}
+.daily .hl{background:var(--accent-soft);color:var(--accent)}
+.daily .h.hl small{color:var(--accent)}
+.group-start td{border-top:1px solid var(--border-strong)}
+tbody tr.group-start:first-child td{border-top:0}
+td.dim{color:var(--text-2);font-weight:600;vertical-align:top;width:120px;border-right:1px solid var(--border);background:var(--surface-2)}
+.common{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--text-3)}
+.id-cell{display:inline-flex;align-items:center;gap:8px}
+.id-cell code{font-size:13px;color:var(--text)}
+
+/* ---------- run detail ---------- */
+.id-line{display:flex;align-items:center;gap:8px;margin:2px 0 12px}
+.id-line code{font-size:13px;color:var(--text-2)}
+.meta{display:flex;flex-wrap:wrap;gap:8px}
+.meta .pill b{font-weight:500;color:var(--text-3);margin-right:4px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.stat{padding:16px 20px;border-right:1px solid var(--border)}
+.stat:last-child{border-right:0}
+.stat-label{font-size:12px;color:var(--text-3);font-weight:500}
+.stat-value{font-size:18px;font-weight:650;margin-top:4px;font-variant-numeric:tabular-nums}
+.wf{display:grid;grid-template-columns:minmax(220px,280px) 150px minmax(0,1fr) 84px;align-items:stretch}
+.wf > div{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;white-space:nowrap;min-width:0}
+.wf > div > .axis,.wf > div > .track{flex:1}
+.wf .last{justify-content:flex-end}
+.wf .wh{font-size:12px;font-weight:600;color:var(--text-3);background:var(--surface-2);padding-top:10px;padding-bottom:10px}
+.wf .first{padding-left:20px}
+.wf .last{padding-right:20px;text-align:right;font-variant-numeric:tabular-nums}
+.wf .row-end{border-bottom:0}
+.span-name{display:flex;align-items:center;gap:8px;min-width:0}
+.span-name code{font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.span-time{font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.axis{position:relative;height:18px}
+.axis span{position:absolute;top:0;transform:translateX(-50%);font-size:11px;font-weight:500;color:var(--text-3);font-variant-numeric:tabular-nums}
+.axis span:first-child{transform:none}
+.axis span:last-child{transform:translateX(-100%)}
+.track{position:relative;height:24px;background-image:linear-gradient(to right,#eaecf0 1px,transparent 1px);background-repeat:repeat-x}
+.track .seg-bar{position:absolute;top:5px;height:14px;border-radius:4px;min-width:3px}
+.type{font-family:var(--font);font-size:11px;font-weight:600;padding:1px 7px;border-radius:5px;border:1px solid;white-space:nowrap}
+.type.llm{color:#5925dc;background:#f4f3ff;border-color:#d9d6fe}
+.type.tool{color:#0e7090;background:#ecfdff;border-color:#a5f0fc}
+.type.general{color:var(--text-2);background:var(--surface-2);border-color:var(--border)}
+.seg-bar.llm{background:#7a5af8}
+.seg-bar.tool{background:#06aed4}
+.seg-bar.general{background:#98a2b3}
+
+@media (max-width:1100px){ .kpis{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  .sidebar{position:static;height:auto}
+  .content,.topbar{padding-left:16px;padding-right:16px}
+  .card{overflow-x:auto}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" aria-label="主選單">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10V6z"/></svg></div>
+      <div class="brand-name">Agent Control Tower</div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="crumbs" id="crumbs"></div>
+      <div class="freshness" title="所有花費資料的最後同步時間">
+        <span class="dot" aria-hidden="true"></span>
+        資料更新於 <time datetime="2026-10-15T14:30:00+08:00">2026/10/15 14:30</time>（台灣時間）
+      </div>
+    </header>
+    <main class="content" id="view"></main>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* =========================================================
+   Icons
+   ========================================================= */
+const ICON = {
+  chart:  '<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/>',
+  list:   '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  bell:   '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  calc:   '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>',
+  policy: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/>',
+  check:  '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+  pause:  '<circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/>',
+  power:  '<path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/>',
+  gear:   '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  right:  '<path d="m9 18 6-6-6-6"/>',
+  left:   '<path d="m15 18-6-6 6-6"/>',
+  copy:   '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+  ok:     '<path d="M20 6 9 17l-5-5"/>'
+};
+const icon = (name, cls = "") =>
+  `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[name]}</svg>`;
+
+/* =========================================================
+   Data（取自原系統截圖；sample:true 的每日花費為示意）
+   ========================================================= */
+const DAYS = [
+  { md: "10/9",  wd: "五" }, { md: "10/10", wd: "六" }, { md: "10/11", wd: "日" },
+  { md: "10/12", wd: "一" }, { md: "10/13", wd: "二" }, { md: "10/14", wd: "三" },
+  { md: "10/15", wd: "四" }
+];
+
+// Trace ID 為 UUIDv7，前 48 bits 即執行開始時間（毫秒）。
+const TRACE_COMMON = { 版本: "v2.0", 部門: "業務部", 觸發方式: "user" };
+const ORDER_TRACES = [
+  ["01a11074-6cff-7a80-8bb4-e243ef5407bd", "台中廠"],
+  ["01a11081-9bb1-76bf-9dde-18fd37a64a41", "台中廠"],
+  ["01a137e6-80d0-7fa5-84f3-9b186b69c279", "台中廠"],
+  ["01a13892-c6ce-756d-81ae-bde1c3079b44", "高雄廠"],
+  ["01a12e7e-0f60-7bd0-8a5f-85caaf767ad3", "台中廠"],
+  ["01a1142a-6007-7f7b-be00-a52d2f78a643", "台中廠"],
+  ["01a10f10-a918-7c47-8258-ba9cc7713f7d", "台中廠"],
+  ["01a12ef7-f46d-7e3f-8daa-4d2dc2f194a6", "高雄廠"],
+  ["01a1158f-dca1-76af-9fc6-33291709c4d3", "高雄廠"],
+  ["01a11e3b-4ce1-739e-a40a-009209cbc6d8", "高雄廠"]
+].map(([id, plant]) => ({ id, plant, cost: 0.05 }));
+
+const SPANS = {
+  "01a11081-9bb1-76bf-9dde-18fd37a64a41": [
+    { name: "answer_order_question", type: "llm",     start: "17:18:13", end: "17:18:23" },
+    { name: "lookup_order",          type: "tool",    start: "17:18:11", end: "17:18:13" },
+    { name: "order_inquiry",         type: "general", start: "17:18:11", end: "17:18:24" }
+  ]
+};
+
+const AGENTS = [
+  { id: "equipment-maintenance", name: "設備維修助理", dept: "設備部", owner: "王志明", budget: 900, spend: 639, pct: 71.0,
+    prev: 32.05, growth: "+1,893.8%", status: "ok", version: "v1.0", sample: true,
+    daily: [96.2, 61.8, 60.4, 104.1, 106.3, 103.5, null] },
+  { id: "quality-anomaly", name: "品質異常分析", dept: "品保部", owner: "陳雅婷", budget: 400, spend: 251, pct: 62.8,
+    prev: 14.64, growth: "+1,614.8%", status: "ok", version: "v3.1", sample: false,
+    daily: [34.83, 11.53, 11.30, 34.71, 35.75, 31.52, null],
+    tags: [ { tag: "env:prod", cost: 251 }, { tag: "model:gemini-2.5-pro", cost: 251 } ] },
+  { id: "procurement-quote", name: "採購詢價比價", dept: "採購部", owner: "林建宏", budget: 90, spend: 221, pct: 245.7,
+    prev: 2.76, status: "ok", version: "v1.0", sample: true,
+    daily: [2.1, 2.0, 48.6, 2.3, 2.2, 2.1, null] },
+  { id: "order-support", key: "order_status", name: "訂單查詢客服", dept: "業務部", owner: "黃淑芬", budget: 30, spend: 151, pct: 503.0,
+    prev: 0.83, status: "ok", version: "v2.0", sample: false,
+    daily: [19.76, 5.36, 5.91, 19.84, 19.68, 19.83, null],
+    tags: [ { tag: "env:prod", cost: 151 }, { tag: "team:sa", cost: 151 },
+            { tag: "model:claude-sonnet-4-5", cost: 148 }, { tag: "model:gpt-4o-mini", cost: 3.39 } ],
+    traces: ORDER_TRACES },
+  { id: "supply-risk", name: "供應鏈風險監控", dept: "採購部", owner: "林建宏", budget: 60, spend: 22.08, pct: 36.8,
+    prev: 1.57, status: "ok", version: "v1.0", sample: true,
+    daily: [3.12, 3.10, 3.11, 3.09, 3.10, 3.08, null] },
+  { id: "production-schedule", name: "生產排程建議", dept: "生管部", owner: "張保倫", budget: 290, spend: 115, pct: 39.6,
+    prev: 9.05, status: "ok", version: "v1.0", sample: true,
+    daily: [17.2, 9.8, 10.1, 17.0, 16.6, 15.9, null] },
+  { id: "ehs-qa", name: "EHS 法規問答", dept: "EHS", owner: "李美玲", budget: 10, spend: 2.67, pct: 26.7,
+    prev: 0.22, status: "ok", version: "v1.0", sample: true,
+    daily: [0.42, 0.21, 0.22, 0.41, 0.43, 0.40, null] },
+  { id: "quotation", name: "報價助理", dept: "業務部", owner: "黃淑芬", budget: 220, spend: 85.89, pct: 39.0,
+    prev: 7.13, status: "ok", version: "v1.0", sample: true,
+    daily: [13.1, 8.9, 13.6, 9.4, 13.8, 13.2, null] },
+  { id: "temp-vendor-crawler", key: "temp_supplier_scraper", name: "臨時供應商爬蟲", dept: null, owner: null, budget: null, spend: 259, pct: null,
+    prev: 0, status: "gap", version: "—", sample: true,
+    daily: [30.5, 31.8, 33.0, 34.1, 35.2, 36.0, null] }
+];
+
+const DASH = { total: 1746, budget: 2000, pct: 87.3, overrun: 1609 };
+
+const ALERTS = [
+  { agentId: "order-support", type: "model", date: "2026/10/06",
+    reason: '模型於 10/6 由 <code class="inline-code">gpt-4o-mini</code> 切換為 <code class="inline-code">claude-sonnet-4-5</code>，成本偏離正常值約 21 倍' },
+  { agentId: "temp-vendor-crawler", type: "gap", date: null,
+    reason: "此 Agent 尚未登錄負責人與預算，過去一日花費約 US$ 36" }
+];
+const ALERT_TYPE = { model: { label: "模型切換", cls: "warn" }, gap: { label: "治理缺口", cls: "gap" } };
+const STATUS = { ok: { label: "正常", cls: "ok" }, gap: { label: "治理缺口", cls: "gap" } };
+
+/* =========================================================
+   Formatting
+   ========================================================= */
+const nf0 = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const nf1 = new Intl.NumberFormat("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const nf2 = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money  = v => "US$ " + nf2.format(v);          // 表格：一律兩位小數
+const money0 = v => "US$ " + nf0.format(v);          // 摘要卡片：取整數
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const sum = arr => arr.reduce((a, v) => a + (v ?? 0), 0);
+const unset = t => `<span class="unset">${t}</span>`;
+const findAgent = id => AGENTS.find(a => a.id === id);
+
+const dtf = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit",
+  hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
+function fmtDateTime(ms) {
+  const p = Object.fromEntries(dtf.formatToParts(new Date(ms)).map(x => [x.type, x.value]));
+  return `${p.year}/${p.month}/${p.day} ${p.hour}:${p.minute}:${p.second}`;
+}
+const uuidV7Time = id => parseInt(id.replace(/-/g, "").slice(0, 12), 16);
+const shortId = id => `${id.slice(0, 13)}…${id.slice(-6)}`;
+const toSec = hms => hms.split(":").reduce((a, v) => a * 60 + +v, 0);
+
+const copyBtn = text => `<button type="button" class="copy" data-copy="${esc(text)}" aria-label="複製 Trace ID" title="複製">${icon("copy")}</button>`;
+const seg = (name, options, current) => `<div class="seg" role="group">${options.map(([v, t]) =>
+  `<button type="button" data-seg="${name}" data-val="${v}" aria-pressed="${current === v}">${t}</button>`).join("")}</div>`;
+
+/* =========================================================
+   Shell
+   ========================================================= */
+const NAV = [
+  { label: "總覽", items: [ { text: "成本儀表板", icon: "chart", href: "#/dashboard", key: "dashboard" } ] },
+  { label: "治理", items: [
+    { text: "Agent 清單", icon: "list", href: "#/agents", key: "agents" },
+    { text: "異常與告警", icon: "bell", href: "#/alerts", key: "alerts" },
+    { text: "預算與節省模擬", icon: "calc" },
+    { text: "政策引擎", icon: "policy" },
+    { text: "核准流程", icon: "check" }
+  ] },
+  { label: "操作", items: [ { text: "暫停 Agent", icon: "pause" }, { text: "緊急關閉", icon: "power" } ] },
+  { label: "設定", items: [ { text: "系統", icon: "gear" } ] }
+];
+
+function renderNav(activeKey) {
+  document.getElementById("nav").innerHTML = NAV.map(sec => `
+    <div class="nav-section">
+      <div class="nav-label">${sec.label}</div>
+      ${sec.items.map(it => `
+        <a href="${it.href || "#"}" ${it.href ? "" : 'data-placeholder title="樣稿未包含此頁"'}
+           class="${it.key === activeKey ? "active" : ""}" ${it.key === activeKey ? 'aria-current="page"' : ""}>
+          ${icon(it.icon)}<span>${it.text}</span>
+        </a>`).join("")}
+    </div>`).join("");
+}
+
+function renderCrumbs(parts) {
+  document.getElementById("crumbs").innerHTML = parts.map((p, i) => {
+    const last = i === parts.length - 1;
+    const node = last ? `<span class="current">${esc(p.text)}</span>`
+             : p.href ? `<a href="${p.href}">${esc(p.text)}</a>` : `<span>${esc(p.text)}</span>`;
+    return (i ? '<span class="sep">/</span>' : "") + node;
+  }).join("");
+}
+
+/* =========================================================
+   Page: 成本儀表板
+   ========================================================= */
+function pageDashboard() {
+  const rows = AGENTS.map(a => ({ ...a, delta: a.spend - a.prev })).sort((x, y) => y.delta - x.delta);
+  const maxDelta = rows[0].delta;
+  const gaps = AGENTS.filter(a => a.status === "gap");
+
+  return {
+    nav: "dashboard",
+    crumbs: [{ text: "總覽" }, { text: "成本儀表板" }],
+    html: `
+    <div class="page-head">
+      <h1>成本儀表板</h1>
+      <p class="subtitle">本月成本與預算、預估月底超支、跨 Agent 期間比較</p>
+    </div>
+
+    <div class="section-head">
+      <h2 class="section-title">本月成本與預算</h2>
+      <span class="period">統計期間 2026/10/01 – 2026/10/15</span>
+    </div>
+    <div class="kpis">
+      <div class="card kpi">
+        <div class="kpi-label">本月總花費</div>
+        <div class="kpi-value">${money0(DASH.total)}</div>
+        <div class="kpi-note">${AGENTS.length} 個 Agent 本月至今累計，含 ${gaps.length} 個未登錄</div>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-label">本月總預算</div>
+        <div class="kpi-value">${money0(DASH.budget)}</div>
+        <div class="kpi-note">${AGENTS.length - gaps.length} 個已登錄 Agent 的預算加總</div>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-label">預算消耗</div>
+        <div class="kpi-value">${nf1.format(DASH.pct)}%</div>
+        <div class="kpi-bar" aria-hidden="true"><span style="width:${Math.min(DASH.pct, 100)}%"></span></div>
+        <div class="kpi-note">尚在預算內</div>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-label">預估月底超支</div>
+        <div class="kpi-value danger">${money0(DASH.overrun)}</div>
+        <div class="kpi-note">依目前花費速度線性外推至 10/31</div>
+      </div>
+    </div>
+
+    <div class="card gap-card">
+      <div class="gap-head">
+        <span class="badge gap">治理缺口：${gaps.length} 個 Agent 未登錄</span>
+        <span class="note">花費計入總花費，但不計入總預算分母</span>
+      </div>
+      ${gaps.map(a => `
+        <div class="list-row" data-href="#/agents/${a.id}" tabindex="0">
+          <span class="agent-name">${esc(a.name)}</span><span class="pill">未登錄</span>
+          <span class="num">${money(a.spend)}</span>${icon("right", "chev")}
+        </div>`).join("")}
+    </div>
+
+    <div class="section-head">
+      <div>
+        <h2 class="section-title">跨 Agent 期間比較</h2>
+        <p class="section-desc">本期 10/1–10/15 對比前期 9/1–9/15，依增加金額排序</p>
+      </div>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr>
+          <th style="width:56px">#</th><th>Agent</th>
+          <th class="num">本期花費<br><span style="font-weight:500">10/1–10/15</span></th>
+          <th class="num">前期花費<br><span style="font-weight:500">9/1–9/15</span></th>
+          <th class="num">增加金額</th><th class="num">漲幅</th><th class="col-chev"></th>
+        </tr></thead>
+        <tbody>
+          ${rows.map((a, i) => `
+          <tr data-href="#/agents/${a.id}" tabindex="0">
+            <td><span class="rank">${i + 1}</span></td>
+            <td><span class="agent-name">${esc(a.name)}</span></td>
+            <td class="num">${money(a.spend)}</td>
+            <td class="num secondary">${money(a.prev)}</td>
+            <td class="num"><div class="delta"><span>+${money(a.delta)}</span>
+              <span class="bar" aria-hidden="true"><span style="width:${(a.delta / maxDelta * 100).toFixed(1)}%"></span></span></div></td>
+            <td class="num">${a.growth ? `<span>${a.growth}</span>` : '<span class="badge gap flat">新增顯著支出</span>'}</td>
+            <td>${icon("right", "chev")}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">漲幅欄沿用原系統的顯示方式：前期基數很小的 Agent 顯示「新增顯著支出」，不顯示百分比。</p>`
+  };
+}
+
+/* =========================================================
+   Page: 異常與告警
+   ========================================================= */
+const alertState = { type: "all" };
+
+function pageAlerts() {
+  return {
+    nav: "alerts",
+    crumbs: [{ text: "治理" }, { text: "異常與告警" }],
+    html: `
+    <div class="page-head">
+      <h1>異常與告警</h1>
+      <p class="subtitle">彙整各規則偵測到的異常與治理缺口，包含持續中的治理缺口。</p>
+    </div>
+    <div class="card">
+      <div class="toolbar">
+        ${seg("alertType", [["all", "全部"], ["model", "模型切換"], ["gap", "治理缺口"]], alertState.type)}
+        <div class="count" id="alertCount"></div>
+      </div>
+      <table>
+        <thead><tr><th style="width:24%">Agent</th><th>異常類型</th><th>日期</th><th>原因</th><th class="col-chev"></th></tr></thead>
+        <tbody id="alertRows"></tbody>
+      </table>
+    </div>
+    <p class="source">資料來源：Agent registry + 觀測性後端成本查詢。</p>`,
+    mount() {
+      const render = () => {
+        const list = ALERTS.filter(x => alertState.type === "all" || x.type === alertState.type);
+        document.getElementById("alertCount").textContent = `顯示 ${list.length} / ${ALERTS.length}`;
+        document.getElementById("alertRows").innerHTML = list.length ? list.map(x => {
+          const a = findAgent(x.agentId), t = ALERT_TYPE[x.type];
+          return `
+          <tr data-href="#/agents/${a.id}" tabindex="0">
+            <td><span class="agent-name">${esc(a.name)}</span><code class="sub-id">${esc(a.key)}</code></td>
+            <td><span class="badge ${t.cls}">${t.label}</span></td>
+            <td class="num" style="text-align:left">${x.date ? x.date : '<span class="pill">持續中</span>'}</td>
+            <td>${x.reason}</td>
+            <td>${icon("right", "chev")}</td>
+          </tr>`; }).join("")
+          : `<tr class="empty-row"><td colspan="5">沒有符合條件的告警</td></tr>`;
+      };
+      bindSeg("alertType", v => { alertState.type = v; render(); });
+      render();
+    }
+  };
+}
+
+/* =========================================================
+   Page: Agent 清單
+   ========================================================= */
+const listState = { q: "", dept: "all", status: "all" };
+
+function sparkline(vals) {
+  const w = 96, h = 28, pad = 3;
+  const pts = vals.map((v, i) => (v == null ? null : [i, v])).filter(Boolean);
+  const ys = pts.map(p => p[1]);
+  const max = Math.max(...ys), min = Math.min(...ys);
+  const span = Math.max(max - min, max * 0.25, 0.01);   // 近乎水平的資料不放大成雜訊
+  const lo = (max + min) / 2 - span / 2;
+  const x = i => pad + i * (w - 2 * pad) / (vals.length - 1);
+  const y = v => h - pad - (v - lo) / span * (h - 2 * pad);
+  const d = pts.map(([i, v], k) => `${k ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
+  const [li, lv] = pts[pts.length - 1];
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
+    <path d="${d}" fill="none" stroke="#667085" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${x(li).toFixed(1)}" cy="${y(lv).toFixed(1)}" r="2.5" fill="#2f5bea"/></svg>`;
+}
+
+function pageAgents() {
+  const depts = [...new Set(AGENTS.map(a => a.dept).filter(Boolean))];
+  return {
+    nav: "agents",
+    crumbs: [{ text: "治理" }, { text: "Agent 清單" }],
+    html: `
+    <div class="page-head">
+      <h1>Agent 清單</h1>
+      <p class="subtitle">全部 ${AGENTS.length} 個 Agent 的本期預算消耗、近期花費趨勢、治理缺口一覽</p>
+    </div>
+    <div class="card">
+      <div class="toolbar">
+        <label class="search">${icon("search")}
+          <input id="q" type="search" placeholder="搜尋 Agent、部門或負責人" aria-label="搜尋" value="${esc(listState.q)}">
+        </label>
+        <select id="dept" class="select" aria-label="部門">
+          <option value="all">全部部門</option>
+          ${depts.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join("")}
+          <option value="__none">未登錄</option>
+        </select>
+        ${seg("status", [["all", "全部"], ["ok", "正常"], ["gap", "治理缺口"]], listState.status)}
+        <div class="count" id="count"></div>
+      </div>
+      <table>
+        <thead><tr>
+          <th>Agent</th><th>部門</th><th>負責人</th>
+          <th class="num">預算</th><th class="num">本期花費</th><th class="num">預算消耗</th>
+          <th>近 7 天（合計）</th><th>治理狀態</th><th class="col-chev"></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="footnote">本期為 10/1–10/15。趨勢線依各 Agent 自身範圍縮放，請搭配右側合計比較金額大小。「品質異常分析」與「訂單查詢客服」以外的每日數值為示意資料。</p>`,
+    mount() {
+      const render = () => {
+        const q = listState.q.trim().toLowerCase();
+        const list = AGENTS.filter(a =>
+          (!q || [a.name, a.dept, a.owner, a.key].some(f => f && f.toLowerCase().includes(q))) &&
+          (listState.dept === "all" || (listState.dept === "__none" ? !a.dept : a.dept === listState.dept)) &&
+          (listState.status === "all" || a.status === listState.status));
+        document.getElementById("count").textContent = `顯示 ${list.length} / ${AGENTS.length}`;
+        document.getElementById("rows").innerHTML = list.length ? list.map(a => `
+          <tr data-href="#/agents/${a.id}" tabindex="0" aria-label="查看 ${esc(a.name)} 詳情">
+            <td><span class="agent-name">${esc(a.name)}</span></td>
+            <td class="secondary">${a.dept ? esc(a.dept) : unset("未登錄")}</td>
+            <td class="secondary">${a.owner ? esc(a.owner) : unset("未指定")}</td>
+            <td class="num">${a.budget == null ? unset("未設定") : money(a.budget)}</td>
+            <td class="num">${money(a.spend)}</td>
+            <td class="num">${a.pct == null ? unset("—") : `<div class="usage"><span>${nf1.format(a.pct)}%</span>
+              <span class="bar" aria-hidden="true"><span style="width:${Math.min(a.pct, 100)}%"></span></span></div>`}</td>
+            <td><div class="trend">${sparkline(a.daily)}<span class="total">${money(sum(a.daily))}</span></div></td>
+            <td><span class="badge ${STATUS[a.status].cls}">${STATUS[a.status].label}</span></td>
+            <td>${icon("right", "chev")}</td>
+          </tr>`).join("")
+          : `<tr class="empty-row"><td colspan="9">沒有符合條件的 Agent</td></tr>`;
+      };
+      const dept = document.getElementById("dept");
+      dept.value = listState.dept;
+      document.getElementById("q").addEventListener("input", e => { listState.q = e.target.value; render(); });
+      dept.addEventListener("change", e => { listState.dept = e.target.value; render(); });
+      bindSeg("status", v => { listState.status = v; render(); });
+      render();
+    }
+  };
+}
+
+/* =========================================================
+   Page: Agent 詳情
+   ========================================================= */
+const DIM_LABEL = { env: "環境", team: "團隊", model: "模型" };
+const traceState = { plant: "all" };
+
+function niceScale(max) {
+  if (!(max > 0)) max = 1;
+  const raw = max / 4, mag = 10 ** Math.floor(Math.log10(raw)), n = raw / mag;
+  const step = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag;
+  return { step, top: Math.ceil(max / step) * step };
+}
+
+function drawChart(svg, a) {
+  const W = svg.getBoundingClientRect().width;
+  if (!W) return null;
+  const H = 240, L = 96, T = 14, B = 10;
+  const colW = (W - L) / DAYS.length;
+  const x = i => L + (i + 0.5) * colW;                 // 與下方表格日期欄中心對齊
+  const { step, top } = niceScale(Math.max(...a.daily.filter(v => v != null)));
+  const y = v => T + (1 - v / top) * (H - T - B);
+  const decimals = step < 1 ? 2 : step % 1 ? 1 : 0;
+
+  let grid = "";
+  for (let k = 0; k <= Math.round(top / step); k++) {
+    const yy = y(k * step).toFixed(1);
+    grid += `<line x1="${L}" x2="${W}" y1="${yy}" y2="${yy}" stroke="${k ? "#eaecf0" : "#d0d5dd"}" ${k ? 'stroke-dasharray="3 4"' : ""}/>
+      <text x="${L - 14}" y="${(+yy + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="#667085" style="font-variant-numeric:tabular-nums">US$ ${(k * step).toFixed(decimals)}</text>`;
+  }
+  const pts = a.daily.map((v, i) => (v == null ? null : [x(i), y(v)])).filter(Boolean);
+  const line = pts.map(([px, py], k) => `${k ? "L" : "M"}${px.toFixed(1)} ${py.toFixed(1)}`).join(" ");
+  const base = y(0).toFixed(1);
+  const area = `${line} L${pts[pts.length - 1][0].toFixed(1)} ${base} L${pts[0][0].toFixed(1)} ${base} Z`;
+
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = `
+    <defs><linearGradient id="fill" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#2f5bea" stop-opacity=".14"/><stop offset="1" stop-color="#2f5bea" stop-opacity="0"/>
+    </linearGradient></defs>
+    ${grid}
+    <line class="guide" x1="0" x2="0" y1="${T}" y2="${base}" stroke="#98a2b3" stroke-dasharray="3 3" visibility="hidden"/>
+    <path d="${area}" fill="url(#fill)"/>
+    <path d="${line}" fill="none" stroke="#2f5bea" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.map(([px, py]) => `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="3.5" fill="#fff" stroke="#2f5bea" stroke-width="2"/>`).join("")}
+    <circle class="focus" r="5.5" fill="#2f5bea" stroke="#fff" stroke-width="2" visibility="hidden"/>`;
+  return { L, colW, x, y };
+}
+
+function tagsTable(tags) {
+  const groups = [];
+  for (const t of tags) {
+    const dim = t.tag.split(":")[0];
+    let g = groups.find(g => g.dim === dim);
+    if (!g) groups.push(g = { dim, items: [] });
+    g.items.push(t);
+  }
+  return `<table>
+    <thead><tr><th>維度</th><th>標籤</th><th class="num">成本</th></tr></thead>
+    <tbody>${groups.map(g => g.items.map((t, i) => `
+      <tr class="${i === 0 ? "group-start" : ""}">
+        ${i === 0 ? `<td class="dim" rowspan="${g.items.length}">${esc(DIM_LABEL[g.dim] || g.dim)}</td>` : ""}
+        <td><code class="tag">${esc(t.tag)}</code></td>
+        <td class="num">${money(t.cost)}</td>
+      </tr>`).join("")).join("")}
+    </tbody></table>`;
+}
+
+function tracesCard(a) {
+  const plants = [...new Set(a.traces.map(t => t.plant))];
+  return `
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title">最貴執行清單</h2>
+        <p class="card-desc">依預估成本排序，共 ${a.traces.length} 筆</p>
+      </div>
+      <div class="common"><span>共同屬性</span>
+        ${Object.entries(TRACE_COMMON).map(([k, v]) => `<span class="pill">${k}：${esc(v)}</span>`).join("")}
+      </div>
+    </div>
+    <div class="toolbar">
+      ${seg("plant", [["all", "全部廠別"], ...plants.map(p => [p, p])], traceState.plant)}
+      <div class="count" id="traceCount"></div>
+    </div>
+    <table>
+      <thead><tr><th>執行時間</th><th>Trace ID</th><th>廠別</th><th class="num">預估成本</th><th class="col-chev"></th></tr></thead>
+      <tbody id="traceRows"></tbody>
+    </table>
+  </section>`;
+}
+
+let chartObserver = null;
+
+function pageAgent(a) {
+  return {
+    nav: "agents",
+    crumbs: [{ text: "治理" }, { text: "Agent 清單", href: "#/agents" }, { text: a.name }],
+    html: `
+    <a class="back" href="#/agents">${icon("left")}返回 Agent 清單</a>
+    <div class="page-head"><h1>${esc(a.name)}${a.key ? `<code class="id-chip">${esc(a.key)}</code>` : ""}</h1></div>
+
+    <div class="stack">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">版本成本時間序列</h2>
+            <p class="card-desc">每日花費，近 7 天</p>
+          </div>
+          <div class="legend"><span><i></i>${esc(a.version)}</span></div>
+        </div>
+        <div class="card-body">
+          <div class="chart-wrap" id="chartWrap">
+            <svg class="chart" role="img" aria-label="${esc(a.name)} 近 7 天每日花費折線圖"></svg>
+            <div class="tip" aria-hidden="true"></div>
+          </div>
+          <div class="daily">
+            <div class="h first">版本</div>
+            ${DAYS.map((d, i) => `<div class="h" data-col="${i}">${d.md}<small>(${d.wd})</small></div>`).join("")}
+            <div class="first ver">${esc(a.version)}</div>
+            ${a.daily.map((v, i) => v == null ? `<div class="na" data-col="${i}">—</div>` : `<div data-col="${i}">${money(v)}</div>`).join("")}
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">成本標籤</h2>
+            <p class="card-desc">本期花費依標籤歸屬，依維度分組</p>
+          </div>
+        </div>
+        ${tagsTable(a.tags || [{ tag: "env:prod", cost: a.spend }])}
+      </section>
+
+      ${a.traces ? tracesCard(a) : ""}
+    </div>
+    ${a.sample ? '<p class="footnote">此 Agent 的每日花費、版本與標籤為示意資料。</p>' : ""}`,
+    mount() {
+      mountChart(a);
+      if (!a.traces) return;
+      const render = () => {
+        const list = a.traces.filter(t => traceState.plant === "all" || t.plant === traceState.plant);
+        document.getElementById("traceCount").textContent = `顯示 ${list.length} / ${a.traces.length}`;
+        document.getElementById("traceRows").innerHTML = list.map(t => `
+          <tr data-href="#/agents/${a.id}/runs/${t.id}" tabindex="0" aria-label="查看執行 ${t.id}">
+            <td class="num" style="text-align:left">${fmtDateTime(uuidV7Time(t.id))}</td>
+            <td><span class="id-cell"><code title="${t.id}">${shortId(t.id)}</code>${copyBtn(t.id)}</span></td>
+            <td class="secondary">${esc(t.plant)}</td>
+            <td class="num">${money(t.cost)}</td>
+            <td>${icon("right", "chev")}</td>
+          </tr>`).join("");
+      };
+      bindSeg("plant", v => { traceState.plant = v; render(); });
+      render();
+    }
+  };
+}
+
+function mountChart(a) {
+  const wrap = document.getElementById("chartWrap");
+  const svg = wrap.querySelector("svg"), tip = wrap.querySelector(".tip");
+  const cells = [...document.querySelectorAll(".daily [data-col]")];
+  let geo = null;
+
+  chartObserver = new ResizeObserver(() => { geo = drawChart(svg, a); });
+  chartObserver.observe(wrap);
+
+  const clear = () => {
+    tip.classList.remove("show");
+    svg.querySelectorAll(".guide,.focus").forEach(el => el.setAttribute("visibility", "hidden"));
+    cells.forEach(c => c.classList.remove("hl"));
+  };
+  wrap.addEventListener("mouseleave", clear);
+  wrap.addEventListener("mousemove", e => {
+    if (!geo) return;
+    const mx = e.clientX - svg.getBoundingClientRect().left;
+    const i = Math.floor((mx - geo.L) / geo.colW);
+    const v = a.daily[i];
+    if (i < 0 || i >= DAYS.length || v == null) return clear();
+    const px = geo.x(i), py = geo.y(v);
+    const guide = svg.querySelector(".guide"), focus = svg.querySelector(".focus");
+    guide.setAttribute("x1", px); guide.setAttribute("x2", px); guide.setAttribute("visibility", "visible");
+    focus.setAttribute("cx", px); focus.setAttribute("cy", py); focus.setAttribute("visibility", "visible");
+    tip.innerHTML = `<span class="tl">${DAYS[i].md}（${DAYS[i].wd}）· ${esc(a.version)}</span><span class="tv">${money(v)}</span>`;
+    tip.style.left = `${px}px`; tip.style.top = `${py}px`;
+    tip.classList.add("show");
+    cells.forEach(c => c.classList.toggle("hl", +c.dataset.col === i));
+  });
+}
+
+/* =========================================================
+   Page: 執行詳情
+   ========================================================= */
+function waterfall(spans) {
+  const rows = spans.map(s => ({ ...s, s: toSec(s.start), e: toSec(s.end) }))
+                    .sort((p, q) => p.s - q.s || (q.e - q.s) - (p.e - p.s));
+  const t0 = Math.min(...rows.map(r => r.s));
+  const total = Math.max(...rows.map(r => r.e)) - t0;
+  const step = total > 20 ? 5 : 2;
+  const axisMax = Math.ceil(total / step) * step, n = axisMax / step;
+  const ticks = Array.from({ length: n + 1 }, (_, k) => `<span style="left:${k / n * 100}%">${k * step}s</span>`).join("");
+  const trackBg = `background-size:calc(100% / ${n}) 100%`;
+
+  return `
+  <div class="wf">
+    <div class="wh first">Span</div><div class="wh">時間</div>
+    <div class="wh"><div class="axis">${ticks}</div></div><div class="wh last">耗時</div>
+    ${rows.map((r, i) => {
+      const end = i === rows.length - 1 ? " row-end" : "";
+      return `
+      <div class="first${end}"><div class="span-name"><code>${esc(r.name)}</code><span class="type ${r.type}">${r.type}</span></div></div>
+      <div class="span-time${end}">${r.start} – ${r.end}</div>
+      <div class="${end.trim()}"><div class="track" style="${trackBg}">
+        <span class="seg-bar ${r.type}" style="left:${((r.s - t0) / axisMax * 100).toFixed(2)}%;width:${((r.e - r.s) / axisMax * 100).toFixed(2)}%"
+              title="${esc(r.name)}：${r.e - r.s} 秒"></span></div></div>
+      <div class="last${end}">${r.e - r.s} 秒</div>`;
+    }).join("")}
+  </div>`;
+}
+
+function pageRun(a, t) {
+  const spans = SPANS[t.id];
+  const startMs = uuidV7Time(t.id);
+  const duration = spans ? Math.max(...spans.map(s => toSec(s.end))) - Math.min(...spans.map(s => toSec(s.start))) : null;
+  const meta = { Agent: a.name, 廠別: t.plant, ...TRACE_COMMON };
+
+  return {
+    nav: "agents",
+    crumbs: [{ text: "治理" }, { text: "Agent 清單", href: "#/agents" }, { text: a.name, href: `#/agents/${a.id}` }, { text: shortId(t.id) }],
+    html: `
+    <a class="back" href="#/agents/${a.id}">${icon("left")}返回 ${esc(a.name)}</a>
+    <div class="page-head">
+      <h1>執行詳情</h1>
+      <div class="id-line"><code>${t.id}</code>${copyBtn(t.id)}</div>
+      <div class="meta">${Object.entries(meta).map(([k, v]) => `<span class="pill"><b>${k}</b>${esc(v)}</span>`).join("")}</div>
+    </div>
+
+    <div class="stack">
+      <div class="card stats">
+        <div class="stat"><div class="stat-label">開始時間</div><div class="stat-value">${fmtDateTime(startMs)}</div></div>
+        <div class="stat"><div class="stat-label">總耗時</div><div class="stat-value">${duration == null ? "—" : `${duration} 秒`}</div></div>
+        <div class="stat"><div class="stat-label">Span 數</div><div class="stat-value">${spans ? spans.length : "—"}</div></div>
+        <div class="stat"><div class="stat-label">預估成本</div><div class="stat-value">${money(t.cost)}</div></div>
+      </div>
+
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">執行時間軸</h2>
+            <p class="card-desc">依開始時間排序，時間為台灣時間</p>
+          </div>
+          <div class="legend"><span class="type llm">llm</span><span class="type tool">tool</span><span class="type general">general</span></div>
+        </div>
+        ${spans ? waterfall(spans) : `<div class="empty">原畫面只提供 ${shortId("01a11081-9bb1-76bf-9dde-18fd37a64a41")} 的 span 資料，這筆執行沒有可顯示的資料。</div>`}
+      </section>
+    </div>
+    <p class="source">資料來源：Agent registry + 觀測性後端 trace/span 查詢。</p>`
+  };
+}
+
+/* =========================================================
+   Shared behaviour & router
+   ========================================================= */
+const view = document.getElementById("view");
+
+function bindSeg(name, onChange) {
+  const btns = view.querySelectorAll(`[data-seg="${name}"]`);
+  btns.forEach(b => b.addEventListener("click", () => {
+    btns.forEach(x => x.setAttribute("aria-pressed", x === b));
+    onChange(b.dataset.val);
+  }));
+}
+
+async function doCopy(btn) {
+  const text = btn.dataset.copy;
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const ta = Object.assign(document.createElement("textarea"), { value: text });
+    document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
+  }
+  btn.classList.add("done"); btn.innerHTML = icon("ok"); btn.setAttribute("aria-label", "已複製");
+  setTimeout(() => { btn.classList.remove("done"); btn.innerHTML = icon("copy"); btn.setAttribute("aria-label", "複製 Trace ID"); }, 1500);
+}
+
+document.addEventListener("click", e => {
+  if (e.target.closest("a[data-placeholder]")) { e.preventDefault(); return; }
+  const copy = e.target.closest(".copy");
+  if (copy) { doCopy(copy); return; }
+  if (e.target.closest("a, button, input, select")) return;
+  const row = e.target.closest("[data-href]");
+  if (row) location.hash = row.dataset.href;
+});
+view.addEventListener("keydown", e => {
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-href]")) {
+    e.preventDefault(); location.hash = e.target.dataset.href;
+  }
+});
+
+function resolve(hash) {
+  let m;
+  if ((m = hash.match(/^#\/agents\/([\w-]+)\/runs\/([0-9a-f-]+)$/))) {
+    const a = findAgent(m[1]), t = a && a.traces && a.traces.find(x => x.id === m[2]);
+    if (t) return pageRun(a, t);
+  }
+  if ((m = hash.match(/^#\/agents\/([\w-]+)$/))) {
+    const a = findAgent(m[1]);
+    if (a) return pageAgent(a);
+  }
+  if (hash === "#/agents") return pageAgents();
+  if (hash === "#/alerts") return pageAlerts();
+  return pageDashboard();
+}
+
+function route() {
+  if (chartObserver) { chartObserver.disconnect(); chartObserver = null; }
+  const page = resolve(location.hash);
+  renderNav(page.nav);
+  renderCrumbs(page.crumbs);
+  view.innerHTML = page.html;
+  if (page.mount) page.mount();
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", route);
+route();
+</script>
+</body>
+</html>
