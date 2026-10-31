@@ -26,6 +26,15 @@ export function formatTableCurrency(value: number | null | undefined): string {
   return formatMoney(value, 2);
 }
 
+/** Signed table money: always two decimals, thousands separators; "+" for
+ * positive, "-" for negative, no sign when it rounds to zero.
+ * 250 -> "+US$ 250.00", -1234.5 -> "-US$ 1,234.50", 0 -> "US$ 0.00". */
+export function formatSignedTableCurrency(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+  const sign = roundsToZero(value, 2) ? "" : value < 0 ? "-" : "+";
+  return `${sign}US$ ${groupedAbs(Math.abs(value), 2)}`;
+}
+
 /** Summary-card money: rounded to an integer, thousands separators.
  * 1746.4 -> "US$ 1,746". */
 export function formatCardCurrency(value: number | null | undefined): string {
@@ -63,6 +72,7 @@ export function formatPercent(value: number | null | undefined, digits = 1): str
   return `${value.toFixed(digits)}%`;
 }
 
+/** @deprecated Use formatSignedTableCurrency. */
 export function formatSignedCurrency(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
   const sign = value > 0 ? "+" : value < 0 ? "-" : "";

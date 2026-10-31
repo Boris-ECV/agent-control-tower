@@ -53,7 +53,7 @@ describe("PeriodComparisonSection delta column", () => {
     const { container } = render(<PeriodComparisonSection />);
 
     await waitFor(() =>
-      expect(deltaCellText(container)).toBe("+US$ 250（50.0%）"),
+      expect(deltaCellText(container)).toBe("+US$ 250.00（50.0%）"),
     );
     expect(screen.queryByText("新增顯著支出")).not.toBeInTheDocument();
   });
@@ -64,7 +64,7 @@ describe("PeriodComparisonSection delta column", () => {
     render(<PeriodComparisonSection />);
 
     await waitFor(() => expect(screen.getByText("新增顯著支出")).toBeInTheDocument());
-    expect(screen.getByText("+US$ 638")).toBeInTheDocument();
+    expect(screen.getByText("+US$ 638.00")).toBeInTheDocument();
     expect(screen.queryByText(/%/)).not.toBeInTheDocument();
   });
 
@@ -74,7 +74,7 @@ describe("PeriodComparisonSection delta column", () => {
     render(<PeriodComparisonSection />);
 
     await waitFor(() => expect(screen.getByText("新增顯著支出")).toBeInTheDocument());
-    expect(screen.getByText("+US$ 120")).toBeInTheDocument();
+    expect(screen.getByText("+US$ 120.00")).toBeInTheDocument();
     expect(screen.queryByText(/%/)).not.toBeInTheDocument();
   });
 
@@ -87,5 +87,18 @@ describe("PeriodComparisonSection delta column", () => {
       expect(deltaCellText(container)).toBe("+US$ 10.00（100.0%）"),
     );
     expect(screen.queryByText("新增顯著支出")).not.toBeInTheDocument();
+  });
+});
+
+describe("PeriodComparisonSection current/previous cost cells", () => {
+  it("renders two-decimal costs with tabular-nums", async () => {
+    fetchPeriodComparison.mockResolvedValueOnce(makeComparison(750, 500, 250, 50.0));
+
+    const { container } = render(<PeriodComparisonSection />);
+
+    await waitFor(() => expect(screen.getByText("US$ 750.00")).toBeInTheDocument());
+    expect(screen.getByText("US$ 750.00").className).toContain("tabular-nums");
+    expect(screen.getByText("US$ 500.00").className).toContain("tabular-nums");
+    expect(container.querySelectorAll("tbody td")[3]?.className).toContain("tabular-nums");
   });
 });

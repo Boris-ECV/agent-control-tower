@@ -897,11 +897,11 @@ describe("VersionCostChart Hover Tooltip／十字線／可存取性備援 (SDLCC
     );
     expect(row1Cells).toEqual([
       "v1",
-      "US$ 100",
+      "US$ 100.00",
       "—",
       "—",
       "—",
-      "US$ 123",
+      "US$ 123.00",
       "—",
       "—",
     ]);
@@ -1158,7 +1158,7 @@ describe("VersionCostChart Hover Tooltip — 測試者獨立補充驗證（邊�
     const row2 = Array.from(rows[1]?.querySelectorAll("td") ?? []).map(
       (el) => el.textContent,
     );
-    expect(row2).toEqual(["v2", "US$ 100", "—", "—", "—", "—", "—", "—"]);
+    expect(row2).toEqual(["v2", "US$ 100.00", "—", "—", "—", "—", "—", "—"]);
 
     const row3 = Array.from(rows[2]?.querySelectorAll("td") ?? []).map(
       (el) => el.textContent,
@@ -2558,5 +2558,27 @@ describe("測試者獨立補充驗證 (SDLCCT-90)", () => {
       expect(poly[0].x).toBeCloseTo(v[0].x, 1);
       expect(poly[6].x).toBeCloseTo(v[6].x, 1);
     });
+  });
+});
+
+describe("VersionCostChart 表格金額格式與對齊 (SDLCCT-94)", () => {
+  it("a11y 表格金額 td 靠右且 tabular-nums，日期 th 靠右，SVG 文字維持舊格式", () => {
+    const { container } = render(
+      <VersionCostChart
+        entries={[entry("v1", [{ date: "2026-10-14", value: 100 }])]}
+        anchorDate="2026-10-20"
+      />,
+    );
+    const td = Array.from(container.querySelectorAll("tbody td")).find(
+      (el) => el.textContent === "US$ 100.00",
+    );
+    expect(td?.className).toContain("text-right");
+    expect(td?.className).toContain("tabular-nums");
+    expect(container.querySelector("th[data-date-col]")?.className).toContain("text-right");
+    const svgTexts = Array.from(container.querySelectorAll("svg text")).map(
+      (el) => el.textContent,
+    );
+    expect(svgTexts).toContain("US$ 100");
+    expect(svgTexts).not.toContain("US$ 100.00");
   });
 });

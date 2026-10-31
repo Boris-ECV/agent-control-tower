@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import type { TopTraceItem } from "@/lib/agent-detail-api";
-import { formatCurrency } from "@/lib/format";
+import { formatTableCurrency } from "@/lib/format";
 import { t } from "@/lib/i18n/t";
 
 // metadata 是未型別化的 dict | None（SDLCCT-74，見 docs/design/SDLCCT-74.md）。
@@ -90,7 +90,7 @@ export function TopTracesTable({ traces }: { traces: TopTraceItem[] }) {
       <thead>
         <tr className="border-b border-border text-left text-xs text-text-secondary">
           <th className="py-2 pr-3">{t("agentDetail.topTraces.table.columns.id")}</th>
-          <th className="py-2 pr-3">{t("agentDetail.topTraces.table.columns.cost")}</th>
+          <th className="py-2 pr-3 text-right">{t("agentDetail.topTraces.table.columns.cost")}</th>
           <th className="py-2 pr-3">
             {t("agentDetail.topTraces.table.columns.metadata")}
           </th>
@@ -112,7 +112,7 @@ export function TopTracesTable({ traces }: { traces: TopTraceItem[] }) {
             className="cursor-pointer border-b border-border last:border-b-0 hover:bg-gray-50"
           >
             <td className="py-2 pr-3 font-medium text-text-primary">{trace.id}</td>
-            <td className="py-2 pr-3">{formatCurrency(trace.total_estimated_cost)}</td>
+            <td className="py-2 pr-3 text-right tabular-nums">{formatTableCurrency(trace.total_estimated_cost)}</td>
             <td className="py-2 pr-3">
               {trace.metadata === null ? (
                 t("agentDetail.unknown")

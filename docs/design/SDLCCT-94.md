@@ -128,3 +128,9 @@ export function formatSignedTableCurrency(value: number | null | undefined): str
 （無）
 
 註記（非阻擋，供 G1b 審閱者知悉）：圖表內 tooltip 與終點標籤（`version-cost-chart.tsx:224、446`）依規格範圍保留舊格式，與同元件表格的新格式並存；若產品希望統一，屬後續獨立需求，不在本票。
+
+## 實作期間決策
+
+- 發現：a11y 後備表格改為 `formatTableCurrency`（兩位小數）加 `tabular-nums` 後，欄位變寬；在 390px 視窗下頁面出現水平溢位（scrollWidth 405 對 clientWidth 390，超出 15px），使既有 e2e「SDLCCT-90 at 390px ... no overflow」失敗（基準線上通過）。
+- 採用的修法：僅縮小窄螢幕的水平內距，a11y 表格日期欄的 `th`、`td` 由 `pr-3` 改為 `pr-1 sm:pr-3`；桌面（sm 以上）內距不變。修後該測試與 SDLCCT-88 的 X 對齊測試皆通過。
+- 否決的替代方案：(1) 外包 `overflow-x-auto` 容器：會改變表格的捲動與量測環境，可能干擾 SDLCCT-88 以 `getBoundingClientRect` 量測欄中心的邏輯；(2) 放寬或修改 no-overflow 測試：等同降低品質關卡，不允許。
