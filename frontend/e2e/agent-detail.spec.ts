@@ -1119,3 +1119,83 @@ test("SDLCCT-88: version-cost chart data points align to the table date column c
   // Scenario 5: null cell still renders as an em dash in the table.
   await expect(versionSection.locator("tbody tr").first().locator("td").nth(3)).toHaveText("—");
 });
+
+test("SDLCCT-88 (tester): version-cost chart stays aligned to the table date column centers at a 390px viewport and with 5 series (legend mode)", async ({
+  page,
+}) => {
+  const dates = [
+    "2026-10-14",
+    "2026-10-15",
+    "2026-10-16",
+    "2026-10-17",
+    "2026-10-18",
+    "2026-10-19",
+    "2026-10-20",
+  ];
+  const series = ["v1", "v2", "v3", "v4", "v5"].map((version, s) => ({
+    version,
+    points: dates.map((date, i) => ({
+      date,
+      value: s === 0 && i === 2 ? null : 10 + s * 7 + i * 3,
+    })),
+  }));
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: series,
+        model_cost_breakdown: [],
+        top_traces: [],
+      }),
+    });
+  });
+
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const versionSection = page.locator('section[aria-label="版本成本時間序列"]');
+  const svg = versionSection.locator("svg[role='img']");
+  await expect(svg).toBeVisible();
+  await expect(svg.locator('g[data-axis="x"]')).toHaveCount(0);
+  // 5 series -> legend, no tail labels.
+  await expect(svg.locator('g[data-labels="tail"]')).toHaveCount(0);
+
+  const maxDeviation = async () =>
+    await versionSection.evaluate((section) => {
+      const svgEl = section.querySelector("svg[role='img']") as SVGSVGElement;
+      const svgLeft = svgEl.getBoundingClientRect().left;
+      const centers = Array.from(section.querySelectorAll("thead th[data-date-col]")).map(
+        (th) => {
+          const r = th.getBoundingClientRect();
+          return r.left + r.width / 2 - svgLeft;
+        },
+      );
+      const polylines = Array.from(svgEl.querySelectorAll("polyline"));
+      if (centers.length !== 7 || polylines.length < 5) return Infinity;
+      let max = 0;
+      for (const pl of polylines) {
+        for (const pt of (pl.getAttribute("points") ?? "").split(" ")) {
+          const x = Number(pt.split(",")[0]);
+          max = Math.max(max, Math.min(...centers.map((c) => Math.abs(c - x))));
+        }
+      }
+      return max;
+    });
+  await expect.poll(maxDeviation).toBeLessThanOrEqual(1);
+
+  // Widen to 1024 and re-check.
+  await page.setViewportSize({ width: 1024, height: 800 });
+  await expect.poll(maxDeviation).toBeLessThanOrEqual(1);
+
+  // No horizontal overflow of the chart container relative to the viewport.
+  await expect
+    .poll(async () =>
+      page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
+    )
+    .toBe(true);
+});

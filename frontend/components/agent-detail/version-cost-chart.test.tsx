@@ -1,3 +1,4 @@
+import * as React from "react";
 import { act, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -1412,5 +1413,265 @@ describe("VersionCostChart 欄中心對齊 (SDLCCT-88)", () => {
     fireEvent.mouseMove(overlay, { clientX: 100 + expectedCenters()[1] });
     const first = container.querySelector('svg g[data-tooltip="active"] text');
     expect(first?.textContent).toBe(secondDate);
+  });
+});
+
+describe("測試者獨立補充驗證 (SDLCCT-88)", () => {
+  type R = { left: number; right: number; width: number };
+  const rect = (left: number, width: number): R => ({ left, right: left + width, width });
+
+  // 非等寬日期欄，避免「均分」假設讓錯誤實作恰好通過。
+  function makeRects(W: number, labelW: number, widths?: number[]) {
+    const ws = widths ?? Array.from({ length: 7 }, () => (W - labelW) / 7);
+    let x = 50 + labelW;
+    const cols = ws.map((w) => {
+      const r = rect(x, w);
+      x += w;
+      return r;
+    });
+    return { svg: rect(50, W), first: rect(50, labelW), cols };
+  }
+  const UNEVEN = [60, 200, 90, 150, 100, 220, 80];
+
+  let current = makeRects(1000, 100);
+  let roCallbacks: Array<() => void> = [];
+  let rectCalls = 0;
+
+  beforeEach(() => {
+    roCallbacks = [];
+    rectCalls = 0;
+    class FakeRO {
+      constructor(cb: () => void) {
+        roCallbacks.push(cb);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal("ResizeObserver", FakeRO);
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+      function (this: Element) {
+        rectCalls++;
+        let r: R = rect(0, 0);
+        if (this.tagName.toLowerCase() === "svg") {
+          r = current.svg;
+        } else if (this.matches("thead th[data-date-col]")) {
+          const idx = Array.from(
+            this.parentElement?.querySelectorAll("th[data-date-col]") ?? [],
+          ).indexOf(this);
+          r = current.cols[idx];
+        } else if (this.matches("thead th:first-child")) {
+          r = current.first;
+        }
+        return { ...r, x: r.left, y: 0, top: 0, bottom: 0, height: 0, toJSON: () => ({}) } as DOMRect;
+      },
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  const centers = () => current.cols.map((c) => c.left + c.width / 2 - current.svg.left);
+  const D = [
+    "2026-10-14",
+    "2026-10-15",
+    "2026-10-16",
+    "2026-10-17",
+    "2026-10-18",
+    "2026-10-19",
+    "2026-10-20",
+  ];
+  const full = (name: string, base: number) =>
+    entry(name, D.map((date, i) => ({ date, value: base + i * 10 })));
+  const xsOf = (c: HTMLElement) =>
+    Array.from(c.querySelectorAll("svg polyline")).map((pl) =>
+      (pl.getAttribute("points") ?? "").split(" ").map((p) => Number(p.split(",")[0])),
+    );
+  const overlay = (c: HTMLElement) => c.querySelector("svg > rect") as Element;
+  const crossX = (c: HTMLElement) =>
+    Number(c.querySelector("svg line[stroke-dasharray]")?.getAttribute("x1"));
+
+  it("非等寬日期欄：每個資料點 X 等於各自欄中心（不是均分）", () => {
+    current = makeRects(1000, 100, UNEVEN);
+    const { container } = render(
+      <VersionCostChart entries={[full("v1", 10)]} anchorDate="2026-10-20" />,
+    );
+    const xs = xsOf(container)[0];
+    expect(xs).toHaveLength(7);
+    xs.forEach((x, i) => expect(Math.abs(x - centers()[i])).toBeLessThanOrEqual(0.05));
+  });
+
+  it("全 null：無折線、無終點標籤、無 Y 軸標示、無格線，表格全為「—」，hover 仍對齊欄中心", () => {
+    current = makeRects(1000, 100, UNEVEN);
+    const entries = [entry("v1", D.map((date) => ({ date, value: null })))];
+    const { container } = render(<VersionCostChart entries={entries} anchorDate="2026-10-20" />);
+    expect(container.querySelectorAll("svg polyline")).toHaveLength(0);
+    expect(container.querySelectorAll('svg g[data-labels="tail"] text')).toHaveLength(0);
+    expect(container.querySelectorAll('svg g[data-axis="y"] text')).toHaveLength(0);
+    expect(container.querySelectorAll("svg > g:first-of-type > line")).toHaveLength(0);
+    const cells = Array.from(container.querySelectorAll("tbody td")).slice(1);
+    expect(cells.map((c) => c.textContent)).toEqual(Array(7).fill("—"));
+    fireEvent.mouseMove(overlay(container), { clientX: 50 + centers()[4] });
+    expect(crossX(container)).toBeCloseTo(centers()[4], 1);
+    expect(container.textContent).not.toContain("US$ 0");
+  });
+
+  it("單一序列且只有一個非 null 點：恰一條單點折線，X 在該日欄中心，終點標籤在其旁", () => {
+    current = makeRects(1000, 100, UNEVEN);
+    const entries = [entry("v1", [{ date: "2026-10-17", value: 42 }])];
+    const { container } = render(<VersionCostChart entries={entries} anchorDate="2026-10-20" />);
+    const xs = xsOf(container);
+    expect(xs).toHaveLength(1);
+    expect(xs[0]).toHaveLength(1);
+    expect(Math.abs(xs[0][0] - centers()[3])).toBeLessThanOrEqual(0.05);
+    const tail = container.querySelector('svg g[data-labels="tail"] text');
+    expect(Math.abs(Number(tail?.getAttribute("x")) - centers()[3])).toBeCloseTo(6, 1);
+  });
+
+  it("首欄與末欄 hover：十字線 X 等於 centers[0] 與 centers[6]，tooltip 第一行為對應日期標題", () => {
+    current = makeRects(1000, 100, UNEVEN);
+    const { container } = render(
+      <VersionCostChart entries={[full("v1", 10), full("v2", 5)]} anchorDate="2026-10-20" />,
+    );
+    const ths = container.querySelectorAll("thead th");
+    fireEvent.mouseMove(overlay(container), { clientX: 50 + centers()[0] });
+    expect(crossX(container)).toBeCloseTo(centers()[0], 1);
+    expect(container.querySelector('g[data-tooltip="active"] text')?.textContent).toBe(
+      ths[1].textContent,
+    );
+    fireEvent.mouseMove(overlay(container), { clientX: 50 + centers()[6] });
+    expect(crossX(container)).toBeCloseTo(centers()[6], 1);
+    expect(container.querySelector('g[data-tooltip="active"] text')?.textContent).toBe(
+      ths[7].textContent,
+    );
+  });
+
+  it("非等寬欄時，hover 以真實欄中心最近鄰命中：兩中心中點兩側分別命中不同欄", () => {
+    current = makeRects(1000, 100, UNEVEN);
+    const { container } = render(
+      <VersionCostChart entries={[full("v1", 10)]} anchorDate="2026-10-20" />,
+    );
+    const c = centers();
+    const mid = (c[1] + c[2]) / 2;
+    fireEvent.mouseMove(overlay(container), { clientX: 50 + mid - 1 });
+    expect(crossX(container)).toBeCloseTo(c[1], 1);
+    fireEvent.mouseMove(overlay(container), { clientX: 50 + mid + 1 });
+    expect(crossX(container)).toBeCloseTo(c[2], 1);
+  });
+
+  it("量測回傳全零寬度時退回 fallbackLayout（viewBox 480、X 為 fallback 中心）且不拋例外", () => {
+    current = makeRects(0, 0, Array(7).fill(0));
+    const { container } = render(
+      <VersionCostChart entries={[full("v1", 10)]} anchorDate="2026-10-20" />,
+    );
+    expect(container.querySelector("svg")?.getAttribute("viewBox")).toBe("0 0 480 160");
+    const fb = fallbackLayout(7).centers;
+    xsOf(container)[0].forEach((x, i) => expect(Math.abs(x - fb[i])).toBeLessThanOrEqual(0.05));
+    expect(container.querySelectorAll("thead th")).toHaveLength(8);
+  });
+
+  it("量測由零變為有效時，ResizeObserver 觸發即從 fallback 切換到真實欄中心", () => {
+    current = makeRects(0, 0, Array(7).fill(0));
+    const { container } = render(
+      <VersionCostChart entries={[full("v1", 10)]} anchorDate="2026-10-20" />,
+    );
+    current = makeRects(900, 80, UNEVEN);
+    act(() => roCallbacks.forEach((cb) => cb()));
+    expect(container.querySelector("svg")?.getAttribute("viewBox")).toBe("0 0 900 160");
+    xsOf(container)[0].forEach((x, i) =>
+      expect(Math.abs(x - centers()[i])).toBeLessThanOrEqual(0.05),
+    );
+  });
+
+  it("entries 改變（rerender）時重新量測並對齊", () => {
+    current = makeRects(1000, 100);
+    const { container, rerender } = render(
+      <VersionCostChart entries={[full("v1", 10)]} anchorDate="2026-10-20" />,
+    );
+    const before = rectCalls;
+    current = makeRects(700, 70, [40, 120, 90, 50, 100, 120, 100]);
+    rerender(
+      <VersionCostChart entries={[full("v1", 10), full("v2", 20)]} anchorDate="2026-10-20" />,
+    );
+    expect(rectCalls).toBeGreaterThan(before);
+    expect(container.querySelector("svg")?.getAttribute("viewBox")).toBe("0 0 700 160");
+    xsOf(container).forEach((seg) =>
+      seg.forEach((x, i) => expect(Math.abs(x - centers()[i])).toBeLessThanOrEqual(0.05)),
+    );
+  });
+
+  it("版面未變動時 ResizeObserver 回呼不造成額外 commit（無回饋迴圈）；變動時只多出有限次 commit", () => {
+    current = makeRects(1000, 100);
+    let commits = 0;
+    const { container } = render(
+      <React.Profiler id="c" onRender={() => commits++}>
+        <VersionCostChart entries={[full("v1", 10)]} anchorDate="2026-10-20" />
+      </React.Profiler>,
+    );
+    // React 對「相同 state 的 setState」可能在第一次多做一次 bailout 渲染；
+    // 先暖機一次，之後重複觸發相同版面不得再有任何 commit（否則為回饋迴圈）。
+    act(() => roCallbacks.forEach((cb) => cb()));
+    const base = commits;
+    act(() => {
+      for (let i = 0; i < 20; i++) roCallbacks.forEach((cb) => cb());
+    });
+    expect(commits).toBe(base);
+    current = makeRects(800, 100);
+    act(() => roCallbacks.forEach((cb) => cb()));
+    expect(commits).toBeGreaterThan(base);
+    expect(commits).toBeLessThanOrEqual(base + 2);
+    expect(container.querySelector("svg")?.getAttribute("viewBox")).toBe("0 0 800 160");
+  });
+
+  it("6 個版本：改用圖例、無終點標籤群組，資料點仍對齊欄中心，hover tooltip 列出全部版本", () => {
+    current = makeRects(1000, 100, UNEVEN);
+    const entries = ["v1", "v2", "v3", "v4", "v5", "v6"].map((v, i) => full(v, 10 + i));
+    const { container } = render(<VersionCostChart entries={entries} anchorDate="2026-10-20" />);
+    expect(container.querySelector('svg g[data-labels="tail"]')).toBeNull();
+    expect(container.querySelectorAll("ul li")).toHaveLength(6);
+    const all = xsOf(container);
+    expect(all).toHaveLength(6);
+    all.forEach((seg) =>
+      seg.forEach((x, i) => expect(Math.abs(x - centers()[i])).toBeLessThanOrEqual(0.05)),
+    );
+    fireEvent.mouseMove(overlay(container), { clientX: 50 + centers()[5] });
+    expect(container.querySelectorAll('g[data-tooltip="active"] text')).toHaveLength(7);
+    expect(crossX(container)).toBeCloseTo(centers()[5], 1);
+  });
+
+  it("極窄容器（200px，版本欄 40px）：仍對齊欄中心，overlay 寬度為正且無 X 軸群組", () => {
+    current = makeRects(200, 40);
+    const { container } = render(
+      <VersionCostChart entries={[full("v1", 10), full("v2", 20)]} anchorDate="2026-10-20" />,
+    );
+    expect(container.querySelector("svg")?.getAttribute("viewBox")).toBe("0 0 200 160");
+    xsOf(container).forEach((seg) =>
+      seg.forEach((x, i) => expect(Math.abs(x - centers()[i])).toBeLessThanOrEqual(0.05)),
+    );
+    expect(Number(overlay(container).getAttribute("width"))).toBeCloseTo(160, 1);
+    expect(container.querySelector('svg g[data-axis="x"]')).toBeNull();
+  });
+
+  it("null 位於首日與末日：折線只含有值日，表格該格為「—」，終點標籤跟隨第 6 日", () => {
+    current = makeRects(1000, 100, UNEVEN);
+    const entries = [
+      entry(
+        "v1",
+        D.map((date, i) => ({ date, value: i === 0 || i === 6 ? null : 10 + i })),
+      ),
+    ];
+    const { container } = render(<VersionCostChart entries={entries} anchorDate="2026-10-20" />);
+    const xs = xsOf(container);
+    expect(xs).toHaveLength(1);
+    expect(xs[0]).toHaveLength(5);
+    xs[0].forEach((x, k) => expect(Math.abs(x - centers()[k + 1])).toBeLessThanOrEqual(0.05));
+    const cells = container.querySelectorAll("tbody td");
+    expect(cells[1].textContent).toBe("—");
+    expect(cells[7].textContent).toBe("—");
+    const tail = container.querySelector('svg g[data-labels="tail"] text');
+    expect(tail?.textContent).toContain("v1");
+    expect(Math.abs(Number(tail?.getAttribute("x")) - centers()[5])).toBeCloseTo(6, 1);
   });
 });
