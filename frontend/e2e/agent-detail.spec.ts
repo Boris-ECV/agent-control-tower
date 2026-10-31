@@ -1372,3 +1372,57 @@ test("SDLCCT-90: version-cost chart draws gradient areas under each continuous r
   expect(colors[0]).toBeTruthy();
   expect(colors[0]).toBe(colors[1]);
 });
+
+test("SDLCCT-90 (tester): at 390px the areas stay aligned with their polylines, non-interactive, no overflow", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  const days = [
+    "2026-10-14",
+    "2026-10-15",
+    "2026-10-16",
+    "2026-10-17",
+    "2026-10-18",
+    "2026-10-19",
+    "2026-10-20",
+  ];
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [
+          {
+            version: "v1",
+            points: days.map((date, i) => ({ date, value: i === 3 ? null : 100 + i * 20 })),
+          },
+        ],
+        model_cost_breakdown: [],
+        top_traces: [],
+      }),
+    });
+  });
+  await page.goto(`/agents/${MOCK_KEY}`);
+  const areas = page.locator("svg g[data-areas] path[data-area]");
+  await expect(areas).toHaveCount(2);
+  const info = await page.evaluate(() => {
+    const paths = Array.from(document.querySelectorAll("svg g[data-areas] path[data-area]"));
+    const lines = Array.from(document.querySelectorAll("svg polyline"));
+    const firstXY = (s: string) => (s.match(/-?\d+(\.\d+)?,-?\d+(\.\d+)?/) ?? [""])[0];
+    return {
+      same: paths.every(
+        (p, i) =>
+          firstXY(p.getAttribute("d") ?? "") === firstXY(lines[i].getAttribute("points") ?? ""),
+      ),
+      pe: paths.map((p) => getComputedStyle(p).pointerEvents),
+      overflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    };
+  });
+  expect(info.same).toBe(true);
+  expect(info.pe).toEqual(["none", "none"]);
+  expect(info.overflow).toBe(true);
+});
