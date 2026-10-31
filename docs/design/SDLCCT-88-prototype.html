@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-88 — 版本成本圖資料點對齊表格日期欄中心原型</title>
+<style>
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #FFFFFF;
+    color: #1F2937;
+    max-width: 1100px;
+    margin: 32px auto;
+    padding: 0 24px;
+    line-height: 1.6;
+  }
+  h1 { font-size: 24px; font-weight: 700; }
+  h2 { font-size: 18px; font-weight: 600; margin-top: 40px; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px; }
+  p.meta, .note { font-size: 12px; color: #4B5563; }
+  code { background: #F3F4F6; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+  .disclaimer {
+    border: 1px dashed #eda100; background: #FFFBEB; padding: 8px 12px;
+    font-size: 12px; color: #4B5563; border-radius: 4px; margin: 12px 0;
+  }
+  .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-size: 13px; margin: 12px 0; }
+  .controls button { padding: 4px 10px; border: 1px solid #E5E7EB; background: #F9FAFB; border-radius: 4px; cursor: pointer; }
+  .controls button.active { background: #2a78d6; color: #fff; border-color: #2a78d6; }
+  #readout { font-size: 13px; font-weight: 600; color: #1baf7a; }
+  /* 圖表與表格同一版面容器：寬度由 #wrap 決定（等同實作中的外層 <div>）。 */
+  #wrap { border: 1px solid #E5E7EB; border-radius: 6px; padding: 16px; background: #FFFFFF; box-sizing: content-box; position: relative; }
+  svg { display: block; margin-bottom: 12px; overflow: visible; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { border-bottom: 1px solid #E5E7EB; padding: 8px 12px 8px 0; text-align: left; }
+  th { color: #4B5563; font-size: 12px; font-weight: 600; }
+  td.ver { font-weight: 500; }
+  .before svg { margin-bottom: 12px; }
+  .before-table { width: 100%; }
+</style>
+</head>
+<body>
+
+<h1>SDLCCT-88 — 版本成本圖資料點對齊表格日期欄中心原型</h1>
+<p class="meta">
+  靜態原型，無需安裝任何套件，直接用瀏覽器開啟即可。機制與設計文件
+  <code>docs/design/SDLCCT-88.md</code> 完全一致：圖表與表格放在同一個容器內，
+  以 <code>getBoundingClientRect()</code> 量測每個
+  <code>th[data-date-col]</code> 的欄寬中心，資料點 X = 欄中心 − SVG 左緣，
+  並以 <code>ResizeObserver</code> 在容器寬度改變時重新量測。圖表內不再繪製
+  X 軸日期文字，表格標題列即 X 軸。
+</p>
+
+<h2>情境一、二、三：資料點對齊欄中心、容器縮放後仍對齊、圖表無 X 軸日期文字</h2>
+
+<div class="disclaimer">
+  原型限制說明：下方「容器寬度」按鈕與滑桿、「顯示欄中心輔助線」、資料點小圓點、
+  偏差讀數皆為<strong>僅供原型示範與驗證用</strong>，實作中不存在（實作只畫折線，
+  不畫圓點與輔助線）。偏差讀數是由瀏覽器即時量測「圓點中心」與「表頭欄中心」之差，
+  並非寫死的數字。
+</div>
+
+<div class="controls">
+  <span>容器寬度：</span>
+  <button data-w="1100" class="active">寬（約 1280 視窗）</button>
+  <button data-w="720">中（約 768 視窗）</button>
+  <button data-w="520">窄</button>
+  <input type="range" id="slider" min="460" max="1100" value="1100" />
+  <span id="wval">1100px</span>
+  <label><input type="checkbox" id="guides" checked /> 顯示欄中心輔助線</label>
+  <label><input type="checkbox" id="pin" checked /> 保持 hover 在 D-2（2026年10月18日）</label>
+</div>
+<div>最大偏差（所有資料點）：<span id="readout">—</span>　<span class="note">（驗收門檻 ≤ 1px）</span></div>
+
+<div id="wrap" style="width:1100px">
+  <svg id="chart" width="100%" height="160" role="img" aria-label="版本成本時間序列"></svg>
+  <table id="tbl">
+    <thead><tr id="thead"></tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<h2>情境四：hover 十字線與 tooltip 跟隨新的 X 座標；終點標籤跟隨最後一個有值點</h2>
+<p class="note">
+  把游標移到上方圖表任一欄的範圍內，十字線 X 即等於該日期資料點 X（= 該欄中心），
+  tooltip 第一行為日期（與表格標題列同一日期格式），其下列出全部版本當日金額（缺值
+  顯示「—」）。勾選「保持 hover」時固定在 D-2。終點標籤（序列數 ≤ 4）畫在各序列最後一個
+  有值點旁；v2 的最後有值點是 D（最右欄），v1 亦然。
+</p>
+
+<h2>情境五：缺值不回歸</h2>
+<p class="note">
+  v1 在 D-4（2026年10月16日）為 null、v2 在 D-1（2026年10月19日）為 null：折線在該處斷開、
+  不內插、不畫成 0，表格該格顯示「—」。
+</p>
+
+<h2>情境六：既有互動與無障礙不回歸</h2>
+<p class="note">
+  <code>&lt;svg role="img" aria-label="版本成本時間序列"&gt;</code> 保留；表格存在且可讀；
+  Y 軸金額標示（最高／最低，位於左側表頭「版本」欄上方）與水平格線仍顯示；
+  終點標籤／圖例二選一門檻（序列數 ≤ 4 用終點標籤）不變。
+</p>
+
+<script>
+(function () {
+  var dates = ["2026年10月14日","2026年10月15日","2026年10月16日","2026年10月17日","2026年10月18日","2026年10月19日","2026年10月20日"];
+  var iso = ["2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19","2026-10-20"];
+  var series = [
+    { v: "v1", color: "#2a78d6", vals: [100, 120, null, 150, 170, 160, 190] },
+    { v: "v2", color: "#eb6834", vals: [50, 60, 80, 70, 95, null, 90] }
+  ];
+  var H = 160, P = 24;
+  function fmt(x) {
+    if (x === null) return "—";
+    if (x !== 0 && Math.abs(x) < 100) return "US$ " + x.toFixed(2);
+    return "US$ " + x.toLocaleString("en-US");
+  }
+
+  // 建表（等同實作中的 <table>；th 帶 data-date-col）
+  var thead = document.getElementById("thead");
+  var h = '<th>版本</th>';
+  dates.forEach(function (d, i) { h += '<th data-date-col="' + iso[i] + '">' + d + '</th>'; });
+  thead.innerHTML = h;
+  var rows = "";
+  series.forEach(function (s) {
+    rows += '<tr><td class="ver">' + s.v + '</td>';
+    s.vals.forEach(function (x) { rows += '<td>' + fmt(x) + '</td>'; });
+    rows += '</tr>';
+  });
+  document.getElementById("tbody").innerHTML = rows;
+
+  var wrap = document.getElementById("wrap");
+  var svg = document.getElementById("chart");
+  var tbl = document.getElementById("tbl");
+  var hovered = null;
+  var layout = null;
+
+  function measure() {
+    var sr = svg.getBoundingClientRect();
+    var ths = Array.prototype.slice.call(document.querySelectorAll("th[data-date-col]"));
+    var first = document.querySelector("#thead th:first-child").getBoundingClientRect();
+    var centers = ths.map(function (th) {
+      var r = th.getBoundingClientRect();
+      return r.left + r.width / 2 - sr.left;
+    });
+    return { W: sr.width, centers: centers, plotLeft: first.right - sr.left };
+  }
+
+  function draw() {
+    layout = measure();
+    var W = layout.W, cs = layout.centers, L = layout.plotLeft;
+    var all = [];
+    series.forEach(function (s) { s.vals.forEach(function (x) { if (x !== null) all.push(x); }); });
+    var min = Math.min.apply(null, all), max = Math.max.apply(null, all);
+    var innerH = H - P * 2;
+    function y(x) { return P + innerH - ((x - min) / (max - min)) * innerH; }
+    var midX = (L + W) / 2;
+    var out = '';
+    svg.setAttribute("viewBox", "0 0 " + W.toFixed(2) + " " + H);
+    // 格線（先於折線）
+    [max, min].forEach(function (x) {
+      out += '<line x1="' + L.toFixed(1) + '" x2="' + W.toFixed(1) + '" y1="' + y(x).toFixed(1) + '" y2="' + y(x).toFixed(1) + '" stroke="#E5E7EB"/>';
+    });
+    if (document.getElementById("guides").checked) {
+      cs.forEach(function (c) {
+        out += '<line x1="' + c.toFixed(1) + '" x2="' + c.toFixed(1) + '" y1="0" y2="' + H + '" stroke="#d1d5db" stroke-dasharray="1,3" data-proto="guide"/>';
+      });
+    }
+    var tails = [];
+    series.forEach(function (s) {
+      var seg = [], segs = [];
+      s.vals.forEach(function (x, i) {
+        if (x === null) { if (seg.length) segs.push(seg); seg = []; return; }
+        seg.push(cs[i].toFixed(1) + "," + y(x).toFixed(1));
+      });
+      if (seg.length) segs.push(seg);
+      segs.forEach(function (sg) {
+        out += '<polyline points="' + sg.join(" ") + '" fill="none" stroke="' + s.color + '" stroke-width="2"/>';
+      });
+      var last = -1;
+      s.vals.forEach(function (x, i) { if (x !== null) last = i; });
+      if (last >= 0) tails.push({ s: s, i: last });
+    });
+    // 原型專用：資料點小圓點（用來量測偏差，實作中不存在）
+    series.forEach(function (s) {
+      s.vals.forEach(function (x, i) {
+        if (x === null) return;
+        out += '<circle data-proto="dot" data-i="' + i + '" cx="' + cs[i].toFixed(2) + '" cy="' + y(x).toFixed(1) + '" r="2.5" fill="' + s.color + '"/>';
+      });
+    });
+    // Y 軸金額標示（位於左側「版本」欄範圍內）
+    out += '<g data-axis="y">';
+    [max, min].forEach(function (x) {
+      out += '<text x="2" y="' + y(x).toFixed(1) + '" font-size="10" fill="#4B5563" dominant-baseline="middle">' + fmt(x) + '</text>';
+    });
+    out += '</g>';
+    // 注意：沒有 data-axis="x" 群組，圖表內不繪製任何 X 軸日期文字。
+    // 終點標籤
+    out += '<g data-labels="tail">';
+    tails.forEach(function (t) {
+      var x = cs[t.i], anchor = x >= midX ? "end" : "start", dx = anchor === "end" ? -6 : 6;
+      out += '<text x="' + (x + dx).toFixed(1) + '" y="' + (y(t.s.vals[t.i]) - 8).toFixed(1) + '" text-anchor="' + anchor + '" font-size="10" fill="' + t.s.color + '">' + t.s.v + ' ' + fmt(t.s.vals[t.i]) + '</text>';
+    });
+    out += '</g>';
+    // hover overlay
+    out += '<rect id="ov" x="' + L.toFixed(1) + '" y="0" width="' + (W - L).toFixed(1) + '" height="' + H + '" fill="transparent"/>';
+    var hi = hovered !== null ? hovered : (document.getElementById("pin").checked ? 4 : null);
+    if (hi !== null) {
+      var hx = cs[hi];
+      out += '<line x1="' + hx.toFixed(1) + '" x2="' + hx.toFixed(1) + '" y1="' + P + '" y2="' + (H - P) + '" stroke="#4B5563" stroke-dasharray="2,2"/>';
+      var tw = 140, th = 14 + (series.length + 1) * 14 + 6;
+      var tx = hx >= midX ? hx - tw - 8 : hx + 8;
+      out += '<g data-tooltip="active"><rect x="' + tx.toFixed(1) + '" y="' + P + '" width="' + tw + '" height="' + th + '" fill="#fff" stroke="#E5E7EB" rx="4"/>';
+      out += '<text x="' + (tx + 8).toFixed(1) + '" y="' + (P + 14) + '" font-size="10" font-weight="600" fill="#1F2937">' + dates[hi] + '</text>';
+      series.forEach(function (s, k) {
+        out += '<text x="' + (tx + 8).toFixed(1) + '" y="' + (P + 14 + (k + 1) * 14) + '" font-size="10" fill="' + s.color + '">' + s.v + ': ' + fmt(s.vals[hi]) + '</text>';
+      });
+      out += '</g>';
+    }
+    svg.innerHTML = out;
+
+    var ov = document.getElementById("ov");
+    ov.addEventListener("mousemove", function (e) {
+      var sr = svg.getBoundingClientRect(), sx = e.clientX - sr.left, best = 0, bd = Infinity;
+      cs.forEach(function (c, i) { var d = Math.abs(c - sx); if (d < bd) { bd = d; best = i; } });
+      if (hovered !== best) { hovered = best; draw(); }
+    });
+    ov.addEventListener("mouseleave", function () { hovered = null; draw(); });
+
+    // 量測偏差：圓點實際渲染中心 vs 表頭欄實際中心
+    var maxDev = 0, dots = svg.querySelectorAll('circle[data-proto="dot"]');
+    var thEls = document.querySelectorAll("th[data-date-col]");
+    Array.prototype.forEach.call(dots, function (d) {
+      var i = +d.getAttribute("data-i");
+      var dr = d.getBoundingClientRect(), tr = thEls[i].getBoundingClientRect();
+      maxDev = Math.max(maxDev, Math.abs(dr.left + dr.width / 2 - (tr.left + tr.width / 2)));
+    });
+    var ro = document.getElementById("readout");
+    ro.textContent = maxDev.toFixed(2) + " px";
+    ro.style.color = maxDev <= 1 ? "#1baf7a" : "#e34948";
+  }
+
+  function setW(w) {
+    wrap.style.width = w + "px";
+    document.getElementById("wval").textContent = w + "px";
+    document.getElementById("slider").value = w;
+    Array.prototype.forEach.call(document.querySelectorAll("button[data-w]"), function (b) {
+      b.classList.toggle("active", +b.getAttribute("data-w") === w);
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("button[data-w]"), function (b) {
+    b.addEventListener("click", function () { setW(+b.getAttribute("data-w")); });
+  });
+  document.getElementById("slider").addEventListener("input", function (e) { setW(+e.target.value); });
+  document.getElementById("guides").addEventListener("change", draw);
+  document.getElementById("pin").addEventListener("change", draw);
+
+  // 機制本體：ResizeObserver 觀察容器與表格，尺寸改變就重新量測並重畫。
+  var pending = false;
+  var ro = new ResizeObserver(function () {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(function () { pending = false; draw(); });
+  });
+  ro.observe(wrap);
+  ro.observe(tbl);
+  draw();
+})();
+</script>
+
+</body>
+</html>

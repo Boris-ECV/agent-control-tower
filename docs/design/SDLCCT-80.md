@@ -236,7 +236,7 @@ const handleMouseLeave = () => setHoveredIndex(null);
   const tooltipY = CHART_PADDING;
   ```
 - 內容逐行：第一行日期標題（`formatTaiwanDate(dates[hoveredIndex])`，
-  重用既有函式，與 X 軸標籤、表格欄位同一日期格式），接著每個
+  重用既有函式，與表格標題列、表格欄位同一日期格式），接著每個
   `entries` 成員各一行「版本名稱: 金額」，文字顏色採該版本的色票色
   （與 SDLCCT-79 終點標籤同一慣例，延續「顏色 ↔ 版本」視覺對應）。
 - **列出 `entries` 全部成員，不套用 SDLCCT-79 的 `showTailLabels`（≤4）
@@ -261,6 +261,8 @@ const handleMouseLeave = () => setHoveredIndex(null);
 )}
 ```
 
+- 【SDLCCT-88 更新】X 軸文字已移除，`y2` 改為 `CHART_HEIGHT - CHART_PADDING`
+  （= `136`）；以下為 SDLCCT-80 當時為避開 X 軸標籤文字的歷史說明。
 - 下邊界取 `CHART_HEIGHT - CHART_PADDING - 10`（= `160 - 24 - 10 =
   126`）而非 `CHART_HEIGHT - CHART_PADDING`（= `136`）：X 軸標籤文字
   渲染在 `y = CHART_HEIGHT - 6 = 154`，字高約 10px，文字視覺範圍約落
@@ -342,7 +344,7 @@ CONSTITUTION「設計文件應與故事規模成比例：小改動用短設計�
 SDLCCT-79 的 11.2「直接標籤」），內容對應上方關鍵技術決策 1-5 定案
 的規則：
 
-- Tooltip 內容格式：第一行為該資料點對應的日期（與 X 軸標籤同一日期
+- Tooltip 內容格式：第一行為該資料點對應的日期（與表格標題列同一日期
   格式），接著每個資料序列各一行「序列名稱: 金額」，文字顏色採該序
   列本身的色票顏色（延續「顏色 ↔ 序列」視覺對應）；列出該資料點下
   **全部**資料序列，不受「直接標籤 vs 圖例」門檻（11.2）限制——兩者
