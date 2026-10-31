@@ -93,13 +93,13 @@ test("anomalies page renders ok rows, null-date ongoing text, and error banners 
 
   await page.goto("/anomalies");
 
-  // AC1: non-null date rendered via formatTaiwanDate (2026-10-18 -> 2026年10月18日).
+  // AC1: non-null date rendered via formatSlashDate (2026-10-18 -> 2026/10/18).
   // getByText(...).first() because the desktop <table> and the mobile <ul>
   // card list (anomaly-table.tsx) both render the same okRows at once --
   // CSS (hidden/md:table, md:hidden) controls which is visible, but both
   // are present in the DOM, which makes an unscoped exact-text locator
   // ambiguous under Playwright's strict mode.
-  await expect(page.getByText("2026年10月18日").first()).toBeVisible();
+  await expect(page.getByText("2026/10/18").first()).toBeVisible();
 
   // AC2: date=null (governance_gap, ok row) shows 持續中 instead of blank/null.
   await expect(page.getByText("持續中").first()).toBeVisible();
@@ -261,7 +261,7 @@ test("mobile viewport: card list view also honors AC1-AC4 (date/ongoing, agent, 
   // in the DOM -- see the earlier desktop test's note on strict-mode
   // ambiguity for the same reason).
   const cardList = page.getByRole("list");
-  await expect(cardList.getByText("2026年10月18日")).toBeVisible();
+  await expect(cardList.getByText("2026/10/18")).toBeVisible();
   await expect(cardList.getByText("持續中")).toBeVisible();
   await expect(cardList.getByText("sales-copilot")).toBeVisible();
   await expect(cardList.getByText("工具重試迴圈")).toBeVisible();

@@ -122,6 +122,8 @@ describe("VersionCostChart 日期軸固定 7 天 (SDLCCT-72)", () => {
       .slice(1)
       .map((el) => el.textContent);
     expect(dateHeaderTexts).toHaveLength(7);
+    expect(dateHeaderTexts).toEqual(["10/14 (三)", "10/15 (四)", "10/16 (五)", "10/17 (六)", "10/18 (日)", "10/19 (一)", "10/20 (二)"]);
+    dateHeaderTexts.forEach((text) => expect(text).not.toContain("年"));
 
     // 折線 X 軸資料點數量同樣以這 7 天為準：只有 2 個非 null 值，連成 1 條
     // 折線，但其座標是以 7 天的間距（dates.length = 7）計算，不是以 2 天。
@@ -1414,7 +1416,8 @@ describe("VersionCostChart 欄中心對齊 (SDLCCT-88)", () => {
     const overlay = container.querySelector("svg > rect") as Element;
     fireEvent.mouseMove(overlay, { clientX: 100 + expectedCenters()[1] });
     const first = container.querySelector('svg g[data-tooltip="active"] text');
-    expect(first?.textContent).toBe(secondDate);
+    expect(first?.textContent).toBe("2026年10月15日");
+    expect(secondDate).toBe("10/15 (四)");
   });
 });
 
@@ -1541,13 +1544,15 @@ describe("測試者獨立補充驗證 (SDLCCT-88)", () => {
     fireEvent.mouseMove(overlay(container), { clientX: 50 + centers()[0] });
     expect(crossX(container)).toBeCloseTo(centers()[0], 1);
     expect(container.querySelector('g[data-tooltip="active"] text')?.textContent).toBe(
-      ths[1].textContent,
+      "2026年10月14日",
     );
+    expect(ths[1].textContent).toBe("10/14 (三)");
     fireEvent.mouseMove(overlay(container), { clientX: 50 + centers()[6] });
     expect(crossX(container)).toBeCloseTo(centers()[6], 1);
     expect(container.querySelector('g[data-tooltip="active"] text')?.textContent).toBe(
-      ths[7].textContent,
+      "2026年10月20日",
     );
+    expect(ths[7].textContent).toBe("10/20 (二)");
   });
 
   it("非等寬欄時，hover 以真實欄中心最近鄰命中：兩中心中點兩側分別命中不同欄", () => {

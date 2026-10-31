@@ -1,7 +1,7 @@
 "use client";
 
 import type { AnomalyRow } from "@/lib/anomalies-api";
-import { formatTaiwanDate } from "@/lib/format";
+import { formatSlashDate } from "@/lib/format";
 import { t } from "@/lib/i18n/t";
 
 // anomaly_type 的本地化標籤（5 個，逐一列出，供後續故事沿用同一組文案，
@@ -16,7 +16,7 @@ export const ANOMALY_TYPE_LABELS: Record<string, string> = {
 };
 
 export function formatAnomalyDate(date: string | null): string {
-  return date === null ? t("anomalies.table.ongoing") : formatTaiwanDate(date);
+  return date === null ? t("anomalies.table.ongoing") : formatSlashDate(date);
 }
 
 function AnomalyDesktopTable({ rows }: { rows: AnomalyRow[] }) {

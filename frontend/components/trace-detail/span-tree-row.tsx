@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { groupSiblings } from "@/components/trace-detail/group-spans";
-import { formatTaiwanDateTime } from "@/lib/format";
+import { formatSlashDateTime } from "@/lib/format";
 import { t } from "@/lib/i18n/t";
 import type { SpanTreeNode } from "@/lib/trace-spans-api";
 
@@ -43,7 +43,7 @@ function SingleSpanRow({ node, depth }: { node: SpanTreeNode; depth: number }) {
       <SpanLine depth={depth}>
         <SpanLabel node={node} />
         <span className="text-xs text-text-secondary">
-          {formatTaiwanDateTime(node.start_time)}–{formatTaiwanDateTime(node.end_time)}
+          {formatSlashDateTime(node.start_time)}–{formatSlashDateTime(node.end_time)}
         </span>
       </SpanLine>
       {node.children.length > 0 && <SpanTreeRow nodes={node.children} depth={depth + 1} />}
