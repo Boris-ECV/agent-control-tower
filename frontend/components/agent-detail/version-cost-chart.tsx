@@ -14,8 +14,12 @@ import { t } from "@/lib/i18n/t";
 // docs/design/SDLCCT-88.md。圖表內不再繪製 X 軸日期文字。
 // SDLCCT-89：Y 方向 4 層等距淡色水平格線（像素空間公式），詳見
 // docs/design/SDLCCT-89.md。
+// SDLCCT-90：折線下方面積漸層，重用折線 runs，React.useId 產生漸層 id，
+// 詳見 docs/design/SDLCCT-90.md。
 const CHART_HEIGHT = 160;
 const CHART_PADDING = 24;
+const CHART_BASELINE = CHART_HEIGHT - CHART_PADDING;
+const AREA_TOP_OPACITY = 0.15;
 const FALLBACK_WIDTH = 480;
 const FALLBACK_LABEL_COL = 72;
 const GRIDLINE_LEVELS = 4;
@@ -97,6 +101,9 @@ function fixedSevenDates(anchorDate: string): string[] {
   });
 }
 
+type Pt = { x: number; y: number };
+const fmtPt = (p: Pt) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+
 export function VersionCostChart({
   entries,
   anchorDate,
@@ -105,6 +112,7 @@ export function VersionCostChart({
   anchorDate: string; // "YYYY-MM-DD", UTC midnight convention, same as AgentCostBreakdownResponse.anchor_date
 }) {
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
+  const uid = React.useId().replace(/:/g, "");
 
   const dates = fixedSevenDates(anchorDate);
 
@@ -148,12 +156,6 @@ export function VersionCostChart({
 
   const xFor = (dateIndex: number) => layout.centers[dateIndex];
 
-  const toXY = (dateIndex: number, value: number) => {
-    const x = xFor(dateIndex);
-    const y = yFor(value);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  };
-
   // Y 軸金額標示（SDLCCT-73）：僅在有非 null 數值時顯示，絕不臆測 0
   // (CONSTITUTION「缺值顯示未知，不顯示 0」)。max === min 時僅顯示一個標示。
   const hasValues = allValues.length > 0;
@@ -191,6 +193,39 @@ export function VersionCostChart({
   const showTailLabels = entries.length <= 4;
   const plotMidX = (layout.plotLeft + layout.width) / 2;
   const tailLabels: { key: string; x: number; y: number; color: string; text: string }[] = [];
+
+  // 每序列的連續非 null 線段（runs，數值座標）：折線 points 與面積 d 共用
+  // 同一份 runs 與 fmtPt，斷點與座標不可能分歧（SDLCCT-90）。
+  const seriesRender = entries.map((entry, entryIndex) => {
+    const values = byDate(entry);
+    const runs: Pt[][] = [];
+    let current: Pt[] = [];
+    values.forEach((value, dateIndex) => {
+      if (value === null) {
+        if (current.length > 0) runs.push(current);
+        current = [];
+        return;
+      }
+      current.push({ x: xFor(dateIndex), y: yFor(value) });
+    });
+    if (current.length > 0) runs.push(current);
+
+    const color = COLORS[entryIndex % COLORS.length];
+
+    // 終點直接標籤（SDLCCT-79）：重用同一個 values 陣列（與折線斷點
+    // 判斷同一個「有值」定義），不重新解析 entry.points。
+    const tailIndex = lastValidIndex(values);
+    if (tailIndex !== -1) {
+      tailLabels.push({
+        key: entry.version,
+        x: xFor(tailIndex),
+        y: yFor(values[tailIndex] as number),
+        color,
+        text: `${entry.version} ${formatCurrency(values[tailIndex] as number)}`,
+      });
+    }
+    return { entry, entryIndex, runs, color };
+  });
 
   // Hover hit-testing（SDLCCT-80）：單一全高透明 <rect> overlay，把游標的
   // 螢幕像素座標換算回 viewBox 座標系統後，找出最接近的 dateIndex。
@@ -257,53 +292,59 @@ export function VersionCostChart({
           ))}
         </g>
 
-        {entries.map((entry, entryIndex) => {
-          const values = byDate(entry);
-          const segments: string[][] = [];
-          let current: string[] = [];
-          values.forEach((value, dateIndex) => {
-            if (value === null) {
-              if (current.length > 0) segments.push(current);
-              current = [];
-              return;
-            }
-            current.push(toXY(dateIndex, value));
-          });
-          if (current.length > 0) segments.push(current);
-
-          const color = COLORS[entryIndex % COLORS.length];
-
-          // 終點直接標籤（SDLCCT-79）：重用同一個 values 陣列（與折線斷點
-          // 判斷同一個「有值」定義），不重新解析 entry.points。
-          const tailIndex = lastValidIndex(values);
-          const tailPoint =
-            tailIndex === -1
-              ? null
-              : { x: xFor(tailIndex), y: yFor(values[tailIndex] as number) };
-          if (tailPoint) {
-            tailLabels.push({
-              key: entry.version,
-              x: tailPoint.x,
-              y: tailPoint.y,
-              color,
-              text: `${entry.version} ${formatCurrency(values[tailIndex] as number)}`,
-            });
-          }
-
-          return (
-            <g key={entry.version}>
-              {segments.map((segment, i) => (
-                <polyline
-                  key={i}
-                  points={segment.join(" ")}
-                  fill="none"
-                  stroke={color}
-                  strokeWidth={2}
-                />
+        {/* 面積（SDLCCT-90）：位於格線之後、折線之前；純裝飾，不攔截事件。 */}
+        <g data-areas aria-hidden="true" pointerEvents="none">
+          <defs>
+            {seriesRender
+              .filter((s) => s.runs.some((r) => r.length >= 2))
+              .map((s) => (
+                <linearGradient
+                  key={s.entry.version}
+                  id={`${uid}-area-${s.entryIndex}`}
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
+                  <stop offset="0" stopColor={s.color} stopOpacity={AREA_TOP_OPACITY} />
+                  <stop offset="1" stopColor={s.color} stopOpacity={0} />
+                </linearGradient>
               ))}
-            </g>
-          );
-        })}
+          </defs>
+          {seriesRender.flatMap((s) =>
+            s.runs.map((run, runIndex) => {
+              if (run.length < 2) return null;
+              const first = run[0];
+              const last = run[run.length - 1];
+              const d = `M ${run.map(fmtPt).join(" L ")} L ${last.x.toFixed(1)},${CHART_BASELINE.toFixed(1)} L ${first.x.toFixed(1)},${CHART_BASELINE.toFixed(1)} Z`;
+              return (
+                <path
+                  key={`${s.entry.version}-${runIndex}`}
+                  data-area={s.entry.version}
+                  data-run={runIndex}
+                  d={d}
+                  fill={`url(#${uid}-area-${s.entryIndex})`}
+                  stroke="none"
+                  pointerEvents="none"
+                />
+              );
+            }),
+          )}
+        </g>
+
+        {seriesRender.map((s) => (
+          <g key={s.entry.version}>
+            {s.runs.map((run, i) => (
+              <polyline
+                key={i}
+                points={run.map(fmtPt).join(" ")}
+                fill="none"
+                stroke={s.color}
+                strokeWidth={2}
+              />
+            ))}
+          </g>
+        ))}
 
         <g data-axis="y">
           {labels.map((label) => (
