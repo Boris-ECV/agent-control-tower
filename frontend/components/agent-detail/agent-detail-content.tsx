@@ -8,7 +8,10 @@ import { TopTracesTable } from "@/components/agent-detail/top-traces-table";
 import { VersionCostChart } from "@/components/agent-detail/version-cost-chart";
 import { BackLink } from "@/components/common/back-link";
 import { ErrorCard } from "@/components/cost-overview/error-card";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { fetchAgentCostBreakdown } from "@/lib/agent-detail-api";
+import { rememberAgentDisplayName } from "@/lib/agent-display";
+import { buildAgentBreadcrumbs } from "@/lib/breadcrumbs";
 import { formatTaiwanDate } from "@/lib/format";
 import { t } from "@/lib/i18n/t";
 import { useFetchOnce } from "@/lib/use-fetch-once";
@@ -32,18 +35,33 @@ export function AgentDetailContent() {
   const params = useParams<{ key: string }>();
   const key = params.key;
 
-  const fetcher = useCallback(() => fetchAgentCostBreakdown(key), [key]);
+  const fetcher = useCallback(
+    () =>
+      fetchAgentCostBreakdown(key).then((d) => {
+        rememberAgentDisplayName(key, d.display);
+        return d;
+      }),
+    [key],
+  );
   const state = useFetchOnce(fetcher);
 
   return (
     <div className="flex min-h-full flex-col bg-gray-50">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-bg px-6 py-3">
-        <BackLink href="/agents" label={t("agentDetail.header.backToList")} />
-        <span className="text-xs leading-[18px] text-text-secondary">
-          {state.status === "success"
-            ? formatTaiwanDate(state.data.anchor_date)
-            : t("costOverview.header.unavailable")}
-        </span>
+      <header className="sticky top-0 z-10 flex flex-col gap-2 border-b border-border bg-bg px-6 py-3">
+        <Breadcrumbs
+          items={buildAgentBreadcrumbs({
+            agentKey: key,
+            agentName: state.status === "success" && state.data.display ? state.data.display : key,
+          })}
+        />
+        <div className="flex items-center justify-between">
+          <BackLink href="/agents" label={t("agentDetail.header.backToList")} />
+          <span className="text-xs leading-[18px] text-text-secondary">
+            {state.status === "success"
+              ? formatTaiwanDate(state.data.anchor_date)
+              : t("costOverview.header.unavailable")}
+          </span>
+        </div>
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-6">
