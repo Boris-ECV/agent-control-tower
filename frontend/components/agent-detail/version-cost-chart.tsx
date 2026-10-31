@@ -12,10 +12,13 @@ import { t } from "@/lib/i18n/t";
 // SDLCCT-88：資料點 X 座標對齊下方表格各日期欄中心，機制為量測真實 <th>
 // 欄中心（getBoundingClientRect + ResizeObserver），詳見
 // docs/design/SDLCCT-88.md。圖表內不再繪製 X 軸日期文字。
+// SDLCCT-89：Y 方向 4 層等距淡色水平格線（像素空間公式），詳見
+// docs/design/SDLCCT-89.md。
 const CHART_HEIGHT = 160;
 const CHART_PADDING = 24;
 const FALLBACK_WIDTH = 480;
 const FALLBACK_LABEL_COL = 72;
+const GRIDLINE_LEVELS = 4;
 
 export type ChartLayout = {
   width: number;
@@ -163,6 +166,20 @@ export function VersionCostChart({
           { key: "min", value: min, y: yFor(min) },
         ];
 
+  // 格線（SDLCCT-89）：與 Y 軸標示解耦。max !== min 時 4 條等距（像素空間），
+  // max === min 時僅 1 條位於單一標示高度，無值時不畫。
+  const gridlines: {
+    key: "max" | "upper" | "lower" | "min" | "single";
+    y: number;
+  }[] = !hasValues
+    ? []
+    : max === min
+      ? [{ key: "single", y: yFor(max) }]
+      : (["max", "upper", "lower", "min"] as const).map((key, k) => ({
+          key,
+          y: CHART_PADDING + (k * innerHeight) / (GRIDLINE_LEVELS - 1),
+        }));
+
   const byDate = (entry: VersionCostSeriesEntry) => {
     const map = new Map(entry.points.map((p) => [p.date, p.value]));
     return dates.map((date) => map.get(date) ?? null);
@@ -223,17 +240,17 @@ export function VersionCostChart({
         className="mb-3"
         style={{ overflow: "visible" }}
       >
-        {/* 格線（SDLCCT-78）：必須在資料折線之前渲染，確保視覺上位於折線
-            後方。對齊既有 Y 軸金額標示（labels）的高度，重用 labels[].y，
-            不重新呼叫 yFor()。 */}
-        <g>
-          {labels.map((label) => (
+        {/* 格線（SDLCCT-78/89）：必須在資料折線之前渲染，確保視覺上位於折線
+            後方。不帶 strokeDasharray（十字線專用）、不含 <text>。 */}
+        <g data-gridlines>
+          {gridlines.map((line) => (
             <line
-              key={label.key}
+              key={line.key}
+              data-gridline={line.key}
               x1={layout.plotLeft}
               x2={layout.width}
-              y1={label.y}
-              y2={label.y}
+              y1={line.y}
+              y2={line.y}
               stroke="var(--color-border)"
               strokeWidth={1}
             />

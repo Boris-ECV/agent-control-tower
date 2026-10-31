@@ -366,7 +366,7 @@ describe("VersionCostChart X 軸刻度與格線 (SDLCCT-78)", () => {
 
     const svg = container.querySelector("svg");
     const lines = Array.from(svg?.querySelectorAll("line") ?? []);
-    expect(lines).toHaveLength(2);
+    expect(lines).toHaveLength(4); // SDLCCT-89：4 層等距格線
 
     const texts = container.querySelectorAll("svg text");
     const maxText = Array.from(texts).find((el) => el.textContent === "US$ 400");
@@ -454,6 +454,7 @@ describe("VersionCostChart X 軸刻度與格線 — 測試者獨立補充驗證"
     const svg = container.querySelector("svg");
     const lines = Array.from(svg?.querySelectorAll("line") ?? []);
     expect(lines).toHaveLength(1);
+    expect(lines[0]?.getAttribute("data-gridline")).toBe("single");
 
     const singleLabel = container.querySelector('svg g[data-axis="y"] text');
     expect(Number(lines[0]?.getAttribute("y1"))).toBeCloseTo(
@@ -1401,7 +1402,7 @@ describe("VersionCostChart 欄中心對齊 (SDLCCT-88)", () => {
     expect(svg?.getAttribute("aria-label")).toBeTruthy();
     expect(container.querySelector('svg g[data-axis="x"]')).toBeNull();
     expect(container.querySelectorAll('svg g[data-axis="y"] text')).toHaveLength(2);
-    expect(container.querySelectorAll("svg > g:first-of-type > line")).toHaveLength(2);
+    expect(container.querySelectorAll("svg > g:first-of-type > line")).toHaveLength(4);
     expect(container.querySelector("table")).toBeTruthy();
     const headers = container.querySelectorAll("thead th");
     const secondDate = headers[2].textContent ?? "";
@@ -1673,5 +1674,352 @@ describe("測試者獨立補充驗證 (SDLCCT-88)", () => {
     const tail = container.querySelector('svg g[data-labels="tail"] text');
     expect(tail?.textContent).toContain("v1");
     expect(Math.abs(Number(tail?.getAttribute("x")) - centers()[5])).toBeCloseTo(6, 1);
+  });
+});
+
+describe("VersionCostChart 4 層等距格線 (SDLCCT-89)", () => {
+  const CHART_HEIGHT = 160;
+  const CHART_PADDING = 24;
+  const STEP = (CHART_HEIGHT - 2 * CHART_PADDING) / 3;
+
+  const diffEntries = (): VersionCostSeriesEntry[] => [
+    entry("v1", [
+      { date: "2026-10-14", value: 100 },
+      { date: "2026-10-15", value: 400 },
+    ]),
+    entry("v2", [
+      { date: "2026-10-14", value: 50 },
+      { date: "2026-10-15", value: 200 },
+    ]),
+    entry("v3", [
+      { date: "2026-10-14", value: 300 },
+      { date: "2026-10-15", value: 350 },
+    ]),
+  ];
+
+  const gridYs = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll("svg g[data-gridlines] > line")).map((l) =>
+      Number(l.getAttribute("y1")),
+    );
+
+  it("情境 1：max != min 時恰 4 條格線，順序 max/upper/lower/min，Y 嚴格遞增且等距，端點對齊 Y 標示", () => {
+    const { container } = render(
+      <VersionCostChart entries={diffEntries()} anchorDate="2026-10-15" />,
+    );
+    const lines = Array.from(container.querySelectorAll("svg g[data-gridlines] > line"));
+    expect(lines).toHaveLength(4);
+    expect(lines.map((l) => l.getAttribute("data-gridline"))).toEqual([
+      "max",
+      "upper",
+      "lower",
+      "min",
+    ]);
+    const ys = gridYs(container);
+    for (let i = 1; i < ys.length; i++) {
+      expect(ys[i]).toBeGreaterThan(ys[i - 1]);
+      expect(ys[i] - ys[i - 1]).toBeCloseTo(STEP, 1);
+    }
+    const texts = Array.from(container.querySelectorAll('svg g[data-axis="y"] text'));
+    const maxText = texts.find((el) => el.textContent === "US$ 400");
+    const minText = texts.find((el) => el.textContent === "US$ 50.00");
+    expect(ys[0]).toBeCloseTo(Number(maxText?.getAttribute("y")), 1);
+    expect(ys[3]).toBeCloseTo(Number(minText?.getAttribute("y")), 1);
+  });
+
+  it("情境 1 補強：中間兩條 Y 等於線性公式對 min+Δ/3、min+2Δ/3 的結果", () => {
+    const { container } = render(
+      <VersionCostChart entries={diffEntries()} anchorDate="2026-10-15" />,
+    );
+    const min = 50;
+    const max = 400;
+    const inner = CHART_HEIGHT - 2 * CHART_PADDING;
+    const yFor = (v: number) =>
+      CHART_PADDING + inner - ((v - min) / (max - min)) * inner;
+    const ys = gridYs(container);
+    const d = max - min;
+    expect(ys[1]).toBeCloseTo(yFor(min + (2 * d) / 3), 1);
+    expect(ys[2]).toBeCloseTo(yFor(min + d / 3), 1);
+  });
+
+  it("情境 2：max === min 時恰 1 條格線，data-gridline=single，Y 等於單一標示 Y", () => {
+    const entries = [
+      entry("v1", [
+        { date: "2026-10-14", value: 100 },
+        { date: "2026-10-15", value: 100 },
+      ]),
+    ];
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-15" />,
+    );
+    const lines = container.querySelectorAll("svg g[data-gridlines] > line");
+    expect(lines).toHaveLength(1);
+    expect(lines[0].getAttribute("data-gridline")).toBe("single");
+    const label = container.querySelector('svg g[data-axis="y"] text');
+    expect(Number(lines[0].getAttribute("y1"))).toBeCloseTo(
+      Number(label?.getAttribute("y")),
+      1,
+    );
+  });
+
+  it("情境 3：全 null 與空陣列皆無格線、無任何 Y 標示、無 0 刻度", () => {
+    const allNull = [
+      entry("v1", [
+        { date: "2026-10-14", value: null },
+        { date: "2026-10-15", value: null },
+      ]),
+    ];
+    for (const entries of [allNull, []]) {
+      const { container, unmount } = render(
+        <VersionCostChart entries={entries} anchorDate="2026-10-15" />,
+      );
+      expect(container.querySelectorAll("svg g[data-gridlines] > line")).toHaveLength(0);
+      expect(container.querySelectorAll('svg g[data-axis="y"] text')).toHaveLength(0);
+      const all = Array.from(container.querySelectorAll("svg text")).map(
+        (e) => e.textContent,
+      );
+      expect(all).not.toContain("US$ 0");
+      expect(all).not.toContain("0");
+      unmount();
+    }
+  });
+
+  it("情境 4：格線 stroke 為 var(--color-border)、無 stroke-dasharray，且全部先於所有 <polyline>", () => {
+    const { container } = render(
+      <VersionCostChart entries={diffEntries()} anchorDate="2026-10-15" />,
+    );
+    const lines = Array.from(container.querySelectorAll("svg g[data-gridlines] > line"));
+    expect(lines).toHaveLength(4);
+    for (const l of lines) {
+      expect(l.getAttribute("stroke")).toBe("var(--color-border)");
+      expect(l.hasAttribute("stroke-dasharray")).toBe(false);
+    }
+    const ordered = Array.from(
+      container.querySelectorAll("svg g[data-gridlines] > line, svg polyline"),
+    );
+    const lastLine = Math.max(
+      ...ordered.map((el, i) => (el.tagName.toLowerCase() === "line" ? i : -1)),
+    );
+    const polys = ordered
+      .map((el, i) => (el.tagName.toLowerCase() === "polyline" ? i : -1))
+      .filter((i) => i >= 0);
+    expect(polys.length).toBeGreaterThanOrEqual(3);
+    expect(lastLine).toBeLessThan(Math.min(...polys));
+  });
+
+  it("情境 5：Y 標示恰 2 個（max/min），格線群組無 <text>，中間層級金額不出現", () => {
+    const { container } = render(
+      <VersionCostChart entries={diffEntries()} anchorDate="2026-10-15" />,
+    );
+    const ytexts = Array.from(container.querySelectorAll('svg g[data-axis="y"] text'));
+    expect(ytexts.map((e) => e.textContent)).toEqual(["US$ 400", "US$ 50.00"]);
+    expect(container.querySelectorAll("svg g[data-gridlines] text")).toHaveLength(0);
+    const all = Array.from(container.querySelectorAll("svg text")).map((e) => e.textContent);
+    expect(all).not.toContain("US$ 167"); // min + Δ/3 ≈ 166.67
+    expect(all).not.toContain("US$ 283"); // min + 2Δ/3 ≈ 283.33
+  });
+
+  it("含 null 但仍有非 null 值（max != min）時仍為 4 條格線", () => {
+    const entries = [
+      entry("v1", [
+        { date: "2026-10-13", value: null },
+        { date: "2026-10-14", value: 10 },
+        { date: "2026-10-15", value: 70 },
+      ]),
+    ];
+    const { container } = render(
+      <VersionCostChart entries={entries} anchorDate="2026-10-15" />,
+    );
+    expect(container.querySelectorAll("svg g[data-gridlines] > line")).toHaveLength(4);
+  });
+
+  it("hover 後 svg line[stroke-dasharray] 恆為 1 條（格線不被誤計）", () => {
+    const { container } = render(
+      <VersionCostChart entries={diffEntries()} anchorDate="2026-10-15" />,
+    );
+    expect(container.querySelectorAll("svg line[stroke-dasharray]")).toHaveLength(0);
+    const overlay = container.querySelector("svg > rect");
+    if (!overlay) throw new Error("overlay not found");
+    fireEvent.mouseMove(overlay, { clientX: 100 });
+    expect(container.querySelectorAll("svg line[stroke-dasharray]")).toHaveLength(1);
+    expect(container.querySelectorAll("svg g[data-gridlines] > line")).toHaveLength(4);
+  });
+});
+
+describe("測試者獨立補充驗證 (SDLCCT-89)", () => {
+  const gridLines = (c: HTMLElement) =>
+    Array.from(c.querySelectorAll("svg g[data-gridlines] > line"));
+  const ysOf = (c: HTMLElement) => gridLines(c).map((l) => Number(l.getAttribute("y1")));
+  const yLabels = (c: HTMLElement) => c.querySelectorAll('svg g[data-axis="y"] text');
+  const two = (a: number | null, b: number | null) => [
+    entry("v1", [
+      { date: "2026-10-14", value: a },
+      { date: "2026-10-15", value: b },
+    ]),
+  ];
+
+  it("max 與 min 僅差 0.001：仍為 4 條相異格線，Y 皆為有限數值（無 NaN）", () => {
+    const { container } = render(
+      <VersionCostChart entries={two(5, 5.001)} anchorDate="2026-10-15" />,
+    );
+    const ys = ysOf(container);
+    expect(ys).toHaveLength(4);
+    expect(ys.every((y) => Number.isFinite(y))).toBe(true);
+    expect(new Set(ys).size).toBe(4);
+  });
+
+  it("極大數值（1e9 級）：4 條格線，Y 有限且遞增，無 NaN", () => {
+    const { container } = render(
+      <VersionCostChart entries={two(1e9, 5e9)} anchorDate="2026-10-15" />,
+    );
+    const ys = ysOf(container);
+    expect(ys).toHaveLength(4);
+    expect(ys.every(Number.isFinite)).toBe(true);
+    expect([...ys].sort((a, b) => a - b)).toEqual(ys);
+    expect(container.innerHTML).not.toContain("NaN");
+  });
+
+  it("min 與 max 來自不同序列且含 null：4 條格線，端點對齊兩個 Y 標示", () => {
+    const entries = [
+      entry("v1", [
+        { date: "2026-10-13", value: null },
+        { date: "2026-10-14", value: 900 },
+        { date: "2026-10-15", value: null },
+      ]),
+      entry("v2", [
+        { date: "2026-10-13", value: 10 },
+        { date: "2026-10-14", value: null },
+        { date: "2026-10-15", value: 20 },
+      ]),
+    ];
+    const { container } = render(<VersionCostChart entries={entries} anchorDate="2026-10-15" />);
+    const ys = ysOf(container);
+    expect(ys).toHaveLength(4);
+    expect(yLabels(container)).toHaveLength(2);
+    const ly = Array.from(yLabels(container)).map((e) => Number(e.getAttribute("y")));
+    expect(ys[0]).toBeCloseTo(Math.min(...ly), 1);
+    expect(ys[3]).toBeCloseTo(Math.max(...ly), 1);
+  });
+
+  it("跨序列數值相同、另一序列含 null：max===min 仍恰 1 條格線與 1 個標示", () => {
+    const entries = [
+      ...two(7, 7),
+      entry("v2", [
+        { date: "2026-10-14", value: null },
+        { date: "2026-10-15", value: 7 },
+      ]),
+    ];
+    const { container } = render(<VersionCostChart entries={entries} anchorDate="2026-10-15" />);
+    expect(gridLines(container)).toHaveLength(1);
+    expect(yLabels(container)).toHaveLength(1);
+    expect(Number(gridLines(container)[0].getAttribute("y1"))).toBeCloseTo(
+      Number(yLabels(container)[0].getAttribute("y")),
+      1,
+    );
+  });
+
+  it("單一非 null 點（max===min）：1 條格線、1 個標示", () => {
+    const { container } = render(
+      <VersionCostChart
+        entries={[entry("v1", [{ date: "2026-10-15", value: 12 }])]}
+        anchorDate="2026-10-15"
+      />,
+    );
+    expect(gridLines(container)).toHaveLength(1);
+    expect(yLabels(container)).toHaveLength(1);
+  });
+
+  it("rerender：varied(4) -> same(1) -> all-null(0) -> varied(4)；標示數 2/1/0/2", () => {
+    const steps: [VersionCostSeriesEntry[], number, number][] = [
+      [two(10, 90), 4, 2],
+      [two(50, 50), 1, 1],
+      [two(null, null), 0, 0],
+      [two(10, 90), 4, 2],
+    ];
+    const { container, rerender } = render(
+      <VersionCostChart entries={steps[0][0]} anchorDate="2026-10-15" />,
+    );
+    for (const [entries, g, l] of steps) {
+      rerender(<VersionCostChart entries={entries} anchorDate="2026-10-15" />);
+      expect(gridLines(container)).toHaveLength(g);
+      expect(yLabels(container)).toHaveLength(l);
+    }
+    rerender(<VersionCostChart entries={two(10, 90)} anchorDate="2026-10-20" />);
+    expect(gridLines(container)).toHaveLength(4);
+  });
+
+  it("格線 <line> 無文字子節點、無 stroke-dasharray，stroke 皆為 var(--color-border)", () => {
+    const { container } = render(
+      <VersionCostChart entries={two(1, 9)} anchorDate="2026-10-15" />,
+    );
+    const lines = gridLines(container);
+    expect(lines).toHaveLength(4);
+    for (const l of lines) {
+      expect(l.childNodes).toHaveLength(0);
+      expect(l.textContent).toBe("");
+      expect(l.hasAttribute("stroke-dasharray")).toBe(false);
+      expect(l.getAttribute("stroke")).toBe("var(--color-border)");
+    }
+  });
+
+  it("量測版面下：格線 x1 = plotLeft（版本欄右緣 - svg 左緣）、x2 = svg 寬度", () => {
+    class FakeRO {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal("ResizeObserver", FakeRO);
+    const mk = (left: number, width: number) => ({
+      left,
+      right: left + width,
+      width,
+      x: left,
+      y: 0,
+      top: 0,
+      bottom: 0,
+      height: 0,
+      toJSON: () => ({}),
+    });
+    const spy = vi
+      .spyOn(Element.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: Element) {
+        if (this.tagName.toLowerCase() === "svg") return mk(50, 800) as DOMRect;
+        if (this.matches("thead th[data-date-col]")) {
+          const i = Array.from(
+            this.parentElement?.querySelectorAll("th[data-date-col]") ?? [],
+          ).indexOf(this);
+          return mk(50 + 100 + i * 100, 100) as DOMRect;
+        }
+        if (this.matches("thead th:first-child")) return mk(50, 100) as DOMRect;
+        return mk(0, 0) as DOMRect;
+      });
+    try {
+      const { container } = render(
+        <VersionCostChart entries={two(1, 9)} anchorDate="2026-10-15" />,
+      );
+      const lines = gridLines(container);
+      expect(lines).toHaveLength(4);
+      for (const l of lines) {
+        expect(Number(l.getAttribute("x1"))).toBeCloseTo(100, 1);
+        expect(Number(l.getAttribute("x2"))).toBeCloseTo(800, 1);
+      }
+    } finally {
+      spy.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("hover 移動與離開期間格線數量與 Y 位置維持不變", () => {
+    const { container } = render(
+      <VersionCostChart entries={two(1, 9)} anchorDate="2026-10-15" />,
+    );
+    const before = ysOf(container);
+    const overlay = container.querySelector("svg > rect");
+    if (!overlay) throw new Error("overlay not found");
+    fireEvent.mouseMove(overlay, { clientX: 300 });
+    expect(ysOf(container)).toEqual(before);
+    fireEvent.mouseMove(overlay, { clientX: 450 });
+    expect(ysOf(container)).toEqual(before);
+    fireEvent.mouseLeave(overlay);
+    expect(ysOf(container)).toEqual(before);
   });
 });
