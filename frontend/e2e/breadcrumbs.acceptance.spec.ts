@@ -96,12 +96,12 @@ test("no breadcrumb on other pages", async ({ page }) => {
   }
 });
 
-test("back link text unchanged", async ({ page }) => {
+test("back link text: agent page 返回 Agent 清單, trace page 返回 {Agent 名稱}", async ({ page }) => {
   await mock(page);
   await page.goto(`/agents/${KEY}`);
-  await expect(page.getByRole("link", { name: "返回 Agent 清單" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "返回 Agent 清單", exact: true })).toBeVisible();
   await page.goto(`/agents/${KEY}/traces/${TRACE}`);
-  await expect(page.getByRole("link", { name: "返回 Agent 明細" })).toBeVisible();
+  await expect(page.getByRole("link", { name: `返回 ${NAME}`, exact: true })).toBeVisible();
 });
 
 test("keyboard: Tab to crumb link and Enter navigates", async ({ page }) => {

@@ -5,7 +5,7 @@ import { useCallback } from "react";
 
 import { TraceBreadcrumbs } from "@/components/trace-detail/trace-breadcrumbs";
 import { SpanTreeRow } from "@/components/trace-detail/span-tree-row";
-import { BackLink } from "@/components/common/back-link";
+import { TraceBackLink } from "@/components/trace-detail/trace-back-link";
 import { ErrorCard } from "@/components/cost-overview/error-card";
 import { fetchTraceSpans } from "@/lib/trace-spans-api";
 import { t } from "@/lib/i18n/t";
@@ -35,7 +35,7 @@ export function TraceDetailContent() {
       <header className="sticky top-0 z-10 flex flex-col gap-2 border-b border-border bg-bg px-6 py-3">
         <TraceBreadcrumbs key={key} agentKey={key} traceId={traceId} />
         <div className="flex items-center justify-between">
-          <BackLink href={`/agents/${key}`} label={t("traceDetail.header.backToAgent")} />
+          <TraceBackLink key={key} agentKey={key} />
         </div>
       </header>
 
