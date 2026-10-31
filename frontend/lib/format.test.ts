@@ -239,6 +239,15 @@ describe("formatSlashDateTime", () => {
   it("renders an invalid date as em dash", () => {
     expect(formatSlashDateTime("not-a-date")).toBe("—");
   });
+  it.each(["2026-02-30", "2026-02-30T10:00:00Z", "2026-13-01T00:00:00Z"])(
+    "renders non-existent calendar date %s as em dash",
+    (v) => {
+      expect(formatSlashDateTime(v)).toBe("—");
+    },
+  );
+  it("accepts a leap day", () => {
+    expect(formatSlashDateTime("2024-02-29T00:00:00Z")).toBe("2024/02/29 08:00:00");
+  });
 });
 
 describe("formatDayColumnHeader", () => {

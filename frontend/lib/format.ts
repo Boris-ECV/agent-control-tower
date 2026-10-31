@@ -155,6 +155,7 @@ export function formatSlashDate(isoDate: string | null | undefined): string {
  * "2026-10-06T09:18:13Z" -> "2026/10/06 17:18:13". Missing/invalid -> "—". */
 export function formatSlashDateTime(iso: string | null | undefined): string {
   if (!iso) return "—";
+  if (!parseCalendarDate(iso.slice(0, 10))) return "—";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
   const parts = new Intl.DateTimeFormat("en-US", {
