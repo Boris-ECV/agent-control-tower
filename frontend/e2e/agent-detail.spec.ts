@@ -1249,3 +1249,44 @@ test("SDLCCT-89: version-cost chart shows 4 evenly spaced gridlines aligned to t
   expect(Math.abs(ys[0] - Math.min(...labelYs))).toBeLessThanOrEqual(1);
   expect(Math.abs(ys[3] - Math.max(...labelYs))).toBeLessThanOrEqual(1);
 });
+
+test("SDLCCT-89 (tester): narrow 390px viewport keeps 4 gridlines, 2 Y labels and no horizontal overflow", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [
+          {
+            version: "v1",
+            points: [
+              { date: "2026-10-19", value: 100 },
+              { date: "2026-10-20", value: 400 },
+            ],
+          },
+        ],
+        model_cost_breakdown: [],
+        top_traces: [],
+      }),
+    });
+  });
+  await page.goto(`/agents/${MOCK_KEY}`);
+  await expect(page.locator("svg g[data-gridlines] > line")).toHaveCount(4);
+  await expect(page.locator('svg g[data-axis="y"] text')).toHaveCount(2);
+  const strokes = await page
+    .locator("svg g[data-gridlines] > line")
+    .evaluateAll((els) => els.map((e) => e.getAttribute("stroke")));
+  expect(strokes.every((s) => s === "var(--color-border)")).toBe(true);
+  await expect
+    .poll(async () =>
+      page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
+    )
+    .toBe(true);
+});
