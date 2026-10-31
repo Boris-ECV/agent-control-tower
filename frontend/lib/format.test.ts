@@ -3,9 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   formatCardCurrency,
   formatCurrency,
+  formatDayColumnHeader,
   formatPercent,
   formatPercentGrouped,
   formatSignedCurrency,
+  formatSlashDate,
+  formatSlashDateTime,
   formatTableCurrency,
 } from "@/lib/format";
 
@@ -194,5 +197,86 @@ describe("formatSignedCurrency", () => {
 
   it("renders 1234.4 with sign, integer rounding and thousands grouping (SDLCCT-71 scenario 12)", () => {
     expect(formatSignedCurrency(1234.4)).toBe("+US$ 1,234");
+  });
+});
+
+describe("formatSlashDate", () => {
+  it("formats 2026-10-06 as 2026/10/06", () => {
+    expect(formatSlashDate("2026-10-06")).toBe("2026/10/06");
+  });
+  it("keeps zero padding at year/month boundaries", () => {
+    expect(formatSlashDate("2026-01-01")).toBe("2026/01/01");
+    expect(formatSlashDate("2026-12-31")).toBe("2026/12/31");
+  });
+  it("handles leap day", () => {
+    expect(formatSlashDate("2024-02-29")).toBe("2024/02/29");
+  });
+  it.each([null, undefined, ""])("renders %j as em dash", (v) => {
+    expect(formatSlashDate(v)).toBe("—");
+  });
+  it.each(["abc", "2026-02-30", "2026-13-01", "2026-10-06T00:00:00Z"])(
+    "renders invalid %j as em dash",
+    (v) => {
+      expect(formatSlashDate(v)).toBe("—");
+    },
+  );
+});
+
+describe("formatSlashDateTime", () => {
+  it.each([
+    ["2026-10-06T09:18:13Z", "2026/10/06 17:18:13"],
+    ["2026-10-06T16:30:00Z", "2026/10/07 00:30:00"],
+    ["2026-10-06T16:00:00Z", "2026/10/07 00:00:00"],
+    ["2026-12-31T16:00:01Z", "2027/01/01 00:00:01"],
+    ["2026-10-06T15:59:59Z", "2026/10/06 23:59:59"],
+    ["2026-10-06T17:18:13+08:00", "2026/10/06 17:18:13"],
+  ])("formats %s as %s (Asia/Taipei)", (input, expected) => {
+    expect(formatSlashDateTime(input)).toBe(expected);
+  });
+  it.each([null, undefined, ""])("renders %j as em dash", (v) => {
+    expect(formatSlashDateTime(v)).toBe("—");
+  });
+  it("renders an invalid date as em dash", () => {
+    expect(formatSlashDateTime("not-a-date")).toBe("—");
+  });
+  it.each(["2026-02-30", "2026-02-30T10:00:00Z", "2026-13-01T00:00:00Z"])(
+    "renders non-existent calendar date %s as em dash",
+    (v) => {
+      expect(formatSlashDateTime(v)).toBe("—");
+    },
+  );
+  it("accepts a leap day", () => {
+    expect(formatSlashDateTime("2024-02-29T00:00:00Z")).toBe("2024/02/29 08:00:00");
+  });
+});
+
+describe("formatDayColumnHeader", () => {
+  it("formats 2026-10-09 as 10/9 (五)", () => {
+    expect(formatDayColumnHeader("2026-10-09")).toBe("10/9 (五)");
+  });
+  it.each([
+    ["2026-10-04", "10/4 (日)"],
+    ["2026-10-05", "10/5 (一)"],
+    ["2026-10-06", "10/6 (二)"],
+    ["2026-10-07", "10/7 (三)"],
+    ["2026-10-08", "10/8 (四)"],
+    ["2026-10-09", "10/9 (五)"],
+    ["2026-10-10", "10/10 (六)"],
+  ])("renders every weekday: %s -> %s", (input, expected) => {
+    expect(formatDayColumnHeader(input)).toBe(expected);
+  });
+  it("does not zero-pad month/day", () => {
+    expect(formatDayColumnHeader("2026-01-05")).toBe("1/5 (一)");
+    expect(formatDayColumnHeader("2026-12-31")).toBe("12/31 (四)");
+  });
+  it("handles month and year boundaries", () => {
+    expect(formatDayColumnHeader("2026-11-01")).toBe("11/1 (日)");
+    expect(formatDayColumnHeader("2027-01-01")).toBe("1/1 (五)");
+  });
+  it.each([null, undefined, ""])("renders %j as em dash", (v) => {
+    expect(formatDayColumnHeader(v)).toBe("—");
+  });
+  it.each(["2026-02-30", "abc"])("renders invalid %j as em dash", (v) => {
+    expect(formatDayColumnHeader(v)).toBe("—");
   });
 });
