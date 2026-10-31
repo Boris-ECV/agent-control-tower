@@ -37,7 +37,7 @@ test("sidebar Agent 清單項目在導覽後顯示 active 樣式狀態", async (
   // Before navigating to /agents, the Agent 清單 item must not be marked
   // active (components/ui/sidebar.tsx's SidebarMenuButton only renders the
   // data-active attribute at all when isActive is true, which app-sidebar.tsx
-  // derives from usePathname() === item.href; when false the attribute is
+  // derives from isNavItemActive(pathname, href); when false the attribute is
   // simply absent from the DOM, and when true it's present as an empty
   // boolean attribute, i.e. `data-active=""`).
   await expect(agentListLink).not.toHaveAttribute("data-active");

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>原型 — SDLCCT-96 詳情頁側邊選單維持「Agent 清單」反白（改前／改後）</title>
+<style>
+  /* Tokens 取自 frontend/app/globals.css；不載入 web font，系統字體堆疊。 */
+  :root {
+    --color-bg: #ffffff;
+    --color-text-primary: #1f2937;
+    --color-text-secondary: #4b5563;
+    --color-border: #e5e7eb;
+    --color-accent: #2563eb;
+    --sidebar-accent: var(--color-border);
+    --sidebar-accent-foreground: var(--color-text-primary);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px; max-width: 1152px; margin-inline: auto;
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #f9fafb; color: var(--color-text-primary);
+  }
+  h1 { margin: 0 0 4px; font-size: 24px; line-height: 32px; font-weight: 700; }
+  p.subtitle { margin: 0 0 24px; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  h2 { margin: 32px 0 12px; font-size: 18px; line-height: 26px; font-weight: 600; }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .compare { grid-template-columns: 1fr; } }
+  .panel { border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-bg); padding: 12px; overflow: hidden; }
+  .tag { display: inline-block; margin-bottom: 8px; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 600; border: 1px solid var(--color-border); }
+  .tag.before { color: var(--color-text-secondary); }
+  .tag.after { color: var(--color-accent); border-color: var(--color-accent); }
+  .url { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .app { display: flex; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-bg); min-height: 360px; }
+  .side { width: 200px; flex: none; border-right: 1px solid var(--color-border); padding: 8px; background: var(--color-bg); }
+  .side .brand { padding: 0 8px; font-size: 18px; line-height: 26px; font-weight: 600; margin-bottom: 8px; }
+  .side .grp { padding: 8px 8px 4px; font-size: 12px; color: var(--color-text-secondary); }
+  .side a { display: flex; align-items: center; height: 32px; padding: 8px; border-radius: 6px; font-size: 14px; color: var(--color-text-primary); text-decoration: none; }
+  .side a.on { background: var(--sidebar-accent); color: var(--sidebar-accent-foreground); font-weight: 500; }
+  .side a.dim { cursor: default; }
+  .main { flex: 1; padding: 12px 16px; min-width: 0; }
+  .main h3 { margin: 0 0 8px; font-size: 16px; line-height: 24px; }
+  .main .bar { height: 10px; border-radius: 4px; background: var(--color-border); margin: 8px 0; }
+  .main .bar.s { width: 60%; }
+  .note { margin-top: 12px; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background: #f3f4f6; padding: 0 4px; border-radius: 4px; }
+  /* 手機框：390px，Sheet 開啟 */
+  .phone { width: 390px; max-width: 100%; border: 2px solid var(--color-text-secondary); border-radius: 16px; background: #f9fafb; padding: 12px; position: relative; min-height: 420px; overflow: hidden; }
+  .phone .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.3); }
+  .phone .sheet { position: absolute; top: 0; bottom: 0; left: 0; width: 75%; max-width: 288px; background: var(--color-bg); padding: 12px 8px; border-right: 1px solid var(--color-border); }
+  .phone .sheet .brand { padding: 0 8px; font-size: 18px; line-height: 26px; font-weight: 600; margin-bottom: 8px; }
+  .phone .sheet .grp { padding: 8px 8px 4px; font-size: 12px; color: var(--color-text-secondary); }
+  .phone .sheet a { display: flex; align-items: center; height: 32px; padding: 8px; border-radius: 6px; font-size: 14px; color: var(--color-text-primary); text-decoration: none; }
+  .phone .sheet a.on { background: var(--sidebar-accent); font-weight: 500; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+  <h1>SDLCCT-96 詳情頁側邊選單維持「Agent 清單」反白</h1>
+  <p class="subtitle">靜態原型：左為改前（<code>pathname === href</code>），右為改後（<code>isNavItemActive(pathname, href)</code>）。反白樣式為既有 <code>data-active</code>（底色 #e5e7eb、font-medium），未新增任何樣式。選單項目與順序不變。</p>
+
+  <h2>1. Agent 詳情頁 <code>/agents/sales-copilot</code>（情境 1）</h2>
+  <div class="compare">
+    <div class="panel"><span class="tag before">改前</span><p class="url">/agents/sales-copilot</p>
+      <div class="app">
+        <nav class="side"><div class="brand">Agent Control Tower</div>
+          <div class="grp">總覽</div><a>成本儀表板</a>
+          <div class="grp">治理</div><a>Agent 清單</a><a>異常與告警</a><a class="dim">預算模擬</a><a class="dim">政策引擎</a><a class="dim">核准流程</a>
+          <div class="grp">營運</div><a class="dim">暫停 Agent</a><a class="dim">緊急停機</a>
+          <div class="grp">設定</div><a>System</a></nav>
+        <div class="main"><h3>Sales Copilot</h3><div class="bar"></div><div class="bar s"></div></div>
+      </div>
+      <p class="note">沒有任何項目反白。</p></div>
+    <div class="panel"><span class="tag after">改後</span><p class="url">/agents/sales-copilot</p>
+      <div class="app">
+        <nav class="side"><div class="brand">Agent Control Tower</div>
+          <div class="grp">總覽</div><a>成本儀表板</a>
+          <div class="grp">治理</div><a class="on">Agent 清單</a><a>異常與告警</a><a class="dim">預算模擬</a><a class="dim">政策引擎</a><a class="dim">核准流程</a>
+          <div class="grp">營運</div><a class="dim">暫停 Agent</a><a class="dim">緊急停機</a>
+          <div class="grp">設定</div><a>System</a></nav>
+        <div class="main"><h3>Sales Copilot</h3><div class="bar"></div><div class="bar s"></div></div>
+      </div>
+      <p class="note">「Agent 清單」反白。</p></div>
+  </div>
+
+  <h2>2. 執行詳情頁 <code>/agents/sales-copilot/traces/trc_123</code>（情境 2）</h2>
+  <div class="compare">
+    <div class="panel"><span class="tag before">改前</span><p class="url">/agents/sales-copilot/traces/trc_123</p>
+      <div class="app">
+        <nav class="side"><div class="brand">Agent Control Tower</div>
+          <div class="grp">總覽</div><a>成本儀表板</a>
+          <div class="grp">治理</div><a>Agent 清單</a><a>異常與告警</a><a class="dim">預算模擬</a><a class="dim">政策引擎</a><a class="dim">核准流程</a>
+          <div class="grp">營運</div><a class="dim">暫停 Agent</a><a class="dim">緊急停機</a>
+          <div class="grp">設定</div><a>System</a></nav>
+        <div class="main"><h3>執行詳情 trc_123</h3><div class="bar"></div><div class="bar s"></div></div>
+      </div>
+      <p class="note">沒有任何項目反白。</p></div>
+    <div class="panel"><span class="tag after">改後</span><p class="url">/agents/sales-copilot/traces/trc_123</p>
+      <div class="app">
+        <nav class="side"><div class="brand">Agent Control Tower</div>
+          <div class="grp">總覽</div><a>成本儀表板</a>
+          <div class="grp">治理</div><a class="on">Agent 清單</a><a>異常與告警</a><a class="dim">預算模擬</a><a class="dim">政策引擎</a><a class="dim">核准流程</a>
+          <div class="grp">營運</div><a class="dim">暫停 Agent</a><a class="dim">緊急停機</a>
+          <div class="grp">設定</div><a>System</a></nav>
+        <div class="main"><h3>執行詳情 trc_123</h3><div class="bar"></div><div class="bar s"></div></div>
+      </div>
+      <p class="note">「Agent 清單」反白。</p></div>
+  </div>
+
+  <h2>3. 成本儀表板 <code>/cost-dashboard</code>（情境 3：不變）</h2>
+  <div class="compare">
+    <div class="panel"><span class="tag before">改前</span><p class="url">/cost-dashboard</p>
+      <div class="app">
+        <nav class="side"><div class="brand">Agent Control Tower</div>
+          <div class="grp">總覽</div><a class="on">成本儀表板</a>
+          <div class="grp">治理</div><a>Agent 清單</a><a>異常與告警</a><a class="dim">預算模擬</a><a class="dim">政策引擎</a><a class="dim">核准流程</a>
+          <div class="grp">營運</div><a class="dim">暫停 Agent</a><a class="dim">緊急停機</a>
+          <div class="grp">設定</div><a>System</a></nav>
+        <div class="main"><h3>成本儀表板</h3><div class="bar"></div><div class="bar s"></div></div>
+      </div></div>
+    <div class="panel"><span class="tag after">改後</span><p class="url">/cost-dashboard</p>
+      <div class="app">
+        <nav class="side"><div class="brand">Agent Control Tower</div>
+          <div class="grp">總覽</div><a class="on">成本儀表板</a>
+          <div class="grp">治理</div><a>Agent 清單</a><a>異常與告警</a><a class="dim">預算模擬</a><a class="dim">政策引擎</a><a class="dim">核准流程</a>
+          <div class="grp">營運</div><a class="dim">暫停 Agent</a><a class="dim">緊急停機</a>
+          <div class="grp">設定</div><a>System</a></nav>
+        <div class="main"><h3>成本儀表板</h3><div class="bar"></div><div class="bar s"></div></div>
+      </div>
+      <p class="note">與改前完全相同：只有「成本儀表板」反白，「Agent 清單」不反白。</p></div>
+  </div>
+
+  <h2>4. 手機 390px：Sheet 開啟於 Agent 詳情頁（改後）</h2>
+  <div class="row">
+    <div class="phone">
+      <div class="scrim"></div>
+      <div class="sheet"><div class="brand">Agent Control Tower</div>
+        <div class="grp">總覽</div><a>成本儀表板</a>
+        <div class="grp">治理</div><a class="on">Agent 清單</a><a>異常與告警</a>
+        <div class="grp">設定</div><a>System</a></div>
+    </div>
+    <p class="note" style="max-width:320px">側邊欄在 &lt;768px 收合為 Sheet（同一份 AppSidebar），規則自動一致；390px 版面無任何尺寸變動。其餘無 href 項目於此省略。</p>
+  </div>
+</body>
+</html>
