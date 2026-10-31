@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-89 — 版本成本圖 Y 軸多層次淡色水平格線原型</title>
+<style>
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #FFFFFF;
+    color: #1F2937;
+    max-width: 1100px;
+    margin: 32px auto;
+    padding: 0 24px;
+    line-height: 1.6;
+  }
+  h1 { font-size: 24px; font-weight: 700; }
+  h2 { font-size: 18px; font-weight: 600; margin-top: 40px; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px; }
+  p.meta, .note { font-size: 12px; color: #4B5563; }
+  code { background: #F3F4F6; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+  .disclaimer {
+    border: 1px dashed #eda100; background: #FFFBEB; padding: 8px 12px;
+    font-size: 12px; color: #4B5563; border-radius: 4px; margin: 12px 0;
+  }
+  .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-size: 13px; margin: 12px 0; }
+  .controls button { padding: 4px 10px; border: 1px solid #E5E7EB; background: #F9FAFB; border-radius: 4px; cursor: pointer; }
+  .controls button.active { background: #2a78d6; color: #fff; border-color: #2a78d6; }
+  #panel { font-size: 13px; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 4px; padding: 8px 12px; margin: 8px 0; }
+  #panel b { color: #1baf7a; }
+  #panel b.bad { color: #e34948; }
+  #wrap { border: 1px solid #E5E7EB; border-radius: 6px; padding: 16px; background: #FFFFFF; position: relative; }
+  svg { display: block; margin-bottom: 12px; overflow: visible; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { border-bottom: 1px solid #E5E7EB; padding: 8px 12px 8px 0; text-align: left; }
+  th { color: #4B5563; font-size: 12px; font-weight: 600; }
+  td.ver { font-weight: 500; }
+</style>
+</head>
+<body>
+
+<h1>SDLCCT-89 — 版本成本圖 Y 軸多層次淡色水平格線原型</h1>
+<p class="meta">
+  靜態原型，無需安裝任何套件，直接用瀏覽器開啟即可。規則與設計文件
+  <code>docs/design/SDLCCT-89.md</code> 一致：有資料且 max≠min 時畫 4 條等距格線
+  （Y = <code>24 + k × 112 / 3</code>，k = 0..3，含最大與最小兩端點）；max = min 時僅 1 條；
+  全 null 時 0 條。只有最大／最小值（或單一值）帶金額文字，中間兩層不帶文字。
+  格線顏色為 <code>--color-border</code>（#E5E7EB），畫在所有折線之前（底層）。
+</p>
+
+<h2>情境一至五：切換資料情境觀察格線</h2>
+
+<div class="disclaimer">
+  原型限制說明：下方情境按鈕、讀數面板與「把格線改成醒目紅色」勾選僅供原型示範與驗證用，
+  實作中不存在。讀數由頁面即時掃描 SVG 產生，並非寫死的數字。
+</div>
+
+<div class="controls">
+  <span>資料情境：</span>
+  <button data-s="normal" class="active">一般資料（max≠min）</button>
+  <button data-s="same">所有數值相同（max=min）</button>
+  <button data-s="null">全部為 null</button>
+  <label><input type="checkbox" id="red" /> 把格線改成醒目紅色（僅示範格線位於折線底層）</label>
+</div>
+
+<div id="panel">—</div>
+
+<div id="wrap">
+  <svg id="chart" width="100%" height="160" role="img" aria-label="版本成本時間序列"></svg>
+  <table id="tbl">
+    <thead><tr id="thead"></tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<h2>情境四、五補充說明</h2>
+<p class="note">
+  格線為 <code>#E5E7EB</code>、線寬 1，不帶虛線（虛線保留給 hover 十字線）；格線群組是 SVG 的第一個子群組，
+  因此在 DOM 順序上先於所有折線，視覺上位於資料線後方。Y 軸金額標示仍只有最大與最小兩個
+  （或單一值），位置與 SDLCCT-73 相同；中間兩條格線沒有任何金額文字。
+</p>
+
+<script>
+(function () {
+  var dates = ["2026年10月14日","2026年10月15日","2026年10月16日","2026年10月17日","2026年10月18日","2026年10月19日","2026年10月20日"];
+  var scenarios = {
+    normal: [
+      { v: "v1", color: "#2a78d6", vals: [100, 120, null, 150, 170, 160, 190] },
+      { v: "v2", color: "#eb6834", vals: [50, 60, 80, 70, 95, null, 90] }
+    ],
+    same: [
+      { v: "v1", color: "#2a78d6", vals: [100, 100, 100, 100, 100, 100, 100] }
+    ],
+    "null": [
+      { v: "v1", color: "#2a78d6", vals: [null, null, null, null, null, null, null] }
+    ]
+  };
+  var current = "normal";
+  var H = 160, P = 24, N = 4;
+  function fmt(x) {
+    if (x === null) return "—";
+    if (x !== 0 && Math.abs(x) < 100) return "US$ " + x.toFixed(2);
+    return "US$ " + x.toLocaleString("en-US");
+  }
+
+  var svg = document.getElementById("chart");
+  var thead = document.getElementById("thead");
+  var tbody = document.getElementById("tbody");
+  var panel = document.getElementById("panel");
+
+  function buildTable(series) {
+    var h = '<th>版本</th>';
+    dates.forEach(function (d) { h += '<th>' + d + '</th>'; });
+    thead.innerHTML = h;
+    var rows = "";
+    series.forEach(function (s) {
+      rows += '<tr><td class="ver">' + s.v + '</td>';
+      s.vals.forEach(function (x) { rows += '<td>' + fmt(x) + '</td>'; });
+      rows += '</tr>';
+    });
+    tbody.innerHTML = rows;
+  }
+
+  function draw() {
+    var series = scenarios[current];
+    buildTable(series);
+    var sr = svg.getBoundingClientRect();
+    var ths = thead.querySelectorAll("th");
+    var W = sr.width, L = ths[0].getBoundingClientRect().right - sr.left;
+    var cs = [];
+    for (var i = 1; i < ths.length; i++) {
+      var r = ths[i].getBoundingClientRect();
+      cs.push(r.left + r.width / 2 - sr.left);
+    }
+    var all = [];
+    series.forEach(function (s) { s.vals.forEach(function (x) { if (x !== null) all.push(x); }); });
+    var has = all.length > 0;
+    var min = has ? Math.min.apply(null, all) : 0, max = has ? Math.max.apply(null, all) : 0;
+    var innerH = H - P * 2;
+    function y(x) { return max === min ? P + innerH / 2 : P + innerH - ((x - min) / (max - min)) * innerH; }
+
+    var red = document.getElementById("red").checked;
+    var stroke = red ? "#e34948" : "#E5E7EB";
+    var grid = [];
+    if (has) {
+      if (max === min) grid = [{ key: "single", y: y(max) }];
+      else ["max", "upper", "lower", "min"].forEach(function (key, k) {
+        grid.push({ key: key, y: P + (k * innerH) / (N - 1) });
+      });
+    }
+    var labels = !has ? [] : (max === min ? [max] : [max, min]);
+
+    var out = '<g data-gridlines>';
+    grid.forEach(function (g) {
+      out += '<line data-gridline="' + g.key + '" x1="' + L.toFixed(1) + '" x2="' + W.toFixed(1) + '" y1="' + g.y.toFixed(1) + '" y2="' + g.y.toFixed(1) + '" stroke="' + stroke + '" stroke-width="1"/>';
+    });
+    out += '</g>';
+    series.forEach(function (s) {
+      var seg = [], segs = [];
+      s.vals.forEach(function (x, i) {
+        if (x === null) { if (seg.length) segs.push(seg); seg = []; return; }
+        seg.push(cs[i].toFixed(1) + "," + y(x).toFixed(1));
+      });
+      if (seg.length) segs.push(seg);
+      segs.forEach(function (sg) {
+        out += '<polyline points="' + sg.join(" ") + '" fill="none" stroke="' + s.color + '" stroke-width="2"/>';
+      });
+    });
+    out += '<g data-axis="y">';
+    labels.forEach(function (x) {
+      out += '<text x="2" y="' + y(x).toFixed(1) + '" font-size="10" fill="#4B5563" dominant-baseline="middle">' + fmt(x) + '</text>';
+    });
+    out += '</g>';
+    svg.setAttribute("viewBox", "0 0 " + W.toFixed(2) + " " + H);
+    svg.innerHTML = out;
+
+    // 讀數：由實際渲染的 DOM 即時掃描
+    var lines = svg.querySelectorAll("line[data-gridline]");
+    var ys = Array.prototype.map.call(lines, function (l) { return +l.getAttribute("y1"); });
+    var gaps = [];
+    for (var j = 1; j < ys.length; j++) gaps.push((ys[j] - ys[j - 1]).toFixed(2));
+    var even = gaps.every(function (g) { return Math.abs(g - gaps[0]) < 0.11; });
+    var all2 = Array.prototype.slice.call(svg.querySelectorAll("*"));
+    var lastLine = -1, firstPoly = -1;
+    all2.forEach(function (el, idx) {
+      var tag = el.tagName.toLowerCase();
+      if (tag === "line" && el.hasAttribute("data-gridline")) lastLine = idx;
+      if (tag === "polyline" && firstPoly < 0) firstPoly = idx;
+    });
+    var orderOk = lines.length === 0 || firstPoly < 0 || lastLine < firstPoly;
+    var textCount = svg.querySelectorAll('g[data-axis="y"] text').length;
+    var gridText = svg.querySelectorAll("g[data-gridlines] text").length;
+    var expected = !has ? 0 : (max === min ? 1 : 4);
+    var countOk = lines.length === expected;
+    function mark(ok, s) { return '<b class="' + (ok ? "" : "bad") + '">' + s + '</b>'; }
+    panel.innerHTML =
+      '格線條數：' + mark(countOk, lines.length) + '（預期 ' + expected + '）　' +
+      'Y 位置：' + (ys.length ? ys.map(function (v) { return v.toFixed(1); }).join(" / ") : "—") + '　' +
+      '相鄰間距：' + (gaps.length ? mark(even, gaps.join(" / ")) : "—") + '<br>' +
+      'Y 軸金額標示數：' + mark(textCount === labels.length, textCount) + '（僅最大／最小或單一值）　' +
+      '格線群組內文字數：' + mark(gridText === 0, gridText) + '　' +
+      '所有格線先於所有折線（DOM 順序）：' + mark(orderOk, orderOk ? "是" : "否") + '　' +
+      '是否出現「0」刻度：' + mark(!/US\$ 0(\.00)?$/.test(svg.textContent), /US\$ 0(\.00)?$/.test(svg.textContent) ? "是" : "否");
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll("button[data-s]"), function (b) {
+    b.addEventListener("click", function () {
+      current = b.getAttribute("data-s");
+      Array.prototype.forEach.call(document.querySelectorAll("button[data-s]"), function (x) {
+        x.classList.toggle("active", x === b);
+      });
+      draw();
+    });
+  });
+  document.getElementById("red").addEventListener("change", draw);
+  window.addEventListener("resize", draw);
+  draw();
+})();
+</script>
+
+</body>
+</html>
