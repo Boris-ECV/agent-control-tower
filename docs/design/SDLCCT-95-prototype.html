@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>原型 — SDLCCT-95 日期／日期時間／每日欄標題統一格式（改前／改後）</title>
+<style>
+  /* Tokens 取自 frontend/app/globals.css 與 docs/design-system.md；不載入 web font，系統字體堆疊。 */
+  :root {
+    --color-bg: #ffffff;
+    --color-text-primary: #1f2937;
+    --color-text-secondary: #4b5563;
+    --color-border: #e5e7eb;
+    --color-accent: #2563eb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px;
+    max-width: 1152px;
+    margin-inline: auto;
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #f9fafb;
+    color: var(--color-text-primary);
+  }
+  h1 { margin: 0 0 4px; font-size: 24px; line-height: 32px; font-weight: 700; }
+  p.subtitle { margin: 0 0 24px; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  h2 { margin: 32px 0 12px; font-size: 18px; line-height: 26px; font-weight: 600; }
+  h3 { margin: 16px 0 8px; font-size: 14px; font-weight: 600; color: var(--color-text-secondary); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .compare { grid-template-columns: 1fr; } }
+  .panel { border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-bg); padding: 16px; overflow: hidden; }
+  .panel .tag {
+    display: inline-block; margin-bottom: 12px; padding: 2px 8px; border-radius: 9999px;
+    font-size: 12px; font-weight: 600; border: 1px solid var(--color-border);
+  }
+  .tag.before { color: var(--color-text-secondary); }
+  .tag.after { color: var(--color-accent); border-color: var(--color-accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead tr { border-bottom: 1px solid var(--color-border); text-align: left; font-size: 12px; color: var(--color-text-secondary); }
+  tbody tr { border-bottom: 1px solid var(--color-border); }
+  tbody tr:last-child { border-bottom: 0; }
+  th, td { padding: 8px 12px 8px 0; }
+  td.name { font-weight: 500; }
+  /* a11y 表格：等同 Tailwind `py-2 pr-1 sm:pr-3 text-right`，td 另加 tabular-nums。 */
+  table.a11y th, table.a11y td { padding: 8px 4px 8px 0; }
+  table.a11y th.d, table.a11y td.n { text-align: right; }
+  table.a11y td.n { font-variant-numeric: tabular-nums; }
+  table.a11y th.v, table.a11y td.v { padding-right: 12px; }
+  table.a11y td.v { font-weight: 500; }
+  @media (min-width: 640px) { table.a11y th.d, table.a11y td.n { padding-right: 12px; } }
+  /* 手機框：390px 視窗寬，頁面左右 px-6 (24px)，表格可用寬 342px。 */
+  .phone { width: 390px; max-width: 100%; border: 2px solid var(--color-text-secondary); border-radius: 16px; background: #f9fafb; padding: 12px 24px 16px; }
+  .phone .caption { margin: 0 0 8px; font-size: 11px; color: var(--color-text-secondary); text-align: center; }
+  .phone .inner { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; padding: 8px; }
+  /* 強制 390px 內以手機規則（<640px）顯示：不套用 min-width 規則。 */
+  .phone table.a11y th.d, .phone table.a11y td.n { padding-right: 4px; }
+  .measure { margin: 8px 0 0; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+  .note { margin-top: 12px; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background: #f3f4f6; padding: 0 4px; border-radius: 4px; }
+  .muted { color: var(--color-text-secondary); }
+  .span-line { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--color-border); font-size: 14px; }
+  .span-line:last-child { border-bottom: 0; }
+  .span-line .time { font-size: 12px; color: var(--color-text-secondary); }
+  .oos { border: 1px dashed var(--color-border); border-radius: 8px; padding: 12px 16px; background: var(--color-bg); font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  .oos li { margin: 2px 0; }
+</style>
+</head>
+<body>
+  <h1>SDLCCT-95 日期／日期時間／每日欄標題統一格式</h1>
+  <p class="subtitle">靜態原型：左為改前（formatTaiwanDate / formatTaiwanDateTime），右為改後（formatDayColumnHeader / formatSlashDate / formatSlashDateTime）。資料為示意（anchor_date 2026-10-20）。</p>
+
+  <h2>1. 版本成本 a11y 表格：每日欄標題</h2>
+
+  <h3>桌面寬度（&gt;= 640px，padding <code>sm:pr-3</code>）</h3>
+  <div class="compare">
+    <div class="panel">
+      <span class="tag before">改前</span>
+      <table class="a11y">
+        <thead><tr><th class="v">版本</th><th class="d">2026年10月14日</th><th class="d">2026年10月15日</th><th class="d">2026年10月16日</th><th class="d">2026年10月17日</th><th class="d">2026年10月18日</th><th class="d">2026年10月19日</th><th class="d">2026年10月20日</th></tr></thead>
+        <tbody>
+          <tr><td class="v">v1</td><td class="n">US$ 100.00</td><td class="n">—</td><td class="n">US$ 150.00</td><td class="n">US$ 160.00</td><td class="n">US$ 170.00</td><td class="n">US$ 180.00</td><td class="n">US$ 190.00</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <span class="tag after">改後</span>
+      <table class="a11y">
+        <thead><tr><th class="v">版本</th><th class="d">10/14 (三)</th><th class="d">10/15 (四)</th><th class="d">10/16 (五)</th><th class="d">10/17 (六)</th><th class="d">10/18 (日)</th><th class="d">10/19 (一)</th><th class="d">10/20 (二)</th></tr></thead>
+        <tbody>
+          <tr><td class="v">v1</td><td class="n">US$ 100.00</td><td class="n">—</td><td class="n">US$ 150.00</td><td class="n">US$ 160.00</td><td class="n">US$ 170.00</td><td class="n">US$ 180.00</td><td class="n">US$ 190.00</td></tr>
+        </tbody>
+      </table>
+      <p class="note">標題縮短（<code>2026年10月14日</code> -> <code>10/14 (三)</code>），欄寬由數字儲存格決定；<code>th</code> 不加 <code>whitespace-nowrap</code>。</p>
+    </div>
+  </div>
+
+  <h3>手機 390px（可用寬 342px，padding <code>pr-1</code>）</h3>
+  <div class="row">
+    <div class="phone">
+      <p class="caption">改前（390px）</p>
+      <div class="inner">
+        <table class="a11y">
+          <thead><tr><th class="v">版本</th><th class="d">2026年10月14日</th><th class="d">2026年10月15日</th><th class="d">2026年10月16日</th><th class="d">2026年10月17日</th><th class="d">2026年10月18日</th><th class="d">2026年10月19日</th><th class="d">2026年10月20日</th></tr></thead>
+          <tbody>
+            <tr><td class="v">v1</td><td class="n">US$ 100.00</td><td class="n">—</td><td class="n">US$ 150.00</td><td class="n">US$ 160.00</td><td class="n">US$ 170.00</td><td class="n">US$ 180.00</td><td class="n">US$ 190.00</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="measure">標題在 CJK 字元間斷行，最小片段約 <code>2026</code>；表格在窄框內由數字（<code>US$</code> / <code>100.00</code> 分兩行）決定欄寬。</p>
+    </div>
+    <div class="phone">
+      <p class="caption">改後（390px）</p>
+      <div class="inner">
+        <table class="a11y">
+          <thead><tr><th class="v">版本</th><th class="d">10/14 (三)</th><th class="d">10/15 (四)</th><th class="d">10/16 (五)</th><th class="d">10/17 (六)</th><th class="d">10/18 (日)</th><th class="d">10/19 (一)</th><th class="d">10/20 (二)</th></tr></thead>
+          <tbody>
+            <tr><td class="v">v1</td><td class="n">US$ 100.00</td><td class="n">—</td><td class="n">US$ 150.00</td><td class="n">US$ 160.00</td><td class="n">US$ 170.00</td><td class="n">US$ 180.00</td><td class="n">US$ 190.00</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="measure">空白是唯一斷行點：窄欄時標題換成兩行（<code>10/14</code> / <code>(三)</code>），最小片段約 30px，小於數字片段，因此不新增水平溢位風險。若加 <code>nowrap</code> 則最小片段約 54px，可能再次逼近溢位，故設計禁止。</p>
+    </div>
+  </div>
+  <p class="note">此框為示意：實際欄寬與是否換行以瀏覽器自動版面為準；驗收以 e2e「390px 無水平溢位」與 SDLCCT-88「資料點對齊欄中心」為準。</p>
+
+  <h2>2. 日期儲存格（異常清單「日期」欄，<code>formatSlashDate</code>）</h2>
+  <div class="compare">
+    <div class="panel">
+      <span class="tag before">改前</span>
+      <table>
+        <thead><tr><th>Agent</th><th>類型</th><th>日期</th></tr></thead>
+        <tbody>
+          <tr><td class="name">sales-copilot</td><td>工具重試迴圈</td><td>2026年10月18日</td></tr>
+          <tr><td class="name">gov-bot</td><td>治理缺口</td><td>持續中</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <span class="tag after">改後</span>
+      <table>
+        <thead><tr><th>Agent</th><th>類型</th><th>日期</th></tr></thead>
+        <tbody>
+          <tr><td class="name">sales-copilot</td><td>工具重試迴圈</td><td>2026/10/18</td></tr>
+          <tr><td class="name">gov-bot</td><td>治理缺口</td><td>持續中</td></tr>
+        </tbody>
+      </table>
+      <p class="note"><code>date === null</code> 仍顯示「持續中」；手機卡片 <code>&lt;dd&gt;</code> 同步為 <code>2026/10/18</code>。</p>
+    </div>
+  </div>
+
+  <h2>3. 日期時間儲存格（Trace span 起訖時間，<code>formatSlashDateTime</code>，Asia/Taipei）</h2>
+  <div class="compare">
+    <div class="panel">
+      <span class="tag before">改前（formatTaiwanDateTime）</span>
+      <div class="span-line"><span>root-span</span><span class="time">2026/10/01 08:00:00–2026/10/01 08:00:05</span></div>
+      <div class="span-line"><span>llm-call</span><span class="time">2026/10/01 08:00:06–—</span></div>
+      <p class="note">輸出字面與改後幾乎相同；舊函式在午夜可能顯示 <code>24:00:00</code>（<code>hour12:false</code>）。</p>
+    </div>
+    <div class="panel">
+      <span class="tag after">改後（formatSlashDateTime）</span>
+      <div class="span-line"><span>root-span</span><span class="time">2026/10/01 08:00:00–2026/10/01 08:00:05</span></div>
+      <div class="span-line"><span>llm-call</span><span class="time">2026/10/01 08:00:06–—</span></div>
+      <p class="note">輸入 <code>2026-10-01T00:00:00Z</code> -> <code>2026/10/01 08:00:00</code>（UTC+8）；<code>null</code> -> <code>—</code>；<code>hourCycle: "h23"</code> 午夜為 <code>00:xx:xx</code>。</p>
+    </div>
+  </div>
+
+  <h2>4. 範圍外（本票維持原樣）</h2>
+  <div class="oos">
+    <ul>
+      <li>頂列日期（四處）：<code>今天（台灣時間）：2026年10月20日</code> 等，SDLCCT-103 處理，本票不動。</li>
+      <li>版本成本圖 hover tooltip 第一行：維持 <code>2026年10月18日</code>（圖表 SVG 文字範圍外）。</li>
+      <li>期間比較表頭：<code>本期花費（10/1–10/28）</code> 維持 <code>formatDateRange</code> 輸出（見設計文件「關鍵技術決策」第 3 項：範圍界定）。</li>
+    </ul>
+  </div>
+</body>
+</html>
