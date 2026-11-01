@@ -10,6 +10,7 @@ import {
   formatSignedTableCurrency,
   formatSlashDate,
   formatSlashDateTime,
+  formatSlashDateTimeMinute,
   formatTableCurrency,
 } from "@/lib/format";
 
@@ -248,6 +249,23 @@ describe("formatSlashDateTime", () => {
   );
   it("accepts a leap day", () => {
     expect(formatSlashDateTime("2024-02-29T00:00:00Z")).toBe("2024/02/29 08:00:00");
+  });
+});
+
+describe("formatSlashDateTimeMinute", () => {
+  it.each([
+    ["2026-10-15T06:30:00Z", "2026/10/15 14:30"],
+    ["2026-10-15T17:05:00Z", "2026/10/16 01:05"],
+    ["2026-10-15T16:00:00Z", "2026/10/16 00:00"],
+    ["2026-12-31T16:00:00Z", "2027/01/01 00:00"],
+    ["2026-10-15T15:59:59Z", "2026/10/15 23:59"],
+  ])("formats %s as %s (Asia/Taipei, no seconds)", (input, expected) => {
+    const out = formatSlashDateTimeMinute(new Date(input));
+    expect(out).toBe(expected);
+    expect(out).toMatch(/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/);
+  });
+  it("renders an invalid Date as em dash", () => {
+    expect(formatSlashDateTimeMinute(new Date(NaN))).toBe("—");
   });
 });
 

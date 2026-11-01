@@ -1,25 +1,15 @@
 "use client";
 
-import { useState } from "react";
-
 import { PeriodComparisonSection } from "@/components/cost-overview/period-comparison-section";
 import { SummarySection } from "@/components/cost-overview/summary-section";
-import { formatTaiwanDate } from "@/lib/format";
+import { PageHeaderTimestamp } from "@/components/layout/page-header-timestamp";
 import { t } from "@/lib/i18n/t";
 
 export default function CostOverviewPage() {
-  // anchor_date comes from the summary endpoint (AC4); if summary itself
-  // fails, this stays null and the header shows "無法取得" rather than a
-  // blank or fabricated date (docs/design/SDLCCT-32.md decision).
-  const [anchorDate, setAnchorDate] = useState<string | null>(null);
-
   return (
     <div className="flex min-h-full flex-col bg-gray-50">
       <header className="sticky top-0 z-10 flex items-center justify-end border-b border-border bg-bg px-6 py-3">
-        <span className="text-xs leading-[18px] text-text-secondary">
-          {t("costOverview.header.today")}
-          {anchorDate ? formatTaiwanDate(anchorDate) : t("costOverview.header.unavailable")}
-        </span>
+        <PageHeaderTimestamp />
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-6">
@@ -34,7 +24,7 @@ export default function CostOverviewPage() {
           <h2 className="mb-4 text-left text-lg leading-[26px] font-semibold text-text-primary">
             {t("costOverview.summarySection.title")}
           </h2>
-          <SummarySection onAnchorDate={setAnchorDate} />
+          <SummarySection />
         </section>
 
         <section aria-label={t("costOverview.periodSection.title")} className="mb-8">

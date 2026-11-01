@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>原型 — SDLCCT-103 頂列顯示「資料更新於」頁面載入時間</title>
+<style>
+  /* Tokens 取自 frontend/app/globals.css；不載入 web font，系統字體堆疊。離線可開。 */
+  :root {
+    --color-bg: #ffffff;
+    --color-text-primary: #1f2937;
+    --color-text-secondary: #4b5563;
+    --color-border: #e5e7eb;
+    --color-accent: #2563eb;
+    --color-danger: #b91c1c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px; max-width: 1152px; margin-inline: auto;
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #f9fafb; color: var(--color-text-primary);
+  }
+  h1 { margin: 0 0 4px; font-size: 24px; line-height: 32px; font-weight: 700; }
+  h2 { margin: 32px 0 12px; font-size: 18px; line-height: 26px; font-weight: 600; }
+  p.subtitle, .note { font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  p.subtitle { margin: 0 0 24px; }
+  .note { margin: 8px 0 0; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background: #f3f4f6; padding: 0 4px; border-radius: 4px; }
+  .url { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .tag { display: inline-block; margin-bottom: 8px; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 600; border: 1px solid var(--color-accent); color: var(--color-accent); }
+  .tag.same { border-color: var(--color-text-secondary); color: var(--color-text-secondary); }
+  .panel { border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-bg); padding: 12px; margin-bottom: 16px; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+
+  .page { border: 1px solid var(--color-border); border-radius: 6px; background: #f9fafb; overflow: hidden; }
+  .phone { width: 390px; max-width: 100%; border: 2px solid var(--color-text-secondary); border-radius: 16px; background: #f9fafb; overflow: hidden; }
+  .trigger { display: flex; padding: 8px; }
+  .trigger i { width: 28px; height: 28px; border: 1px solid var(--color-border); border-radius: 6px; background: #fff; }
+
+  /* 頂列：與四個頁面的真實 header 相同（sticky top-0 z-10 border-b border-border bg-bg px-6 py-3） */
+  header { display: flex; flex-direction: column; gap: 8px; background: var(--color-bg); border-bottom: 1px solid var(--color-border); padding: 12px 24px; }
+  header.end { flex-direction: row; align-items: center; justify-content: flex-end; }
+  header .line { display: flex; align-items: center; justify-content: space-between; }
+
+  /* PageHeaderTimestamp：text-right text-xs leading-[18px] text-text-secondary（字級／顏色與原日期 span 相同） */
+  .ts { text-align: right; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  .ts .nw { white-space: nowrap; }          /* 兩段各自 nowrap：窄螢幕只會在「HH:mm」與「（台灣時間）」之間換行 */
+  .ts .ph { visibility: hidden; }           /* 佔位：保留盒模型、不可見（aria-hidden） */
+  /* 僅原型示意：以虛線框標出「佔位預留的空間」，非產品樣式 */
+  .reserve { outline: 1px dashed #9ca3af; outline-offset: 1px; }
+
+  /* BackLink（SDLCCT-98 後的樣式，未改） */
+  .back { display: flex; align-items: center; gap: 4px; font-size: 14px; line-height: 22px; color: var(--color-accent); text-decoration: none; }
+  .back svg { width: 16px; height: 16px; flex: none; fill: currentColor; }
+  .back span { min-width: 0; overflow-wrap: anywhere; }
+  nav.bc ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; row-gap: 2px; font-size: 14px; line-height: 22px; }
+  nav.bc li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  nav.bc a, nav.bc .cur { display: block; max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  nav.bc a { color: var(--color-accent); text-decoration: none; }
+  nav.bc .cur { color: var(--color-text-primary); font-weight: 500; }
+  nav.bc .sep { color: var(--color-text-secondary); }
+
+  main { padding: 16px 24px; }
+  main h1 { font-size: 24px; margin: 0 0 4px; }
+  main h1.sm { font-size: 20px; }
+  .sub { margin: 0 0 12px; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+  .skel { height: 40px; border: 1px solid var(--color-border); border-radius: 8px; background: #f9fafb; margin-bottom: 8px; }
+  .err { border: 1px solid #fecaca; background: #fef2f2; border-radius: 8px; padding: 12px; font-size: 14px; line-height: 22px; color: var(--color-danger); }
+  .err small { display: block; color: var(--color-text-secondary); font-size: 12px; line-height: 18px; }
+  .hl { background: #fef9c3; }   /* 僅原型標示「本票改變的文字」，非產品樣式 */
+</style>
+</head>
+<body>
+  <h1>SDLCCT-103 頂列顯示「資料更新於」頁面載入時間</h1>
+  <p class="subtitle">四個頁面（成本儀表板、異常與告警、Agent 清單、Agent 詳情）的頂列統一改為 <code>資料更新於 YYYY/MM/DD HH:mm（台灣時間）</code>。時間是<strong>瀏覽器端掛載時的當下時間</strong>（Asia/Taipei、24 小時制、無秒），與 bff 回應無關。只改文字，字級、顏色、位置不變。黃色底與虛線框僅為原型標示。以下以固定時間 2026-10-15 06:30 UTC（= 14:30 台灣時間）示範。</p>
+
+  <h2>1. 三種狀態（桌面，以「異常與告警」頁為例）</h2>
+  <div class="row">
+    <div class="panel" style="flex:1 1 440px"><span class="tag">A. 掛載前（SSR／hydration，佔位）</span><p class="url">/anomalies　（伺服器 HTML；<code>useSyncExternalStore</code> server snapshot = null）</p>
+      <div class="page">
+        <header class="end">
+          <span class="ts reserve" aria-hidden="true"><span class="ph"><span class="nw">資料更新於 0000/00/00 00:00</span><span class="nw">（台灣時間）</span></span></span>
+        </header>
+        <main><h1>異常與告警</h1><p class="sub">各 Agent 近期異常一覽</p><div class="skel"></div><div class="skel"></div></main>
+      </div>
+      <p class="note">文字以 <code>visibility:hidden</code> 隱藏但保留版面（虛線框為預留空間），<code>aria-hidden</code>，頂列高度與載入後相同，無版面位移；與載入後同結構，hydration 期間伺服器／客戶端輸出一致。</p></div>
+
+    <div class="panel" style="flex:1 1 440px"><span class="tag">B. 載入完成</span><p class="url">/anomalies</p>
+      <div class="page">
+        <header class="end">
+          <span class="ts" data-testid="page-header-timestamp"><span class="nw hl">資料更新於 2026/10/15 14:30</span><span class="nw hl">（台灣時間）</span></span>
+        </header>
+        <main><h1>異常與告警</h1><p class="sub">各 Agent 近期異常一覽</p><div class="skel"></div><div class="skel"></div></main>
+      </div>
+      <p class="note">hydrate 完成後（或純客戶端導覽首次 render）取 <code>new Date()</code> 並以 Asia/Taipei 格式化；停留期間不自動刷新。</p></div>
+  </div>
+
+  <div class="panel"><span class="tag">C. bff 請求失敗（時間照常顯示）</span><p class="url">/anomalies　（<code>/api/anomalies</code> 回 500 或網路中斷）</p>
+    <div class="page">
+      <header class="end">
+        <span class="ts" data-testid="page-header-timestamp"><span class="nw hl">資料更新於 2026/10/15 14:30</span><span class="nw hl">（台灣時間）</span></span>
+      </header>
+      <main><h1>異常與告警</h1><p class="sub">各 Agent 近期異常一覽</p>
+        <div class="err">無法載入異常資料<small>請稍後重試（既有錯誤卡片，行為不變）</small></div></main>
+    </div>
+    <p class="note">元件無 props、不依賴任何 API 回應，所以頁面內容區出錯時頂列不受影響；舊文字「無法取得」不再出現於任何頂列。</p></div>
+
+  <h2>2. 其餘三頁頂列（桌面）</h2>
+  <div class="row">
+    <div class="panel" style="flex:1 1 440px"><span class="tag">成本儀表板</span><p class="url">/cost-dashboard　（原：今天（台灣時間）：2026年10月28日）</p>
+      <div class="page"><header class="end"><span class="ts" data-testid="page-header-timestamp"><span class="nw hl">資料更新於 2026/10/15 14:30</span><span class="nw hl">（台灣時間）</span></span></header>
+        <main><h1>成本總覽</h1><p class="sub">本月成本 vs 預算、預估月底超支、跨 Agent 期間比較</p><div class="skel"></div></main></div>
+      <p class="note">不再依賴 <code>SummarySection</code> 的 <code>onAnchorDate</code>；該 prop 與 <code>anchorDate</code> state 一併移除。</p></div>
+    <div class="panel" style="flex:1 1 440px"><span class="tag">Agent 清單</span><p class="url">/agents　（原：2026年10月20日）</p>
+      <div class="page"><header class="end"><span class="ts" data-testid="page-header-timestamp"><span class="nw hl">資料更新於 2026/10/15 14:30</span><span class="nw hl">（台灣時間）</span></span></header>
+        <main><h1>Agent 清單</h1><p class="sub">全部 9 個 Agent 的本期預算消耗、近期花費趨勢、治理缺口一覽</p><div class="skel"></div></main></div></div>
+  </div>
+  <div class="panel"><span class="tag">Agent 詳情</span><p class="url">/agents/sales-copilot　（原：2026年10月20日，位於返回連結右側）</p>
+    <div class="page"><header>
+      <nav class="bc" aria-label="麵包屑"><ol>
+        <li><a href="#">治理</a><span class="sep" aria-hidden="true">/</span></li>
+        <li><a href="#">Agent 清單</a><span class="sep" aria-hidden="true">/</span></li>
+        <li><span class="cur" aria-current="page">Sales Copilot</span></li>
+      </ol></nav>
+      <div class="line">
+        <a class="back" href="#"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.78 2.22a.75.75 0 0 1 0 1.06L5.06 8l4.72 4.72a.75.75 0 1 1-1.06 1.06L3.47 8.53a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 0 1 1.06 0Z"/></svg><span>返回 Agent 清單</span></a>
+        <span class="ts" data-testid="page-header-timestamp"><span class="nw hl">資料更新於 2026/10/15 14:30</span><span class="nw hl">（台灣時間）</span></span>
+      </div>
+    </header>
+    <main><h1>Sales Copilot</h1><div class="skel"></div></main></div></div>
+
+  <h2>3. 390px 手機（header 內寬 342px）</h2>
+  <div class="row">
+    <div>
+      <span class="tag">異常／Agent 清單／成本儀表板（單行）</span>
+      <div class="phone">
+        <div class="trigger"><i></i></div>
+        <header class="end"><span class="ts" data-testid="page-header-timestamp"><span class="nw hl">資料更新於 2026/10/15 14:30</span><span class="nw hl">（台灣時間）</span></span></header>
+        <main><h1 class="sm">異常與告警</h1><div class="skel"></div></main>
+      </div>
+      <p class="note" style="max-width:390px">完整標籤約 245px，小於 342px，單行靠右。</p>
+    </div>
+    <div>
+      <span class="tag">Agent 詳情（與返回連結並排，標籤換成兩行）</span>
+      <div class="phone">
+        <div class="trigger"><i></i></div>
+        <header>
+          <nav class="bc" aria-label="麵包屑"><ol>
+            <li><a href="#">治理</a><span class="sep" aria-hidden="true">/</span></li>
+            <li><a href="#">Agent 清單</a><span class="sep" aria-hidden="true">/</span></li>
+            <li><span class="cur" aria-current="page">Sales Copilot</span></li>
+          </ol></nav>
+          <div class="line">
+            <a class="back" href="#"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.78 2.22a.75.75 0 0 1 0 1.06L5.06 8l4.72 4.72a.75.75 0 1 1-1.06 1.06L3.47 8.53a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 0 1 1.06 0Z"/></svg><span>返回 Agent 清單</span></a>
+            <span class="ts" data-testid="page-header-timestamp"><span class="nw hl">資料更新於 2026/10/15 14:30</span><span class="nw hl">（台灣時間）</span></span>
+          </div>
+        </header>
+        <main><h1 class="sm">Sales Copilot</h1><div class="skel"></div></main>
+      </div>
+      <p class="note" style="max-width:390px">放不下時只會在「14:30」與「（台灣時間）」之間換行，靠右對齊；佔位階段已是同結構，載入前後高度一致。</p>
+    </div>
+  </div>
+  <div class="row" style="margin-top:16px">
+    <div>
+      <span class="tag">Agent 詳情・掛載前佔位（390px，同樣預留兩行）</span>
+      <div class="phone">
+        <div class="trigger"><i></i></div>
+        <header>
+          <nav class="bc" aria-label="麵包屑"><ol>
+            <li><a href="#">治理</a><span class="sep" aria-hidden="true">/</span></li>
+            <li><a href="#">Agent 清單</a><span class="sep" aria-hidden="true">/</span></li>
+            <li><span class="cur" aria-current="page">Sales Copilot</span></li>
+          </ol></nav>
+          <div class="line">
+            <a class="back" href="#"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.78 2.22a.75.75 0 0 1 0 1.06L5.06 8l4.72 4.72a.75.75 0 1 1-1.06 1.06L3.47 8.53a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 0 1 1.06 0Z"/></svg><span>返回 Agent 清單</span></a>
+            <span class="ts reserve" aria-hidden="true"><span class="ph"><span class="nw">資料更新於 0000/00/00 00:00</span><span class="nw">（台灣時間）</span></span></span>
+          </div>
+        </header>
+        <main><h1 class="sm">Sales Copilot</h1><div class="skel"></div></main>
+      </div>
+    </div>
+    <div>
+      <span class="tag">Agent 詳情・bff 失敗（390px，時間仍顯示）</span>
+      <div class="phone">
+        <div class="trigger"><i></i></div>
+        <header>
+          <nav class="bc" aria-label="麵包屑"><ol>
+            <li><a href="#">治理</a><span class="sep" aria-hidden="true">/</span></li>
+            <li><a href="#">Agent 清單</a><span class="sep" aria-hidden="true">/</span></li>
+            <li><span class="cur" aria-current="page">sales-copilot</span></li>
+          </ol></nav>
+          <div class="line">
+            <a class="back" href="#"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.78 2.22a.75.75 0 0 1 0 1.06L5.06 8l4.72 4.72a.75.75 0 1 1-1.06 1.06L3.47 8.53a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 0 1 1.06 0Z"/></svg><span>返回 Agent 清單</span></a>
+            <span class="ts" data-testid="page-header-timestamp"><span class="nw hl">資料更新於 2026/10/15 14:30</span><span class="nw hl">（台灣時間）</span></span>
+          </div>
+        </header>
+        <main><h1 class="sm">Agent 明細</h1><div class="err">無法載入 Agent 資料<small>既有錯誤卡片，行為不變</small></div></main>
+      </div>
+    </div>
+  </div>
+
+  <h2>4. 時區換算示範（Asia/Taipei，UTC+8，無日光節約）</h2>
+  <div class="panel">
+    <table style="border-collapse:collapse;font-size:14px;line-height:22px">
+      <tr><th style="text-align:left;padding:4px 16px 4px 0">瀏覽器當下時間（UTC）</th><th style="text-align:left;padding:4px 0">頂列顯示</th></tr>
+      <tr><td style="padding:4px 16px 4px 0"><code>2026-10-15T06:30:00Z</code></td><td>資料更新於 2026/10/15 14:30（台灣時間）</td></tr>
+      <tr><td style="padding:4px 16px 4px 0"><code>2026-10-15T17:05:00Z</code></td><td>資料更新於 2026/10/16 01:05（台灣時間）　<span class="note">（跨日）</span></td></tr>
+      <tr><td style="padding:4px 16px 4px 0"><code>2026-10-15T16:00:00Z</code></td><td>資料更新於 2026/10/16 00:00（台灣時間）　<span class="note">（午夜為 00，不出現 24）</span></td></tr>
+    </table>
+  </div>
+</body>
+</html>

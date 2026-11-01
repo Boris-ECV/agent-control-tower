@@ -24,7 +24,8 @@ const ANOMALIES = {
 
 const SLASH_DATE = /^\d{4}\/\d{2}\/\d{2}$/;
 
-test("anomalies desktop table: every date cell is YYYY/MM/DD; top-bar date keeps old style", async ({ page }) => {
+test("anomalies desktop table: every date cell is YYYY/MM/DD; top-bar shows page-load time", async ({ page }) => {
+  await page.clock.setFixedTime("2026-10-20T06:30:00Z");
   await json(page, "**/api/anomalies", ANOMALIES);
   await page.goto("/anomalies");
   const rows = page.locator("table tbody tr");
@@ -39,8 +40,10 @@ test("anomalies desktop table: every date cell is YYYY/MM/DD; top-bar date keeps
   expect(texts.filter((t) => t !== "持續中").sort()).toEqual(["2026/01/05", "2026/10/18"]);
   for (const t of texts.filter((t) => t !== "持續中")) expect(t).toMatch(SLASH_DATE);
   expect(texts).toContain("持續中");
-  // Out of scope: top-bar date stays in the old style (SDLCCT-103 replaces it).
-  await expect(page.locator("header").getByText("2026年10月20日", { exact: true })).toBeVisible();
+  // Top-bar shows the page-load time (SDLCCT-103), not the data anchor date.
+  await expect(page.locator("header").getByTestId("page-header-timestamp")).toHaveText(
+    "資料更新於 2026/10/20 14:30（台灣時間）",
+  );
 });
 
 test("anomalies 390px mobile card: every date is YYYY/MM/DD", async ({ page }) => {
@@ -161,7 +164,10 @@ test("cost dashboard: period-comparison header ranges keep the old 10/1–10/28 
       { key: "p1", display: "grower", current_cost: 10, previous_cost: 5, delta: 5, delta_pct: 100 },
     ],
   });
+  await page.clock.setFixedTime("2026-10-28T06:30:00Z");
   await page.goto("/cost-dashboard");
   await expect(page.getByText("本期花費（10/1–10/28）")).toBeVisible();
-  await expect(page.getByText("今天（台灣時間）：2026年10月28日")).toBeVisible();
+  await expect(page.getByTestId("page-header-timestamp")).toHaveText(
+    "資料更新於 2026/10/28 14:30（台灣時間）",
+  );
 });
