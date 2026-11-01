@@ -21,10 +21,12 @@ export const messages = {
   breadcrumb: {
     ariaLabel: "麵包屑",
   },
+  pageHeader: {
+    updatedAt: (time: string) => `資料更新於 ${time}`,
+    timezone: "（台灣時間）",
+  },
   costOverview: {
     header: {
-      today: "今天（台灣時間）：",
-      unavailable: "無法取得",
       title: "成本總覽",
       subtitle: "本月成本 vs 預算、預估月底超支、跨 Agent 期間比較",
     },

@@ -9,10 +9,10 @@ import { VersionCostChart } from "@/components/agent-detail/version-cost-chart";
 import { BackLink } from "@/components/common/back-link";
 import { ErrorCard } from "@/components/cost-overview/error-card";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
+import { PageHeaderTimestamp } from "@/components/layout/page-header-timestamp";
 import { fetchAgentCostBreakdown } from "@/lib/agent-detail-api";
 import { rememberAgentDisplayName } from "@/lib/agent-display";
 import { buildAgentBreadcrumbs } from "@/lib/breadcrumbs";
-import { formatTaiwanDate } from "@/lib/format";
 import { t } from "@/lib/i18n/t";
 import { useFetchOnce } from "@/lib/use-fetch-once";
 
@@ -56,11 +56,7 @@ export function AgentDetailContent() {
         />
         <div className="flex items-center justify-between">
           <BackLink href="/agents" label={t("agentDetail.header.backToList")} />
-          <span className="text-xs leading-[18px] text-text-secondary">
-            {state.status === "success"
-              ? formatTaiwanDate(state.data.anchor_date)
-              : t("costOverview.header.unavailable")}
-          </span>
+          <PageHeaderTimestamp />
         </div>
       </header>
 

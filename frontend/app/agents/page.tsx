@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { ErrorCard } from "@/components/cost-overview/error-card";
+import { PageHeaderTimestamp } from "@/components/layout/page-header-timestamp";
 import type { AgentRegistryEntry, AgentTrendPoint } from "@/lib/agents-api";
 import { fetchAgentsList } from "@/lib/agents-api";
-import { formatTableCurrency, formatPercent, formatTaiwanDate } from "@/lib/format";
+import { formatTableCurrency, formatPercent } from "@/lib/format";
 import { t } from "@/lib/i18n/t";
 import { useFetchOnce } from "@/lib/use-fetch-once";
 
@@ -183,11 +184,7 @@ export default function AgentsPage() {
   return (
     <div className="flex min-h-full flex-col bg-gray-50">
       <header className="sticky top-0 z-10 flex items-center justify-end border-b border-border bg-bg px-6 py-3">
-        <span className="text-xs leading-[18px] text-text-secondary">
-          {state.status === "success"
-            ? formatTaiwanDate(state.data.anchor_date)
-            : t("costOverview.header.unavailable")}
-        </span>
+        <PageHeaderTimestamp />
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-6">

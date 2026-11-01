@@ -31,17 +31,10 @@ function Card({
   );
 }
 
-/** Exposes the fetched anchor_date to the page header via a callback, since
- * AC4's "今天" display reads summary's anchor_date -- see page.tsx. */
-export function SummarySection({
-  onAnchorDate,
-}: {
-  onAnchorDate?: (anchorDate: string | null) => void;
-}) {
+export function SummarySection() {
   const state = useFetchOnce(fetchCostOverviewSummary);
 
   if (state.status === "loading") {
-    onAnchorDate?.(null);
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
@@ -52,14 +45,12 @@ export function SummarySection({
   }
 
   if (state.status === "error") {
-    onAnchorDate?.(null);
     return (
       <ErrorCard title={t("costOverview.summarySection.title")} error={state.error} onRetry={state.retry} />
     );
   }
 
   const summary = state.data;
-  onAnchorDate?.(summary.anchor_date);
   const overBudget = (summary.budget_consumed_pct ?? 0) > 100;
   const overspend = (summary.projected_overspend ?? 0) > 0;
 

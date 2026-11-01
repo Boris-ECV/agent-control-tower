@@ -168,6 +168,20 @@ export function formatSlashDateTime(iso: string | null | undefined): string {
   if (!parseCalendarDate(iso.slice(0, 10))) return "—";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
+  const p = taipeiParts(date);
+  return `${p.year}/${p.month}/${p.day} ${p.hour}:${p.minute}:${p.second}`;
+}
+
+/** Date in Asia/Taipei, 24-hour, minute precision:
+ * new Date("2026-10-15T06:30:00Z") -> "2026/10/15 14:30". Invalid Date -> "—". */
+export function formatSlashDateTimeMinute(date: Date): string {
+  if (Number.isNaN(date.getTime())) return "—";
+  const p = taipeiParts(date);
+  return `${p.year}/${p.month}/${p.day} ${p.hour}:${p.minute}`;
+}
+
+/** Asia/Taipei 24h fields for a Date, zero-padded. */
+function taipeiParts(date: Date) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Taipei",
     year: "numeric",
@@ -181,7 +195,14 @@ export function formatSlashDateTime(iso: string | null | undefined): string {
   const get = (type: string) =>
     (parts.find((p) => p.type === type)?.value ?? "").padStart(2, "0");
   const year = parts.find((p) => p.type === "year")?.value ?? "";
-  return `${year}/${get("month")}/${get("day")} ${get("hour")}:${get("minute")}:${get("second")}`;
+  return {
+    year,
+    month: get("month"),
+    day: get("day"),
+    hour: get("hour"),
+    minute: get("minute"),
+    second: get("second"),
+  };
 }
 
 /** Daily column header: "2026-10-09" -> "10/9 (五)". Missing/invalid -> "—". */
