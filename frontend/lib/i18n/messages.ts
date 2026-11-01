@@ -169,7 +169,7 @@ export const messages = {
     unknown: "—",
   },
   traceDetail: {
-    header: { title: "執行詳情", backToAgent: "返回 Agent 明細" },
+    header: { title: "執行詳情", backToAgent: (agentName: string) => `返回 ${agentName}` },
     empty: "查無資料",
     expand: "展開查看個別",
     collapse: "收合",
