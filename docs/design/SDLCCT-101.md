@@ -97,12 +97,27 @@ Gherkin 驗收條件：hover 底色＋箭頭動效、鍵盤 Enter/空白鍵開�
    `group-focus-visible` 變體實作（在 `<tr>` 上加 `group` class，箭頭
    `<svg>` 用 `group-hover:text-accent group-focus-visible:text-accent
    group-hover:translate-x-1 group-focus-visible:translate-x-1
-   transition-[color,transform]`），不用 JS state 控制 hover。**
+   transition-[translate]`），不用 JS state 控制 hover。**
    理由：純 CSS 變體可讓「滑鼠 hover」與「鍵盤 focus」共用同一組視覺
    規則（規格 Scenario「hover」與「焦點樣式」要求的底色/外框是兩個獨
    立視覺效果，但箭頭動效合理地在兩種觸發方式下一致呈現），不需額外
    state 與重渲染；Tailwind 的 `group` 機制不限定容器必須是特定標籤，
    可直接用在 `<tr>` 上。
+   **CI 修正記錄（SDLCCT-101 reopen）：**原訂 `transition-[color,
+   transform]` 是沿用 Tailwind v3 的假設——以為 `translate-x-*`
+   產生 `transform`。Tailwind v4 的 `translate-x-*` 實際上設的是原生
+   CSS `translate` 屬性（與本文件開頭 `globals.css` 已記錄的 v3/v4
+   落差同一類問題），導致 `transform` 列在 transition 清單裡卻從未
+   真正改變，箭頭的「滑動」其實是瞬間跳到位、完全沒有動畫，而
+   `color` 卻是真的在 transition（150ms）。兩者不同步，造成 e2e 測試
+   以「`translate` 是否已離開 `none`」作為「色彩已經套用完畢」的判斷
+   依據失準：在 CI 這個瞬間判斷發生在 `color` 的 transition 才剛開始
+   時，量到的顏色還停留在接近 base 值，而非最終的 `--color-accent`。
+   修正為只對 `translate` 套用 transition（滑動才是「動效」本身），
+   `color` 隨 `group-hover`/`group-focus-visible` 狀態同步瞬間切換，
+   不再延遲——視覺上仍然是「hover/focus 時箭頭變色＋滑動」，但顏色不
+   再有淡入期間，確保量到 `translate` 開始移動的那一刻，色彩已經是
+   最終值。
 
 5. **箭頭顏色預設用 `text-text-secondary`、hover/focus 時用
    `text-accent`，不新增色彩 token。**

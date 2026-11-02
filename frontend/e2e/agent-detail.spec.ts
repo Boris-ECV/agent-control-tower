@@ -821,6 +821,141 @@ test("SDLCCT-56: top_traces rows are visually clickable and clicking navigates t
   await expect(page).toHaveURL(`/agents/${MOCK_KEY}/traces/trace-001`);
 });
 
+test("SDLCCT-101 AC2: keyboard Enter and Space on a focused top-traces row navigate to the trace detail page", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [],
+        model_cost_breakdown: [],
+        top_traces: [
+          { id: "trace-001", total_estimated_cost: 999, metadata: null },
+        ],
+      }),
+    });
+  });
+  await page.route(`**/api/agents/${MOCK_KEY}/traces/trace-001/spans`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ key: MOCK_KEY, trace_id: "trace-001", spans: [] }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const row = page.getByText("trace-001").locator("xpath=ancestor::tr");
+  await row.focus();
+  await expect(row).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(`/agents/${MOCK_KEY}/traces/trace-001`);
+
+  // Space key, from a fresh navigation.
+  await page.goto(`/agents/${MOCK_KEY}`);
+  const rowAgain = page.getByText("trace-001").locator("xpath=ancestor::tr");
+  await rowAgain.focus();
+  await expect(rowAgain).toBeFocused();
+  await page.keyboard.press(" ");
+  await expect(page).toHaveURL(`/agents/${MOCK_KEY}/traces/trace-001`);
+});
+
+test("SDLCCT-101 AC3: a focused top-traces row shows a clear focus outline", async ({ page }) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [],
+        model_cost_breakdown: [],
+        top_traces: [
+          { id: "trace-001", total_estimated_cost: 999, metadata: null },
+        ],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const row = page.getByText("trace-001").locator("xpath=ancestor::tr");
+  await row.focus();
+  await expect(row).toBeFocused();
+
+  const outline = await row.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { width: cs.outlineWidth, style: cs.outlineStyle, color: cs.outlineColor };
+  });
+  // docs/design-system.md §8 token: outline: 2px solid var(--color-accent)
+  // (#2563EB = rgb(37, 99, 235)).
+  expect(outline.width).toBe("2px");
+  expect(outline.style).toBe("solid");
+  expect(outline.color).toBe("rgb(37, 99, 235)");
+});
+
+test("SDLCCT-101 AC1: hovering a top-traces row shows the hover background and shifts/colors the trailing arrow", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [],
+        model_cost_breakdown: [],
+        top_traces: [
+          { id: "trace-001", total_estimated_cost: 999, metadata: null },
+        ],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const row = page.getByText("trace-001").locator("xpath=ancestor::tr");
+  const arrow = row.locator("svg").last();
+
+  // Tailwind v4's translate-x-* utility sets the native CSS `translate`
+  // property (not the legacy `transform` composite), so that -- not
+  // `transform` -- is what group-hover:translate-x-1 changes here.
+  const before = await arrow.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { translate: cs.translate, color: cs.color };
+  });
+
+  await row.hover();
+
+  // Poll on `translate` specifically (not the combined object): `color`
+  // settles via a CSS transition on the main thread slightly before the
+  // compositor-driven `translate` property reflects in getComputedStyle,
+  // so polling the pair together can pass on the color change alone while
+  // translate is still mid-flight.
+  await expect
+    .poll(async () => arrow.evaluate((el) => getComputedStyle(el).translate))
+    .not.toBe("none");
+
+  const after = await arrow.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { translate: cs.translate, color: cs.color };
+  });
+  expect(before.translate).toBe("none");
+  expect(after.color).toBe("rgb(37, 99, 235)");
+  expect(after.translate).not.toBe("none");
+});
+
 test("AC5: backend 404 shows an explicit error card, never blank", async ({ page }) => {
   await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
     await route.fulfill({

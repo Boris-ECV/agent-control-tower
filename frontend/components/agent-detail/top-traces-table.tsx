@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { useParams, useRouter } from "next/navigation";
 
+import { ClickableRow } from "@/components/common/clickable-row";
 import type { TopTraceItem } from "@/lib/agent-detail-api";
 import { formatTableCurrency } from "@/lib/format";
 import { t } from "@/lib/i18n/t";
@@ -94,23 +95,12 @@ export function TopTracesTable({ traces }: { traces: TopTraceItem[] }) {
           <th className="py-2 pr-3">
             {t("agentDetail.topTraces.table.columns.metadata")}
           </th>
+          <th className="py-2 pr-3" aria-hidden="true" />
         </tr>
       </thead>
       <tbody>
         {traces.map((trace) => (
-          <tr
-            key={trace.id}
-            role="button"
-            tabIndex={0}
-            onClick={() => goToTrace(trace.id)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                goToTrace(trace.id);
-              }
-            }}
-            className="cursor-pointer border-b border-border last:border-b-0 hover:bg-gray-50"
-          >
+          <ClickableRow key={trace.id} onActivate={() => goToTrace(trace.id)}>
             <td className="py-2 pr-3 font-medium text-text-primary">{trace.id}</td>
             <td className="py-2 pr-3 text-right tabular-nums">{formatTableCurrency(trace.total_estimated_cost)}</td>
             <td className="py-2 pr-3">
@@ -120,7 +110,19 @@ export function TopTracesTable({ traces }: { traces: TopTraceItem[] }) {
                 <MetadataCell metadata={trace.metadata} />
               )}
             </td>
-          </tr>
+            <td className="py-2 pr-3" aria-hidden="true">
+              {/* SDLCCT-101 CI fix: see app/agents/page.tsx's arrow <svg> for
+                  the full rationale -- `translate-x-*` sets the native CSS
+                  `translate` property in Tailwind v4, not `transform`, so
+                  only `translate` belongs in the transition list here. */}
+              <svg
+                viewBox="0 0 16 16"
+                className="h-4 w-4 flex-none fill-current text-text-secondary transition-[translate] group-hover:translate-x-1 group-hover:text-accent group-focus-visible:translate-x-1 group-focus-visible:text-accent"
+              >
+                <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
+              </svg>
+            </td>
+          </ClickableRow>
         ))}
       </tbody>
     </table>

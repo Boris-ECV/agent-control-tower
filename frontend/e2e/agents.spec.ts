@@ -181,6 +181,93 @@ test("SDLCCT-94: desktop table amounts use two decimals, right-aligned with tabu
   }
 });
 
+test("SDLCCT-101 AC2: keyboard Enter on a focused agent row navigates to its detail page", async ({
+  page,
+}) => {
+  await mockSingleAgent(page);
+  await page.goto("/agents");
+
+  const firstRow = page.locator("table tbody tr").first();
+  await firstRow.focus();
+  await expect(firstRow).toBeFocused();
+  await page.keyboard.press("Enter");
+
+  await expect(page).toHaveURL(/\/agents\/sales-copilot$/);
+});
+
+test("SDLCCT-101 AC2: keyboard Space on a focused agent row navigates to its detail page", async ({
+  page,
+}) => {
+  await mockSingleAgent(page);
+  await page.goto("/agents");
+
+  const firstRow = page.locator("table tbody tr").first();
+  await firstRow.focus();
+  await expect(firstRow).toBeFocused();
+  await page.keyboard.press(" ");
+
+  await expect(page).toHaveURL(/\/agents\/sales-copilot$/);
+});
+
+test("SDLCCT-101 AC3: a focused agent row shows a clear focus outline", async ({ page }) => {
+  await mockSingleAgent(page);
+  await page.goto("/agents");
+
+  const firstRow = page.locator("table tbody tr").first();
+  await firstRow.focus();
+  await expect(firstRow).toBeFocused();
+
+  const outline = await firstRow.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { width: cs.outlineWidth, style: cs.outlineStyle, color: cs.outlineColor };
+  });
+  // docs/design-system.md §8 token: outline: 2px solid var(--color-accent)
+  // (#2563EB = rgb(37, 99, 235)).
+  expect(outline.width).toBe("2px");
+  expect(outline.style).toBe("solid");
+  expect(outline.color).toBe("rgb(37, 99, 235)");
+});
+
+test("SDLCCT-101 AC1: hovering an agent row shows the hover background and shifts/colors the trailing arrow", async ({
+  page,
+}) => {
+  await mockSingleAgent(page);
+  await page.goto("/agents");
+
+  const firstRow = page.locator("table tbody tr").first();
+  const arrow = firstRow.locator("svg").last();
+
+  // Tailwind v4's translate-x-* utility sets the native CSS `translate`
+  // property (not the legacy `transform` composite), so that -- not
+  // `transform` -- is what group-hover:translate-x-1 changes here.
+  const before = await arrow.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { translate: cs.translate, color: cs.color };
+  });
+
+  await firstRow.hover();
+
+  // Poll on `translate` specifically (not the combined object): `color`
+  // settles via a CSS transition on the main thread slightly before the
+  // compositor-driven `translate` property reflects in getComputedStyle,
+  // so polling the pair together can pass on the color change alone while
+  // translate is still mid-flight.
+  await expect
+    .poll(async () => arrow.evaluate((el) => getComputedStyle(el).translate))
+    .not.toBe("none");
+
+  const after = await arrow.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { translate: cs.translate, color: cs.color };
+  });
+  // Arrow becomes the accent color and shifts right (non-zero translate) on
+  // hover; default state has no translate (translate-x-1 applies only on
+  // hover/focus).
+  expect(before.translate).toBe("none");
+  expect(after.color).toBe("rgb(37, 99, 235)");
+  expect(after.translate).not.toBe("none");
+});
+
 test("SDLCCT-94: mobile agent card shows the same two-decimal amounts", async ({
   page,
 }) => {
