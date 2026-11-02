@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-84 原型 — 異常與告警頁視覺一致性</title>
+<style>
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #475467;
+    --color-text-tertiary: #667085;
+    --color-border: #E5E7EB;
+    --color-accent: #2563EB;
+  }
+  body {
+    font-family: -apple-system, "Segoe UI", "Noto Sans TC", sans-serif;
+    background: #F9FAFB;
+    color: var(--color-text-primary);
+    margin: 0;
+    padding: 32px;
+  }
+  .font-mono { font-family: "Geist Mono", "Courier New", monospace; }
+  h1 { font-size: 24px; font-weight: 700; margin: 0 0 4px; }
+  .subtitle { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 24px; }
+  .note {
+    max-width: 960px;
+    margin: 0 0 20px;
+    padding: 10px 14px;
+    background: #EFF6FF;
+    border: 1px solid #BFDBFE;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #1E40AF;
+  }
+  .filter-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .segmented {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #F9FAFB;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 4px;
+  }
+  .segmented button {
+    border: none;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .segmented button.active {
+    background: #FFFFFF;
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+  .count-label { font-size: 14px; color: var(--color-text-secondary); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; background: #fff; border-radius: 8px; overflow: hidden; }
+  thead tr { border-bottom: 1px solid var(--color-border); text-align: left; }
+  th { font-size: 12px; color: var(--color-text-secondary); font-weight: 500; padding: 8px 12px; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--color-border); vertical-align: top; }
+  tr.clickable-row { cursor: pointer; }
+  tr.clickable-row:hover { background: #F9FAFB; }
+  tr.not-clickable { cursor: default; }
+
+  .agent-name { font-weight: 500; color: var(--color-text-primary); display: block; }
+  .agent-code { font-size: 12px; color: var(--color-text-secondary); display: block; margin-top: 2px; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    border: 1px solid;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge .dot { width: 6px; height: 6px; border-radius: 999px; flex: none; }
+
+  .badge-danger { border-color: #FCA5A5; background: #FEF2F2; color: #B91C1C; }
+  .badge-danger .dot { background: #DC2626; }
+
+  .badge-warning { border-color: #FCD34D; background: #FFFBEB; color: #B45309; }
+  .badge-warning .dot { background: #D97706; }
+
+  .badge-neutral { border-color: var(--color-border); background: #F9FAFB; color: var(--color-text-secondary); }
+  .badge-neutral .dot { background: var(--color-text-secondary); }
+
+  code.model-name {
+    background: #F3F4F6;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 12px;
+  }
+
+  .banner {
+    border: 1px solid #FCA5A5;
+    background: #FEF2F2;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+  }
+  .banner .title { font-size: 14px; font-weight: 600; color: #B91C1C; margin: 0 0 4px; }
+  .banner .body { font-size: 12px; color: rgba(185,28,28,0.85); margin: 0; }
+
+  .arrow { color: var(--color-text-secondary); float: right; }
+
+  section { margin-bottom: 36px; }
+  section > h2 { font-size: 16px; margin: 0 0 10px; }
+</style>
+</head>
+<body>
+
+<h1>異常與告警</h1>
+<p class="subtitle">彙整各規則偵測到的異常與治理缺口，包含持續中的治理缺口。</p>
+
+<div class="note">
+  原型說明：此為靜態 HTML 示意，互動（篩選點擊切換 active 樣式、計數同步）
+  以最小 vanilla JS 示意，非最終 React 實作。「可點擊列」的 hover 樣式以
+  CSS :hover 模擬；鍵盤 focus 樣式未在此原型重現（沿用
+  docs/design/SDLCCT-101.md 既有 focus-visible 規則，非本票新增）。
+</div>
+
+<section>
+  <h2>1. 篩選列（SegmentedFilter 第一個實際呼叫端）</h2>
+  <div class="filter-row">
+    <div class="segmented" id="filterGroup">
+      <button class="active" data-type="all">全部</button>
+      <button data-type="tool_retry_loop">工具重試迴圈</button>
+      <button data-type="context_bloat">情境膨脹</button>
+      <button data-type="night_batch_burst">非營業時段流量暴增</button>
+      <button data-type="model_switch">模型切換</button>
+      <button data-type="governance_gap">治理缺口</button>
+    </div>
+    <span class="count-label" id="countLabel">顯示 6 / 6</span>
+  </div>
+</section>
+
+<section>
+  <h2>2. 異常列表（AnomalyTable）— Agent 中文名稱 / 分色標籤 / 持續中標籤 / 可點擊列</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Agent</th>
+        <th>異常類型</th>
+        <th>日期</th>
+        <th>原因</th>
+      </tr>
+    </thead>
+    <tbody id="rowsBody">
+      <tr class="clickable-row" data-type="tool_retry_loop" title="點擊導向 /agents/order_status">
+        <td>
+          <span class="agent-name">訂單狀態助理</span>
+          <span class="agent-code font-mono">order_status</span>
+        </td>
+        <td>工具重試迴圈</td>
+        <td>2026/10/18</td>
+        <td>此 Agent 近期錯誤率與平均工具呼叫次數同時異常升高：錯誤率約 42%，平均每筆對話呼叫工具次數較基準值高出約 4 倍（目前約 8.2、基準約 2.0 次/trace）</td>
+      </tr>
+      <tr class="clickable-row" data-type="model_switch" title="點擊導向 /agents/finance_assistant">
+        <td>
+          <span class="agent-name">財務分析助理</span>
+          <span class="agent-code font-mono">finance_assistant</span>
+        </td>
+        <td>
+          <span class="badge badge-warning"><span class="dot"></span>模型切換</span>
+        </td>
+        <td>2026/10/18</td>
+        <td>模型於 10/18 由 <code class="model-name">gpt-4</code> 切換為 <code class="model-name">gpt-4o-mini</code>，成本偏離正常值約 3 倍</td>
+      </tr>
+      <tr class="clickable-row" data-type="governance_gap" title="點擊導向 /agents/sales_copilot">
+        <td>
+          <span class="agent-name">銷售助理</span>
+          <span class="agent-code font-mono">sales_copilot</span>
+        </td>
+        <td>
+          <span class="badge badge-danger"><span class="dot"></span>治理缺口</span>
+        </td>
+        <td><span class="badge badge-neutral"><span class="dot"></span>持續中</span></td>
+        <td>此 Agent 尚未登錄負責人與預算，過去一日花費約 US$ 128</td>
+      </tr>
+      <tr class="not-clickable" data-type="night_batch_burst" title="agent 為 null，不可點擊，無導航目標">
+        <td>不明</td>
+        <td>非營業時段流量暴增</td>
+        <td>2026/10/19</td>
+        <td>此 Agent 於非營業時段（UTC 02:00–06:00）出現異常大量請求，約為平時同時段的 6 倍，可能與批次工作流程「nightly-reconciliation」相關</td>
+      </tr>
+      <tr class="clickable-row" data-type="context_bloat" title="點擊導向 /agents/hr_onboarding">
+        <td>
+          <span class="agent-name">人資新人入職助理</span>
+          <span class="agent-code font-mono">hr_onboarding</span>
+        </td>
+        <td>情境膨脹</td>
+        <td>2026/10/17</td>
+        <td>此 Agent 近期每筆對話的 prompt token 使用量較過去 14 天基準值高出約 85%（目前約 9200、基準約 4970 tokens/trace）</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>3. 錯誤橫幅（AnomalyErrorBanner）— 同套分色標籤，不可點擊</h2>
+  <div class="banner" data-type="model_switch">
+    <p class="title">資料錯誤</p>
+    <p class="body">
+      ops_bot（<span class="badge badge-warning" style="vertical-align: middle;"><span class="dot"></span>模型切換</span>）：查詢觀測性後端逾時
+    </p>
+  </div>
+  <div class="banner" data-type="governance_gap">
+    <p class="title">資料錯誤</p>
+    <p class="body">
+      不明（<span class="badge badge-danger" style="vertical-align: middle;"><span class="dot"></span>治理缺口</span>）：整批治理缺口規則執行失敗
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>4. 關鍵技術決策備註（對照設計文件）</h2>
+  <ul style="font-size: 13px; color: var(--color-text-secondary); line-height: 1.7;">
+    <li><code class="model-name">warning</code> variant 對比度 ≈ 4.84:1（amber-700 on amber-50），≥ AA 4.5:1 但餘裕較窄，見設計文件決策 1。</li>
+    <li>工具重試迴圈／情境膨脹／非營業時段流量暴增 3 種類型維持純文字，規格未指定顏色，不自行發明（決策 2）。</li>
+    <li>agent 為 null 的列（第 4 列示意）不可點擊，無有效導航目標（決策 7）。</li>
+  </ul>
+</section>
+
+<script>
+  var buttons = document.querySelectorAll('#filterGroup button');
+  var rows = document.querySelectorAll('#rowsBody tr');
+  var banners = document.querySelectorAll('.banner');
+  var countLabel = document.getElementById('countLabel');
+  var total = rows.length + banners.length;
+
+  buttons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      buttons.forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      var type = btn.getAttribute('data-type');
+      var shown = 0;
+      rows.forEach(function (row) {
+        var match = type === 'all' || row.getAttribute('data-type') === type;
+        row.style.display = match ? '' : 'none';
+        if (match) shown++;
+      });
+      banners.forEach(function (b) {
+        var match = type === 'all' || b.getAttribute('data-type') === type;
+        b.style.display = match ? '' : 'none';
+        if (match) shown++;
+      });
+      countLabel.textContent = '顯示 ' + shown + ' / ' + total;
+    });
+  });
+</script>
+
+</body>
+</html>

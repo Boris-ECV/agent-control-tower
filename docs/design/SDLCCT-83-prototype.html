@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<title>SDLCCT-83 原型 — 成本儀表板</title>
+<style>
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #475467;
+    --color-border: #E5E7EB;
+    --color-accent: #2563EB;
+    --color-red: #B91C1C;
+    --color-red-bg: #FEF2F2;
+    --color-red-border: #FCA5A5;
+  }
+  body { font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif; background: #F9FAFB; margin: 0; padding: 24px; color: var(--color-text-primary); }
+  .page { max-width: 1024px; margin: 0 auto; }
+  h1 { font-size: 24px; font-weight: 700; margin: 0 0 4px; }
+  .subtitle { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 24px; }
+  .card { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; padding: 16px; }
+  .section { margin-bottom: 32px; }
+  .section-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+  .section-title { font-size: 18px; font-weight: 600; margin: 0; }
+  .stats-period { font-size: 12px; color: var(--color-text-secondary); }
+  .note { font-size: 12px; color: var(--color-text-secondary); margin-top: 8px; }
+
+  /* summary cards */
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+  .summary-label { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 8px; }
+  .summary-value { font-size: 24px; font-weight: 700; margin: 0 0 8px; }
+  .progress-track { height: 6px; border-radius: 3px; background: #F3F4F6; overflow: hidden; margin-bottom: 6px; }
+  .progress-fill { height: 100%; border-radius: 3px; background: var(--color-accent); }
+  .progress-fill.danger { background: var(--color-red); }
+  .summary-sub { font-size: 12px; color: var(--color-text-secondary); margin: 0; }
+
+  /* comparison table */
+  table { width: 100%; border-collapse: collapse; }
+  thead th { text-align: right; font-size: 12px; font-weight: 400; color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border); padding: 8px; }
+  thead th:first-child, thead th.agent-col { text-align: left; }
+  .th-label { display: block; }
+  .th-period { display: block; color: var(--color-text-secondary); font-weight: 400; }
+  tbody td { border-bottom: 1px solid var(--color-border); padding: 12px 8px; font-size: 14px; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.row-clickable { cursor: pointer; }
+  tbody tr.row-clickable:hover { background: #F9FAFB; }
+  tbody tr.row-clickable:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .agent-idx { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: #EFF6FF; color: var(--color-accent); font-size: 12px; font-weight: 600; margin-right: 8px; }
+  .delta-cell { min-width: 160px; }
+  .delta-amount { font-size: 14px; color: var(--color-text-primary); font-weight: 600; display: block; text-align: right; margin-bottom: 4px; }
+  .delta-bar-track { height: 8px; border-radius: 4px; background: #F3F4F6; overflow: hidden; }
+  .delta-bar-fill { height: 100%; border-radius: 4px; background: var(--color-accent); }
+  .delta-bar-fill.danger { background: var(--color-red); }
+  .badge-danger { display: inline-flex; align-items: center; border: 1px solid var(--color-red-border); background: var(--color-red-bg); color: var(--color-red); border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 600; margin-top: 4px; }
+  .arrow-col { width: 24px; }
+  .arrow { color: var(--color-text-secondary); }
+  .legend { font-size: 12px; color: var(--color-text-secondary); margin-top: 12px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- 標題一致：頁面標題與側邊選單文字皆為「成本儀表板」 -->
+  <h1>成本儀表板</h1>
+  <p class="subtitle">本月成本 vs 預算、預估月底超支、跨 Agent 期間比較</p>
+
+  <div class="section">
+    <h2 class="section-title" style="margin-bottom:12px;">本月成本 vs 預算總覽</h2>
+    <div class="summary-grid">
+      <div class="card">
+        <p class="summary-label">本月總花費（含未登錄 Agent）</p>
+        <p class="summary-value">US$ 1,746</p>
+        <p class="summary-sub">9 個 Agent 累計（本月至今）</p>
+      </div>
+      <div class="card">
+        <p class="summary-label">本月總預算</p>
+        <p class="summary-value">US$ 5,000</p>
+        <p class="summary-sub">已登錄 Agent 的預算加總</p>
+      </div>
+      <div class="card">
+        <p class="summary-label">預算消耗百分比</p>
+        <p class="summary-value">34.9%</p>
+        <div class="progress-track"><div class="progress-fill" style="width:34.9%"></div></div>
+        <p class="summary-sub">尚在預算內</p>
+      </div>
+      <div class="card">
+        <p class="summary-label">預算消耗百分比（超支範例）</p>
+        <p class="summary-value" style="color:var(--color-red);">118.2%</p>
+        <div class="progress-track"><div class="progress-fill danger" style="width:100%"></div></div>
+        <p class="summary-sub">已超過本月預算</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">跨 Agent 期間比較（誰漲最多）</h2>
+      <!-- 統計期間標示 -->
+      <span class="stats-period">統計期間 2026/10/01 – 2026/10/15</span>
+    </div>
+    <div class="card" style="padding:16px;">
+      <table>
+        <thead>
+          <tr>
+            <th class="agent-col">Agent</th>
+            <th><span class="th-label">本期花費</span><span class="th-period">10/1–10/15</span></th>
+            <th><span class="th-label">前期花費</span><span class="th-period">9/16–9/30</span></th>
+            <th class="delta-cell"><span class="th-label">增加金額</span></th>
+            <th><span class="th-label">漲幅</span></th>
+            <th class="arrow-col" aria-hidden="true"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- 列 1：一般增加,長度條用中性 accent 色,金額文字一般色 -->
+          <tr class="row-clickable" tabindex="0" role="button" aria-label="Sales Copilot">
+            <td><span class="agent-idx">1</span>Sales Copilot</td>
+            <td class="num">US$ 750.00</td>
+            <td class="num">US$ 500.00</td>
+            <td class="delta-cell">
+              <span class="delta-amount">+US$ 250.00</span>
+              <div class="delta-bar-track"><div class="delta-bar-fill" style="width:40%"></div></div>
+            </td>
+            <td class="num">（50.0%）</td>
+            <td class="arrow-col"><span class="arrow">&#8250;</span></td>
+          </tr>
+          <!-- 列 2：漲幅最高,長度條為該列相對最大值,一般色,金額文字一般色,不全列標紅 -->
+          <tr class="row-clickable" tabindex="0" role="button" aria-label="Support Bot">
+            <td><span class="agent-idx">2</span>Support Bot</td>
+            <td class="num">US$ 1,180.00</td>
+            <td class="num">US$ 550.00</td>
+            <td class="delta-cell">
+              <span class="delta-amount">+US$ 630.00</span>
+              <div class="delta-bar-track"><div class="delta-bar-fill" style="width:100%"></div></div>
+            </td>
+            <td class="num">（114.5%）</td>
+            <td class="arrow-col"><span class="arrow">&#8250;</span></td>
+          </tr>
+          <!-- 列 3：previous_cost < US$10 門檻,觸發「新增顯著支出」——紅色只用在長度條與徽章,金額文字仍為一般色 -->
+          <tr class="row-clickable" tabindex="0" role="button" aria-label="New Agent X">
+            <td><span class="agent-idx">3</span>New Agent X</td>
+            <td class="num">US$ 120.00</td>
+            <td class="num">US$ 0.00</td>
+            <td class="delta-cell">
+              <span class="delta-amount">+US$ 120.00</span>
+              <div class="delta-bar-track"><div class="delta-bar-fill danger" style="width:19%"></div></div>
+              <span class="badge-danger">新增顯著支出</span>
+            </td>
+            <td class="num">—</td>
+            <td class="arrow-col"><span class="arrow">&#8250;</span></td>
+          </tr>
+          <!-- 列 4：花費下降,增加金額欄不顯示長度條(寬度 0) -->
+          <tr class="row-clickable" tabindex="0" role="button" aria-label="Billing Agent" style="background:#F9FAFB;">
+            <td><span class="agent-idx">4</span>Billing Agent（滑鼠 hover／鍵盤 focus 範例）</td>
+            <td class="num">US$ 300.00</td>
+            <td class="num">US$ 420.00</td>
+            <td class="delta-cell">
+              <span class="delta-amount">-US$ 120.00</span>
+              <div class="delta-bar-track"><div class="delta-bar-fill" style="width:0%"></div></div>
+            </td>
+            <td class="num">（-28.6%）</td>
+            <td class="arrow-col"><span class="arrow" style="color:var(--color-accent);">&#8250;</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="legend">
+        示意：列 4 呈現 hover/鍵盤聚焦視覺（底色＋箭頭變色，沿用 SDLCCT-101
+        ClickableRow 規則）。整張表每一列皆可點擊／可用 Tab+Enter 進入該
+        Agent 詳情頁。
+      </p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
