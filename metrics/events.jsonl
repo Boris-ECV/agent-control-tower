@@ -438,3 +438,8 @@
 {"ts": "2026-11-02T03:09:12Z", "event": "stage_transition", "ticket": "SDLCCT-101", "agent": "orch-20261102-f9k3", "data": {"from": "Refining", "to": "Designing"}}
 {"ts": "2026-11-02T04:02:49Z", "event": "gate_review", "ticket": "SDLCCT-101", "agent": "orch-20261102-f9k3", "data": {"gate": "G1b", "mode": "auto", "result": "approved", "criteria_results": {"no_human_gate_label": true, "design_doc_exists": true, "interface_declared": true, "data_model_declared": true, "no_open_design_questions": true, "ui_prototype_present": true}}}
 {"ts": "2026-11-02T04:03:17Z", "event": "stage_transition", "ticket": "SDLCCT-101", "agent": "orch-20261102-f9k3", "data": {"from": "Designing", "to": "Ready"}}
+{"ts": "2026-11-02T04:05:07Z", "event": "stage_transition", "ticket": "SDLCCT-99", "agent": "orch-20261102-f9k3", "data": {"from": "Ready", "to": "In Progress"}}
+{"ts": "2026-11-02T04:59:12Z", "event": "stage_transition", "ticket": "SDLCCT-99", "agent": "orch-20261102-f9k3", "data": {"from": "In Progress", "to": "Testing"}}
+{"ts": "2026-11-02T07:12:38Z", "event": "stage_transition", "ticket": "SDLCCT-99", "agent": "orch-20261102-f9k3", "data": {"from": "Testing", "to": "In Review"}}
+{"ts": "2026-11-02T09:09:03Z", "event": "gate_review", "ticket": "SDLCCT-99", "agent": "orch-20261102-f9k3", "data": {"gate": "G2", "mode": "auto", "result": "approved", "criteria_results": {"no_human_gate_label": true, "protected_paths_untouched": true, "pr_exists": true, "ci_green": true, "reviewer_approve": true, "checklist_complete": true, "coverage_met": true, "e2e_declared_and_honored": true}}}
+{"ts": "2026-11-02T09:09:35Z", "event": "stage_transition", "ticket": "SDLCCT-99", "agent": "orch-20261102-f9k3", "data": {"from": "In Review", "to": "Done"}}
