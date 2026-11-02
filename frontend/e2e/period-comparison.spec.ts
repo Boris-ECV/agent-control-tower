@@ -138,3 +138,71 @@ test("threshold boundary: previous=US$10, current=US$20: shows +US$ 10.00（100.
   await expect(page.getByText("（100.0%）", { exact: true })).toBeVisible();
   await expect(page.getByText("新增顯著支出")).toHaveCount(0);
 });
+
+// AC "列可點擊進入詳情頁": clicking a row (or Tab+Enter) navigates to that
+// agent's detail page. Follows the same pattern as e2e/agents.spec.ts's
+// row-click assertion for the Agent 清單 table.
+test("SDLCCT-83: clicking a period-comparison row navigates to that agent's detail page", async ({
+  page,
+}) => {
+  await page.route("**/api/cost-overview/period-comparison", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(
+        mockPeriodComparison([
+          {
+            key: "sales-copilot",
+            display: "sales-copilot",
+            current_cost: 750,
+            previous_cost: 500,
+            delta: 250,
+            delta_pct: 50.0,
+          },
+        ]),
+      ),
+    });
+  });
+
+  await page.goto("/cost-dashboard");
+
+  const row = page.getByRole("button", { name: "sales-copilot" });
+  await expect(row).toBeVisible();
+  await row.click();
+
+  await expect(page).toHaveURL(/\/agents\/sales-copilot$/);
+});
+
+// Keyboard path: Tab to focus the row, then Enter activates it the same
+// way a click does.
+test("SDLCCT-83: Tab+Enter on a period-comparison row navigates to that agent's detail page", async ({
+  page,
+}) => {
+  await page.route("**/api/cost-overview/period-comparison", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(
+        mockPeriodComparison([
+          {
+            key: "sales-copilot",
+            display: "sales-copilot",
+            current_cost: 750,
+            previous_cost: 500,
+            delta: 250,
+            delta_pct: 50.0,
+          },
+        ]),
+      ),
+    });
+  });
+
+  await page.goto("/cost-dashboard");
+
+  const row = page.getByRole("button", { name: "sales-copilot" });
+  await expect(row).toBeVisible();
+  await row.focus();
+  await page.keyboard.press("Enter");
+
+  await expect(page).toHaveURL(/\/agents\/sales-copilot$/);
+});

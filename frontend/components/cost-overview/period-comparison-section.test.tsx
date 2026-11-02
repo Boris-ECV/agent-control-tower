@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { PeriodComparisonSection } from "@/components/cost-overview/period-comparison-section";
@@ -136,6 +136,62 @@ describe("PeriodComparisonSection red-highlight scoping (SDLCCT-83 AC '紅色只
     expect(fill?.className).toContain("bg-accent");
     expect(fill?.className).not.toContain("bg-red-600");
   });
+
+  // AC "紅色只標示在需要強調的位置...其餘列的金額文字維持一般文字色，不全部
+  // 標紅" is a statement about a table with MULTIPLE rows at once (some over
+  // the threshold, some not) -- the tests above only ever render a single
+  // agent per table, so they cannot catch a bug where the whole table gets
+  // colored red together (e.g. a bug keyed off "any row notable" instead of
+  // "this row notable"). This test renders two rows in the same table and
+  // asserts only the notable row's bar/badge turn red while the other row's
+  // bar, and every row's amount text, stay in the neutral/general color.
+  it("with multiple rows, colors only the notable row's bar/badge red and leaves the other row's bar and both rows' amount text in the general color", async () => {
+    fetchPeriodComparison.mockResolvedValueOnce({
+      current_period: { start: "2026-10-01", end: "2026-10-28" },
+      previous_period: { start: "2026-09-01", end: "2026-09-28" },
+      agents: [
+        {
+          key: "agent-notable",
+          display: "Notable Agent",
+          current_cost: 639,
+          previous_cost: 1,
+          delta: 638,
+          delta_pct: 63800.0,
+        },
+        {
+          key: "agent-normal",
+          display: "Normal Agent",
+          current_cost: 750,
+          previous_cost: 500,
+          delta: 250,
+          delta_pct: 50.0,
+        },
+      ],
+    } as unknown as PeriodComparison);
+
+    const { container } = render(<PeriodComparisonSection />);
+
+    await waitFor(() => expect(screen.getByText("新增顯著支出")).toBeInTheDocument());
+
+    const rows = container.querySelectorAll("tbody tr");
+    expect(rows).toHaveLength(2);
+
+    const notableDeltaCell = rows[0]?.querySelectorAll("td")[3];
+    const normalDeltaCell = rows[1]?.querySelectorAll("td")[3];
+
+    const notableFill = notableDeltaCell?.querySelector("span > span");
+    const normalFill = normalDeltaCell?.querySelector("span > span");
+    expect(notableFill?.className).toContain("bg-red-600");
+    expect(normalFill?.className).toContain("bg-accent");
+    expect(normalFill?.className).not.toContain("bg-red-600");
+
+    const notableAmount = notableDeltaCell?.querySelector("span");
+    const normalAmount = normalDeltaCell?.querySelector("span");
+    expect(notableAmount?.className).not.toContain("text-red-700");
+    expect(notableAmount?.className).toContain("text-text-primary");
+    expect(normalAmount?.className).not.toContain("text-red-700");
+    expect(normalAmount?.className).toContain("text-text-primary");
+  });
 });
 
 describe("PeriodComparisonSection current/previous cost cells", () => {
@@ -181,6 +237,20 @@ describe("PeriodComparisonSection clickable rows (SDLCCT-101 ClickableRow)", () 
 
     const row = await screen.findByRole("button", { name: "Agent 1" });
     row.click();
+    expect(push).toHaveBeenCalledWith("/agents/agent-1");
+  });
+
+  // AC "使用者點擊該列（或以 Tab+Enter 操作）" explicitly names the keyboard
+  // path as an equally valid way to activate the row, not just mouse click.
+  it("navigates to the agent detail page on Enter keypress (Tab+Enter)", async () => {
+    fetchPeriodComparison.mockResolvedValueOnce(makeComparison(750, 500, 250, 50.0));
+
+    render(<PeriodComparisonSection />);
+
+    const row = await screen.findByRole("button", { name: "Agent 1" });
+    row.focus();
+    expect(row).toHaveFocus();
+    fireEvent.keyDown(row, { key: "Enter" });
     expect(push).toHaveBeenCalledWith("/agents/agent-1");
   });
 });
