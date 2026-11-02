@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { ClickableRow } from "@/components/common/clickable-row";
+import { StatusBadge } from "@/components/common/status-badge";
 import { ErrorCard } from "@/components/cost-overview/error-card";
 import { PageHeaderTimestamp } from "@/components/layout/page-header-timestamp";
 import type { AgentRegistryEntry, AgentTrendPoint } from "@/lib/agents-api";
@@ -74,14 +75,10 @@ export function Sparkline({ trend }: { trend: AgentTrendPoint[] }) {
 }
 
 function GovernanceBadge({ hasGap }: { hasGap: boolean }) {
-  return hasGap ? (
-    <span className="inline-flex items-center rounded-full border border-red-300 bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">
-      {t("agents.governanceBadge.hasGap")}
-    </span>
-  ) : (
-    <span className="inline-flex items-center rounded-full border border-border bg-gray-50 px-2 py-0.5 text-xs font-semibold text-text-secondary">
-      {t("agents.governanceBadge.ok")}
-    </span>
+  return (
+    <StatusBadge variant={hasGap ? "danger" : "success"}>
+      {hasGap ? t("agents.governanceBadge.hasGap") : t("agents.governanceBadge.ok")}
+    </StatusBadge>
   );
 }
 
