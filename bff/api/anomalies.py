@@ -116,16 +116,30 @@ def _night_batch_burst_reason(finding: Any) -> str:
     return reason
 
 
-def _model_switch_reason(finding: Any) -> str:
-    """SDLCCT-65: business-language reason -- no raw field names/thresholds."""
+def _model_switch_reason(finding: Any) -> tuple[str, list[dict]]:
+    """SDLCCT-65: business-language reason -- no raw field names/thresholds.
+
+    SDLCCT-84: also returns the `reason_segments` breakdown (see design doc
+    decision #5) -- the `before`/`after` model name substrings are known
+    exactly at the point the sentence is assembled, so this is the one place
+    that can mark them `code: true` without the frontend having to guess
+    model name formats via regex."""
     before = finding.before_model_tag.removeprefix(MODEL_TAG_PREFIX)
     after = finding.after_model_tag.removeprefix(MODEL_TAG_PREFIX)
     switch_date = finding.switch_date
     ratio = round(finding.deviation_ratio)
-    return (
-        f"模型於 {switch_date.month}/{switch_date.day} 由 {before} 切換為 {after}，"
-        f"成本偏離正常值約 {ratio} 倍"
-    )
+    prefix = f"模型於 {switch_date.month}/{switch_date.day} 由 "
+    middle = " 切換為 "
+    suffix = f"，成本偏離正常值約 {ratio} 倍"
+    reason = f"{prefix}{before}{middle}{after}{suffix}"
+    segments = [
+        {"text": prefix, "code": False},
+        {"text": before, "code": True},
+        {"text": middle, "code": False},
+        {"text": after, "code": True},
+        {"text": suffix, "code": False},
+    ]
+    return reason, segments
 
 
 def _governance_gap_reason(finding: Any) -> str:
@@ -134,15 +148,26 @@ def _governance_gap_reason(finding: Any) -> str:
     return f"此 Agent 尚未登錄負責人與預算，過去一日花費約 {cost_str}"
 
 
-def _row(*, agent: str | None, anomaly_type: str, row_date: date | None, status: str, reason: str) -> dict:
+def _row(
+    *,
+    agent: str | None,
+    anomaly_type: str,
+    row_date: date | None,
+    status: str,
+    reason: str,
+    reason_segments: list[dict] | None = None,
+) -> dict:
     """Build one `anomalies[]` row. `date` key is always present (never
-    omitted) regardless of value -- see design doc decision #3."""
+    omitted) regardless of value -- see design doc decision #3.
+    `reason_segments` (SDLCCT-84) is `None` for every reason builder except
+    `_model_switch_reason` -- see design doc decision #5."""
     return {
         "agent": agent,
         "anomaly_type": anomaly_type,
         "date": row_date.isoformat() if row_date is not None else None,
         "status": status,
         "reason": reason,
+        "reason_segments": reason_segments,
     }
 
 
@@ -291,13 +316,15 @@ def _run_model_switch(key: str, *, interval_start: datetime, interval_end: datet
     if finding.switch_date is None or not finding.is_anomalous:
         return []  # AC4: no switch_date -> no row
 
+    reason, reason_segments = _model_switch_reason(finding)
     return [
         _row(
             agent=key,
             anomaly_type="model_switch",
             row_date=finding.switch_date,
             status="ok",
-            reason=_model_switch_reason(finding),
+            reason=reason,
+            reason_segments=reason_segments,
         )
     ]
 

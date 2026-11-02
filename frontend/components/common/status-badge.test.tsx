@@ -47,6 +47,23 @@ describe("StatusBadge", () => {
     const dot = badge.querySelector("span[aria-hidden='true']");
     expect(dot?.className).toContain("bg-red-600");
   });
+
+  // SDLCCT-84: 新增第三個 variant "warning"（琥珀色），success/danger 既有
+  // 行為不變（上面 4 個測試仍原樣通過）。
+  it("renders children text inside a badge with border and background classes (warning variant)", () => {
+    render(<StatusBadge variant="warning">模型切換</StatusBadge>);
+    const badge = screen.getByText("模型切換");
+    expect(badge.className).toContain("border-amber-300");
+    expect(badge.className).toContain("bg-amber-50");
+    expect(badge.className).toContain("text-amber-700");
+  });
+
+  it("colors the dot amber for the warning variant", () => {
+    render(<StatusBadge variant="warning">模型切換</StatusBadge>);
+    const badge = screen.getByText("模型切換");
+    const dot = badge.querySelector("span[aria-hidden='true']");
+    expect(dot?.className).toContain("bg-amber-600");
+  });
 });
 
 // Scenario "對比度": 文字與底色對比 >= 4.5:1。獨立重算 WCAG 相對亮度公式
@@ -75,6 +92,12 @@ describe("StatusBadge contrast", () => {
 
   it("danger variant text (text-red-700 #B91C1C) vs background (bg-red-50 #FEF2F2) is >= 4.5:1", () => {
     const ratio = contrastRatio([0xb9, 0x1c, 0x1c], [0xfe, 0xf2, 0xf2]);
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  });
+
+  // SDLCCT-84 決策 1: amber-700/50 配對餘裕比 danger 窄 (~4.84:1)，仍 >= 4.5:1.
+  it("warning variant text (text-amber-700 #B45309) vs background (bg-amber-50 #FFFBEB) is >= 4.5:1", () => {
+    const ratio = contrastRatio([0xb4, 0x53, 0x09], [0xff, 0xfb, 0xeb]);
     expect(ratio).toBeGreaterThanOrEqual(4.5);
   });
 });

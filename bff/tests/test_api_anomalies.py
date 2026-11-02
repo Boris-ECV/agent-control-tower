@@ -164,6 +164,9 @@ def test_ac1_normal_rule_anomalous_emits_one_row_with_target_date(monkeypatch):
         "此 Agent 近期每筆對話的 prompt token 使用量較過去 21 天基準值"
         "高出約 100%（目前約 200、基準約 100 tokens/trace）"
     )
+    # SDLCCT-84: only _model_switch_reason emits a segmented breakdown; the
+    # other 4 reason builders keep reason_segments null (design doc decision #5).
+    assert row["reason_segments"] is None
 
 
 def test_ac3_model_switch_with_switch_date_and_anomalous_emits_one_row(monkeypatch):
@@ -197,6 +200,16 @@ def test_ac3_model_switch_with_switch_date_and_anomalous_emits_one_row(monkeypat
     assert row["date"] == switch_date.isoformat()
     assert row["status"] == "ok"
     assert row["reason"] == "模型於 9/28 由 gpt-cheap 切換為 gpt-expensive，成本偏離正常值約 5 倍"
+    # SDLCCT-84: reason_segments mirrors the same sentence, split so the
+    # frontend can render the before/after model names as <code> without
+    # regex-guessing model name formats out of the plain-text `reason`.
+    assert row["reason_segments"] == [
+        {"text": "模型於 9/28 由 ", "code": False},
+        {"text": "gpt-cheap", "code": True},
+        {"text": " 切換為 ", "code": False},
+        {"text": "gpt-expensive", "code": True},
+        {"text": "，成本偏離正常值約 5 倍", "code": False},
+    ]
 
 
 def test_ac4_model_switch_with_no_switch_date_emits_no_row(monkeypatch):

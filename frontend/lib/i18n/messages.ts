@@ -130,6 +130,11 @@ export const messages = {
       modelSwitch: "模型切換",
       governanceGap: "治理缺口",
     },
+    filter: {
+      all: "全部",
+      count: (shown: number, total: number) => `顯示 ${shown} / ${total}`,
+      ariaLabel: "依異常類型篩選",
+    },
     footer: { dataSource: "資料來源：Agent registry ＋ 觀測性後端成本查詢。" },
     empty: "目前沒有異常",
   },

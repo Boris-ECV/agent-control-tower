@@ -155,7 +155,12 @@ test("AC4: multiple error rows with mixed null/non-null agents each render their
   // AC4: neither affected agent is silently omitted -- each error row gets
   // its own banner element (not merged into a single banner, and the
   // null-agent row still gets a banner with a placeholder, not a dropped row).
-  const banners = page.locator(".border-red-300");
+  // SDLCCT-84: scoped to the banner's own <div> wrapper -- governance_gap
+  // anomaly_type rows now also render a <span class="border-red-300"> badge
+  // (StatusBadge variant="danger") inside the banner's text, which an
+  // unscoped ".border-red-300" locator would also match and inflate this
+  // count.
+  const banners = page.locator("div.border-red-300");
   await expect(banners).toHaveCount(2);
   await expect(banners.nth(0)).toContainText("ops-bot");
   await expect(banners.nth(0)).toContainText("查詢觀測性後端逾時");
@@ -208,7 +213,7 @@ test("anomalies page shows an empty-state message when there are zero anomalies"
 
   await expect(page.getByText("目前沒有異常")).toBeVisible();
   await expect(page.locator("table")).toHaveCount(0);
-  await expect(page.locator(".border-red-300")).toHaveCount(0);
+  await expect(page.locator("div.border-red-300")).toHaveCount(0);
 });
 
 test("mobile viewport: card list view also honors AC1-AC4 (date/ongoing, agent, anomaly type, reason, error banner)", async ({
@@ -271,4 +276,189 @@ test("mobile viewport: card list view also honors AC1-AC4 (date/ongoing, agent, 
   // classes in anomaly-error-banner.tsx) and must still surface on mobile.
   await expect(page.getByText("ops-bot")).toBeVisible();
   await expect(page.getByText("查詢觀測性後端逾時")).toBeVisible();
+});
+
+// SDLCCT-84 scenarios below.
+
+test("SDLCCT-84 AC1: Agent 欄顯示中文名稱為主要文字，系統代號以等寬字顯示在下一行", async ({
+  page,
+}) => {
+  await page.route("**/api/anomalies", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-20",
+        anomalies: [
+          {
+            agent: "sales-copilot",
+            anomaly_type: "tool_retry_loop",
+            date: "2026-10-18",
+            status: "ok",
+            reason: "連續 5 次工具呼叫重試",
+          },
+        ],
+      }),
+    });
+  });
+  await page.route("**/api/agents", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        agents: [
+          {
+            key: "sales-copilot",
+            display: "銷售副手",
+            dept: "Sales",
+            owner: "alice",
+            budget: 1000,
+            current_period_spend: 500,
+            budget_consumed_pct: 50,
+            has_governance_gap: false,
+            registered: true,
+            trend: [],
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/anomalies");
+
+  // 中文名稱為主要文字，系統代號仍保留在第二行（等寬字）。
+  await expect(page.getByText("銷售副手").first()).toBeVisible();
+  await expect(page.getByText("sales-copilot").first()).toBeVisible();
+});
+
+test("SDLCCT-84 AC2: 模型切換顯示琥珀色標籤，治理缺口顯示紅色標籤", async ({ page }) => {
+  await page.route("**/api/anomalies", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-20",
+        anomalies: [
+          {
+            agent: "a1",
+            anomaly_type: "model_switch",
+            date: "2026-10-18",
+            status: "ok",
+            reason: "模型於 10/18 由 gpt-4 切換為 gpt-4o-mini，成本偏離正常值約 3 倍",
+            reason_segments: [
+              { text: "模型於 10/18 由 ", code: false },
+              { text: "gpt-4", code: true },
+              { text: " 切換為 ", code: false },
+              { text: "gpt-4o-mini", code: true },
+              { text: "，成本偏離正常值約 3 倍", code: false },
+            ],
+          },
+          {
+            agent: "a2",
+            anomaly_type: "governance_gap",
+            date: null,
+            status: "ok",
+            reason: "尚未登錄負責人與預算",
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/anomalies");
+
+  const modelSwitchBadge = page.locator("table tbody span.border-amber-300");
+  await expect(modelSwitchBadge.first()).toContainText("模型切換");
+
+  const governanceGapBadge = page.locator("table tbody span.border-red-300");
+  await expect(governanceGapBadge.first()).toContainText("治理缺口");
+
+  // 模型名稱以 <code> 樣式標示（SDLCCT-84 決策 5）。
+  const codeEls = page.locator("table tbody code");
+  await expect(codeEls.filter({ hasText: "gpt-4" }).first()).toBeVisible();
+  await expect(codeEls.filter({ hasText: "gpt-4o-mini" }).first()).toBeVisible();
+});
+
+test("SDLCCT-84 AC3: 依類型篩選告警，顯示「顯示 n / 總數」", async ({ page }) => {
+  await page.route("**/api/anomalies", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-20",
+        anomalies: [
+          { agent: "a1", anomaly_type: "model_switch", date: "2026-10-18", status: "ok", reason: "r1" },
+          { agent: "a2", anomaly_type: "governance_gap", date: null, status: "ok", reason: "r2" },
+          { agent: "a3", anomaly_type: "governance_gap", date: null, status: "ok", reason: "r3" },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/anomalies");
+
+  await expect(page.getByText("顯示 3 / 3")).toBeVisible();
+
+  await page.getByRole("button", { name: "治理缺口" }).click();
+
+  await expect(page.getByText("顯示 2 / 3")).toBeVisible();
+  await expect(page.getByText("r1")).not.toBeVisible();
+  await expect(page.getByText("r2").first()).toBeVisible();
+  await expect(page.getByText("r3").first()).toBeVisible();
+});
+
+test("SDLCCT-84 AC4: 點擊告警列導航至該告警對應 Agent 的詳情頁", async ({ page }) => {
+  await page.route("**/api/anomalies", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-20",
+        anomalies: [
+          {
+            agent: "sales-copilot",
+            anomaly_type: "tool_retry_loop",
+            date: "2026-10-18",
+            status: "ok",
+            reason: "連續 5 次工具呼叫重試",
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/anomalies");
+
+  const firstRow = page.locator("table tbody tr").first();
+  await firstRow.click();
+
+  await expect(page).toHaveURL(/\/agents\/sales-copilot$/);
+});
+
+test("SDLCCT-84: agent 為 null 的列不可點擊（沒有有效 Agent key 可供導航）", async ({ page }) => {
+  await page.route("**/api/anomalies", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-20",
+        anomalies: [
+          {
+            agent: null,
+            anomaly_type: "governance_gap",
+            date: null,
+            status: "ok",
+            reason: "尚未登錄負責人與預算",
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/anomalies");
+
+  const firstRow = page.locator("table tbody tr").first();
+  await expect(firstRow).not.toHaveAttribute("role", "button");
 });

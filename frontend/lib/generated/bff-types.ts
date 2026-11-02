@@ -200,6 +200,8 @@ export interface components {
             date: string | null;
             /** Reason */
             reason: string;
+            /** Reason Segments */
+            reason_segments?: components["schemas"]["ReasonSegment"][] | null;
             /** Status */
             status: string;
         };
@@ -294,6 +296,13 @@ export interface components {
             end: string;
             /** Start */
             start: string;
+        };
+        /** ReasonSegment */
+        ReasonSegment: {
+            /** Code */
+            code: boolean;
+            /** Text */
+            text: string;
         };
         /** SpanTreeNode */
         SpanTreeNode: {

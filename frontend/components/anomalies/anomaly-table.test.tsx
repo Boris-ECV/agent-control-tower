@@ -1,10 +1,17 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, render } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AnomalyTable, formatAnomalyDate } from "@/components/anomalies/anomaly-table";
 import type { AnomalyRow } from "@/lib/anomalies-api";
+
+// SDLCCT-84: AnomalyTable rows now navigate via useRouter() (ClickableRow),
+// same mocking precedent as app/agents/governance-badge.test.tsx and
+// components/agent-detail/cost-tables.test.tsx.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
 
 afterEach(cleanup);
 
