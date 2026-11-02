@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<title>SDLCCT-100 StatusBadge 原型</title>
+<style>
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #ffffff;
+    color: #1f2937;
+    padding: 32px;
+    max-width: 860px;
+  }
+  h1 { font-size: 24px; line-height: 32px; font-weight: 700; margin-bottom: 8px; }
+  h2 { font-size: 18px; line-height: 26px; font-weight: 600; margin: 32px 0 12px; }
+  p.meta { font-size: 12px; line-height: 18px; color: #475467; margin: 4px 0 0; }
+  .row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+  .label { font-size: 12px; color: #475467; width: 180px; flex: none; }
+
+  /* StatusBadge: 共用元件樣式（對應設計文件「關鍵技術決策 1」） */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 9999px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid transparent;
+  }
+  .status-badge .dot {
+    width: 6px;
+    height: 6px;
+    flex: none;
+    border-radius: 9999px;
+  }
+  .status-badge.success {
+    border-color: #e5e7eb; /* border-border */
+    background: #f9fafb;   /* bg-gray-50 */
+    color: #475467;        /* text-text-secondary */
+  }
+  .status-badge.success .dot { background: #475467; }
+  .status-badge.danger {
+    border-color: #fca5a5; /* border-red-300 */
+    background: #fef2f2;   /* bg-red-50 */
+    color: #b91c1c;        /* text-red-700 */
+  }
+  .status-badge.danger .dot { background: #dc2626; } /* bg-red-600 */
+
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+  th, td { text-align: left; padding: 8px 12px; font-size: 14px; border-bottom: 1px solid #e5e7eb; }
+  th { font-size: 12px; color: #475467; }
+  .before .status-badge { opacity: 0.55; }
+  .note { font-size: 12px; color: #475467; margin-top: 4px; }
+</style>
+</head>
+<body>
+  <h1>StatusBadge 共用元件原型</h1>
+  <p class="meta">SDLCCT-100 — 狀態標籤改為底色、外框與色點的共用元件</p>
+
+  <h2>1. 兩種 variant 並列（AC1：底色＋外框＋色點）</h2>
+  <div class="row">
+    <span class="label">variant="success"（正常）</span>
+    <span class="status-badge success"><span class="dot" aria-hidden="true"></span>正常</span>
+    <span class="note">文字 #475467 vs 底色 #F9FAFB → 對比度 ≈ 7.50:1</span>
+  </div>
+  <div class="row">
+    <span class="label">variant="danger"（異常）</span>
+    <span class="status-badge danger"><span class="dot" aria-hidden="true"></span>治理缺口</span>
+    <span class="note">文字 #B91C1C vs 底色 #FEF2F2 → 對比度 ≈ 5.91:1</span>
+  </div>
+  <p class="note">兩者皆 ≥ WCAG AA 4.5:1 門檻（AC2），計算過程見
+    docs/design/SDLCCT-100.md「關鍵技術決策 3」。</p>
+
+  <h2>2. 套用於 Agent 清單表格（agents/page.tsx 既有呼叫端示意）</h2>
+  <table>
+    <thead>
+      <tr><th>Agent</th><th>部門</th><th>治理狀態</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Sales Copilot</td><td>Sales</td>
+        <td><span class="status-badge success"><span class="dot" aria-hidden="true"></span>正常</span></td>
+      </tr>
+      <tr>
+        <td>Support Bot</td><td>Support</td>
+        <td><span class="status-badge danger"><span class="dot" aria-hidden="true"></span>治理缺口</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3. 套用於治理缺口彙總標籤（summary-section.tsx 既有瑕疵修正前後對照）</h2>
+  <p class="note">現況：不論布林值為何皆固定渲染紅色樣式，只有文字切換（見設計文件「現況盤點」）。</p>
+  <div class="row before">
+    <span class="label">修正前（noGap 時仍是紅色，錯誤）</span>
+    <span class="status-badge danger"><span class="dot" aria-hidden="true"></span>✓ 無治理缺口：所有 Agent 皆已登錄</span>
+  </div>
+  <div class="row">
+    <span class="label">修正後（noGap → success variant）</span>
+    <span class="status-badge success"><span class="dot" aria-hidden="true"></span>✓ 無治理缺口：所有 Agent 皆已登錄</span>
+  </div>
+  <div class="row">
+    <span class="label">hasGap → danger variant（不變）</span>
+    <span class="status-badge danger"><span class="dot" aria-hidden="true"></span>⚠ 治理缺口：2 個 Agent 未登錄</span>
+  </div>
+</body>
+</html>
