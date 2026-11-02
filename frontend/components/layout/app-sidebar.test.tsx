@@ -43,6 +43,22 @@ function renderAt(pathname: string) {
   };
 }
 
+describe("AppSidebar group label color token (SDLCCT-99 scenario 1)", () => {
+  it("applies the text-text-tertiary utility class to every group label", () => {
+    vi.mocked(usePathname).mockReturnValue("/agents");
+    render(
+      <SidebarProvider>
+        <AppSidebar />
+      </SidebarProvider>,
+    );
+    const groupLabels = document.querySelectorAll('[data-sidebar="group-label"]');
+    expect(groupLabels.length).toBeGreaterThan(0);
+    groupLabels.forEach((label) => {
+      expect(label).toHaveClass("text-text-tertiary");
+    });
+  });
+});
+
 describe("AppSidebar active state", () => {
   it.each(["/agents", "/agents/sales-copilot", "/agents/sales-copilot/traces/trc_123"])(
     "highlights Agent 清單 at %s",
