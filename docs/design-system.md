@@ -27,7 +27,8 @@ architect / developer / reviewer 在涉及畫面的 Story 中應讀取本文件�
 |---|---|---|
 | `--color-bg` | `#FFFFFF` | 頁面/卡片背景 |
 | `--color-text-primary` | `#1F2937` | 標題、內文主要文字 |
-| `--color-text-secondary` | `#4B5563` | 輔助文字（meta）、次要說明 |
+| `--color-text-secondary` | `#475467` | 輔助文字（meta）、次要說明 |
+| `--color-text-tertiary` | `#667085` | 側邊選單分類標題等次要語意色 |
 | `--color-border` | `#E5E7EB` | 分隔線、卡片/表單邊框 |
 | `--color-accent` | `#2563EB` | 連結、主要按鈕、focus 樣式、強調元素 |
 
@@ -36,8 +37,13 @@ architect / developer / reviewer 在涉及畫面的 Story 中應讀取本文件�
 
 - `--color-text-primary` (#1F2937) vs `--color-bg` (#FFFFFF)：L ≈ 0.02157 →
   對比度 ≈ **14.7:1**（遠超 AA 4.5:1，亦超過 AAA 7:1）。
-- `--color-text-secondary` (#4B5563) vs `--color-bg`：L ≈ 0.08896 → 對比度
-  ≈ **7.56:1**（超過 AA 4.5:1，亦超過 AAA 7:1，可安心用於 meta 文字）。
+- `--color-text-secondary` (#475467) vs `--color-bg`：L ≈ 0.0868 → 對比度
+  ≈ **7.68:1**（超過 AA 4.5:1，亦超過 AAA 7:1，可安心用於 meta 文字；
+  SDLCCT-99 將值由 `#4B5563` 改為 `#475467`，見 `docs/design/SDLCCT-99.md`
+  關鍵技術決策 4）。
+- `--color-text-tertiary` (#667085) vs `--color-bg`：L ≈ 0.1611 → 對比度
+  ≈ **4.97:1**（超過 AA 4.5:1，但不寬裕，不可再調深背景或調淺文字；
+  SDLCCT-99 新增此 token，見 `docs/design/SDLCCT-99.md` 關鍵技術決策 4）。
 - `--color-accent` (#2563EB) 作為文字色（連結）或作為按鈕背景配白色文字
   時，與 `--color-bg`/白色文字的對比度：L ≈ 0.15330 → 對比度 ≈ **5.17:1**
   （超過 AA 4.5:1，可用於一般大小文字，不僅限大字）。
@@ -47,7 +53,7 @@ architect / developer / reviewer 在涉及畫面的 Story 中應讀取本文件�
 
 **如何驗證**：上述比例在設計階段以相對亮度公式手算並記錄於此（即此設計文
 件），作為定案依據；後續任何新增文字顏色若要沿用既有 token 組合，不需要
-重算（已驗證過的四組 token 配對本身永久有效，因為 token 值本身不可隨意更
+重算（已驗證過的五組 token 配對本身永久有效，因為 token 值本身不可隨意更
 改——改色需重開一張 Story 並重跑本驗證）。若未來新增 token 或改變既有色
 值，必須用同一公式（或等效的線上 WCAG contrast checker）重新計算並記錄比
 例於該次改動的設計文件/PR 描述中，不得只靠肉眼判斷。
@@ -159,7 +165,7 @@ Review 應攔下）：
 示這幾項——這幾項本身可機器檢查，適合直接當驗收條件：
 
 1. **色彩對比下限**：所有文字與其背景的對比度須 ≥ **4.5:1**（WCAG AA，
-   一般文字）；本規範定義的四組色彩 token 配對已於章節 1 驗證全數達標。
+   一般文字）；本規範定義的五組色彩 token 配對已於章節 1 驗證全數達標。
 2. **表單 label 規則**：每個表單輸入元件（input/select/textarea）必須有
    語意上關聯的 `<label>`（`for`/`id` 對應，或 `<label>` 包裹），**不可**
    僅用 `placeholder` 取代 label。
@@ -183,7 +189,8 @@ CSS 變數——見下方理由）。
 :root {
   --color-bg: #FFFFFF;
   --color-text-primary: #1F2937;
-  --color-text-secondary: #4B5563;
+  --color-text-secondary: #475467;
+  --color-text-tertiary: #667085;
   --color-border: #E5E7EB;
   --color-accent: #2563EB;
 }

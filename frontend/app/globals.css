@@ -19,6 +19,7 @@
   --color-bg: var(--background);
   --color-text-primary: var(--foreground);
   --color-text-secondary: var(--muted-foreground);
+  --color-text-tertiary: var(--color-text-tertiary);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
@@ -65,7 +66,8 @@
      source of truth)。字體堆疊見第2節：不載入 web font，系統字體堆疊。 */
   --color-bg: #ffffff;
   --color-text-primary: #1f2937;
-  --color-text-secondary: #4b5563;
+  --color-text-secondary: #475467;
+  --color-text-tertiary: #667085;
   --color-border: #e5e7eb;
   --color-accent: #2563eb;
 
