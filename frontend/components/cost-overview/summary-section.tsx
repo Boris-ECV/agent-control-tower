@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusBadge } from "@/components/common/status-badge";
 import { fetchCostOverviewSummary } from "@/lib/cost-overview-api";
 import { formatCardCurrency, formatPercent, formatTableCurrency } from "@/lib/format";
 import { t } from "@/lib/i18n/t";
@@ -87,11 +88,11 @@ export function SummarySection() {
 
       <div className="mt-4 rounded-lg border border-border bg-bg p-4">
         <div className="mb-3 flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-1 rounded-full border border-red-300 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+          <StatusBadge variant={summary.unregistered.agents.length > 0 ? "danger" : "success"}>
             {summary.unregistered.agents.length > 0
               ? t("costOverview.summary.governanceGap.hasGap")(summary.unregistered.agents.length)
               : t("costOverview.summary.governanceGap.noGap")}
-          </span>
+          </StatusBadge>
           <span className="text-xs text-text-secondary">
             {t("costOverview.summary.governanceGap.note")}
           </span>
