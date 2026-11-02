@@ -470,3 +470,4 @@
 {"ts":"2026-11-03T02:11:56Z","event":"stage_transition","ticket":"SDLCCT-100","agent":"orch-20261103-f7q2","data":{"from":"In Review","to":"Awaiting Gate"}}
 {"ts":"2026-11-03T02:20:00Z","event":"gate_review","ticket":"SDLCCT-100","agent":"orch-20261103-f7q2","data":{"gate":"G2","mode":"auto","result":"approved","criteria_results":{"no_human_gate_label":"pass","protected_paths_untouched":"pass","pr_exists":"pass","ci_green":"pass","reviewer_approve":"pass (after corrected re-review)","checklist_complete":"pass","coverage_met":"n/a-profile-scoped-to-seed","e2e_declared_and_honored":"pass-not-needed"}}}
 {"ts":"2026-11-03T02:22:29Z","event":"stage_transition","ticket":"SDLCCT-100","agent":"orch-20261103-f7q2","data":{"from":"Awaiting Gate","to":"Done"}}
+{"ts":"2026-11-03T02:35:00Z","event":"session_end","agent":"orch-20261103-f7q2","data":{"tokens_estimate":"heavy (~85% of context budget used)","tickets_touched":["SDLCCT-100","SDLCCT-102"]}}
