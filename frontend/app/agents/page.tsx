@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { ClickableRow } from "@/components/common/clickable-row";
 import { ErrorCard } from "@/components/cost-overview/error-card";
 import { PageHeaderTimestamp } from "@/components/layout/page-header-timestamp";
 import type { AgentRegistryEntry, AgentTrendPoint } from "@/lib/agents-api";
@@ -99,22 +100,15 @@ function AgentTable({ agents }: { agents: AgentRegistryEntry[] }) {
           <th className="py-2 pr-3">{t("agents.table.columns.budgetConsumedPct")}</th>
           <th className="py-2 pr-3">{t("agents.table.columns.trend")}</th>
           <th className="py-2 pr-3">{t("agents.table.columns.governance")}</th>
+          <th className="py-2 pr-3" aria-hidden="true" />
         </tr>
       </thead>
       <tbody>
         {agents.map((agent) => (
-          <tr
+          <ClickableRow
             key={agent.key}
-            className="cursor-pointer border-b border-border last:border-b-0 hover:bg-gray-50"
-            tabIndex={0}
-            role="link"
             aria-label={agent.display}
-            onClick={() => router.push(`/agents/${agent.key}`)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                router.push(`/agents/${agent.key}`);
-              }
-            }}
+            onActivate={() => router.push(`/agents/${agent.key}`)}
           >
             <td className="py-2 pr-3 font-medium text-text-primary">{agent.display}</td>
             <td className="py-2 pr-3">{agent.dept}</td>
@@ -130,7 +124,15 @@ function AgentTable({ agents }: { agents: AgentRegistryEntry[] }) {
             <td className="py-2 pr-3">
               <GovernanceBadge hasGap={agent.has_governance_gap} />
             </td>
-          </tr>
+            <td className="py-2 pr-3" aria-hidden="true">
+              <svg
+                viewBox="0 0 16 16"
+                className="h-4 w-4 flex-none fill-current text-text-secondary transition-[color,transform] group-hover:translate-x-1 group-hover:text-accent group-focus-visible:translate-x-1 group-focus-visible:text-accent"
+              >
+                <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
+              </svg>
+            </td>
+          </ClickableRow>
         ))}
       </tbody>
     </table>
