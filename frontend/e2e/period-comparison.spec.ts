@@ -46,7 +46,9 @@ test("previous=US$500, current=US$750: shows +US$ 250（50.0%）without the badg
 
   await page.goto("/cost-dashboard");
 
-  await expect(page.getByText("+US$ 250.00（50.0%）")).toBeVisible();
+  // SDLCCT-83: 增加金額與漲幅拆成兩個獨立欄位。
+  await expect(page.getByText("+US$ 250.00", { exact: true })).toBeVisible();
+  await expect(page.getByText("（50.0%）", { exact: true })).toBeVisible();
   await expect(page.getByText("新增顯著支出")).toHaveCount(0);
 });
 
@@ -74,7 +76,7 @@ test("previous=US$1 (<US$10), current=US$639: shows +US$ 638 with the 新增顯�
 
   await page.goto("/cost-dashboard");
 
-  await expect(page.getByText("+US$ 638.00")).toBeVisible();
+  await expect(page.getByText("+US$ 638.00", { exact: true })).toBeVisible();
   await expect(page.getByText("新增顯著支出")).toBeVisible();
   await expect(page.getByText(/%）/)).toHaveCount(0);
 });
@@ -103,7 +105,7 @@ test("previous=US$0, current=US$120: shows +US$ 120 with the 新增顯著支出 
 
   await page.goto("/cost-dashboard");
 
-  await expect(page.getByText("+US$ 120.00")).toBeVisible();
+  await expect(page.getByText("+US$ 120.00", { exact: true })).toBeVisible();
   await expect(page.getByText("新增顯著支出")).toBeVisible();
   await expect(page.getByText(/%）/)).toHaveCount(0);
 });
@@ -132,6 +134,7 @@ test("threshold boundary: previous=US$10, current=US$20: shows +US$ 10.00（100.
 
   await page.goto("/cost-dashboard");
 
-  await expect(page.getByText("+US$ 10.00（100.0%）")).toBeVisible();
+  await expect(page.getByText("+US$ 10.00", { exact: true })).toBeVisible();
+  await expect(page.getByText("（100.0%）", { exact: true })).toBeVisible();
   await expect(page.getByText("新增顯著支出")).toHaveCount(0);
 });

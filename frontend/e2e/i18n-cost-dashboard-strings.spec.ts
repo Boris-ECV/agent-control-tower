@@ -10,7 +10,7 @@ test("cost dashboard 靜態文字在 i18n 重構後維持不變", async ({ page 
     page.locator("header").getByText("Agent Control Tower"),
   ).toHaveCount(0);
   await expect(page.getByText("Agent Control Tower")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "成本總覽" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "成本儀表板" })).toBeVisible();
   await expect(
     page.getByText("本月成本 vs 預算、預估月底超支、跨 Agent 期間比較"),
   ).toBeVisible();
@@ -23,14 +23,15 @@ test("cost dashboard 靜態文字在 i18n 重構後維持不變", async ({ page 
   await expect(
     page.getByText("資料來源：Agent registry ＋ 觀測性後端成本查詢。"),
   ).toBeVisible();
-  await expect(page).toHaveTitle("成本總覽 — Agent Control Tower");
+  await expect(page).toHaveTitle("成本儀表板 — Agent Control Tower");
 });
 
 test("app sidebar 導覽文字在 i18n 重構後維持不變", async ({ page }) => {
   await page.goto("/cost-dashboard");
 
-  // exact: true avoids a strict-mode match against "成本總覽" / "本月成本
-  // vs 預算總覽" headings, which both contain "總覽" as a substring.
+  // exact: true avoids a strict-mode match against the "本月成本 vs 預算總覽"
+  // section heading, which contains "總覽" as a substring (SDLCCT-83 unified
+  // the page <h1> itself to "成本儀表板", matching the sidebar).
   await expect(page.getByText("總覽", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "成本儀表板" })).toBeVisible();
   await expect(page.getByText("治理")).toBeVisible();

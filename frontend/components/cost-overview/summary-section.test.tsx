@@ -49,6 +49,35 @@ describe("SummarySection currency formats", () => {
   });
 });
 
+// SDLCCT-83 AC "預算消耗數字旁加進度條": the budgetConsumedPct card renders a
+// horizontal progress bar sized to the percentage, red when over budget.
+describe("SummarySection budget-consumed progress bar", () => {
+  it("renders the fill width matching the percentage, in the neutral accent color when within budget", async () => {
+    fetchCostOverviewSummary.mockResolvedValueOnce(summary);
+    render(<SummarySection />);
+
+    const label = await screen.findByText("34.9%");
+    const card = label.closest("div");
+    const fill = card?.querySelector("div[style]");
+    expect(fill).not.toBeNull();
+    expect(fill?.getAttribute("style")).toContain("width: 34.9%");
+    expect(fill?.className).toContain("bg-accent");
+    expect(fill?.className).not.toContain("bg-red-600");
+  });
+
+  it("renders the fill in red, clamped to 100%, when over budget", async () => {
+    fetchCostOverviewSummary.mockResolvedValueOnce({ ...summary, budget_consumed_pct: 118.2 });
+    render(<SummarySection />);
+
+    const label = await screen.findByText("118.2%");
+    const card = label.closest("div");
+    const fill = card?.querySelector("div[style]");
+    expect(fill).not.toBeNull();
+    expect(fill?.getAttribute("style")).toContain("width: 100%");
+    expect(fill?.className).toContain("bg-red-600");
+  });
+});
+
 // SDLCCT-100 Scenario "套用": 治理缺口彙總標籤改用共用元件 StatusBadge，且
 // 底色/外框/色點須隨 unregistered.agents.length 正確切換（既有瑕疵修正：
 // 原本不論布林值皆固定紅色，此處驗證兩態都正確渲染）。
