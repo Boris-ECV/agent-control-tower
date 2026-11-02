@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-99 原型 — 側邊選單分類標題與次要文字色票調整</title>
+<style>
+  :root {
+    --color-bg: #ffffff;
+    --color-text-primary: #1f2937;
+    --color-border: #e5e7eb;
+    --color-accent: #2563eb;
+
+    /* 調整前（本 repo 目前狀態） */
+    --before-secondary: #4b5563;
+    --before-category: rgba(31, 41, 55, 0.7); /* text-sidebar-foreground/70 */
+
+    /* 調整後（本 Story 定案值） */
+    --color-text-secondary: #475467;
+    --color-text-tertiary: #667085;
+  }
+
+  body {
+    margin: 0;
+    padding: 32px;
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+  }
+
+  h1 {
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 700;
+    margin: 0 0 8px;
+  }
+
+  p.meta {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    margin: 0 0 32px;
+  }
+
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+
+  .panel {
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 24px;
+    background: var(--color-bg);
+  }
+
+  .panel h2 {
+    font-size: 18px;
+    line-height: 26px;
+    font-weight: 600;
+    margin: 0 0 16px;
+  }
+
+  .sample {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .sample .label {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+  }
+
+  /* 側邊選單分類標題示意 */
+  .sidebar-group-label {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 32px;
+    padding: 0 8px;
+  }
+
+  .before .sidebar-group-label {
+    color: var(--before-category);
+  }
+  .after .sidebar-group-label {
+    color: var(--color-text-tertiary);
+  }
+
+  /* 次要文字示意（breadcrumbs / page-header-timestamp 等） */
+  .secondary-text {
+    font-size: 14px;
+    line-height: 22px;
+  }
+  .before .secondary-text {
+    color: var(--before-secondary);
+  }
+  .after .secondary-text {
+    color: var(--color-text-secondary);
+  }
+
+  .contrast {
+    margin-top: 16px;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-primary);
+    background: #f8fafc;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 8px 12px;
+  }
+
+  .contrast .pass {
+    color: #166534;
+    font-weight: 600;
+  }
+
+  code {
+    background: #f1f5f9;
+    padding: 1px 4px;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+  <h1>SDLCCT-99 — 側邊選單分類標題與次要文字色票調整</h1>
+  <p class="meta">
+    對應 docs/design/SDLCCT-99.md「關鍵技術決策」。本原型為靜態對照頁面，非真實應用程式畫面。
+  </p>
+
+  <div class="compare">
+    <div class="panel before">
+      <h2>調整前（本 repo 目前狀態）</h2>
+      <div class="sample">
+        <div>
+          <div class="label">側邊選單分類標題（text-sidebar-foreground/70）</div>
+          <div class="sidebar-group-label">治理（GOVERNANCE）</div>
+        </div>
+        <div>
+          <div class="label">次要文字（--color-text-secondary: #4b5563）</div>
+          <div class="secondary-text">最後更新時間：2026-11-02 14:30（台灣時間）</div>
+        </div>
+      </div>
+      <div class="contrast">
+        分類標題色：rgba(31,41,55,0.7)（非具名 token，疊加不透明度）<br />
+        次要文字色：<code>#4b5563</code> 對比度 ≈ 7.56:1
+      </div>
+    </div>
+
+    <div class="panel after">
+      <h2>調整後（本 Story 定案值）</h2>
+      <div class="sample">
+        <div>
+          <div class="label">側邊選單分類標題（--color-text-tertiary: #667085）</div>
+          <div class="sidebar-group-label">治理（GOVERNANCE）</div>
+        </div>
+        <div>
+          <div class="label">次要文字（--color-text-secondary: #475467）</div>
+          <div class="secondary-text">最後更新時間：2026-11-02 14:30（台灣時間）</div>
+        </div>
+      </div>
+      <div class="contrast">
+        分類標題色：<code>#667085</code> 對白底 <span class="pass">對比度 ≈ 4.97:1（通過 4.5:1）</span><br />
+        次要文字色：<code>#475467</code> 對白底 <span class="pass">對比度 ≈ 7.68:1（通過 4.5:1）</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
