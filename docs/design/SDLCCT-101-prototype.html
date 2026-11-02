@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-101 UI 原型 — 可點擊列共用元件</title>
+<style>
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #4B5563;
+    --color-border: #E5E7EB;
+    --color-accent: #2563EB;
+  }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    margin: 0;
+    padding: 32px;
+    font-size: 14px;
+    line-height: 22px;
+  }
+  h1 { font-size: 24px; line-height: 32px; font-weight: 700; margin: 0 0 8px; }
+  h2 { font-size: 18px; line-height: 26px; font-weight: 600; margin: 32px 0 8px; }
+  p.meta { color: var(--color-text-secondary); font-size: 12px; line-height: 18px; margin: 0 0 24px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  thead tr { border-bottom: 1px solid var(--color-border); text-align: left; font-size: 12px; color: var(--color-text-secondary); }
+  th, td { padding: 8px 12px 8px 0; }
+  tbody tr { border-bottom: 1px solid var(--color-border); cursor: pointer; }
+  tbody tr:last-child { border-bottom: none; }
+  /* ClickableRow 共用樣式：hover 底色 */
+  tbody tr.row-hover-demo {
+    background-color: #F9FAFB; /* hover:bg-gray-50 */
+  }
+  /* ClickableRow 共用樣式：鍵盤 focus 外框（docs/design-system.md §8） */
+  tbody tr.row-focus-demo {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .arrow {
+    display: inline-block;
+    color: var(--color-text-secondary);
+    transform: translateX(0);
+    transition: color 150ms, transform 150ms;
+  }
+  /* hover 與 focus 狀態下箭頭變色並右移，視覺效果一致 */
+  tr.row-hover-demo .arrow,
+  tr.row-focus-demo .arrow {
+    color: var(--color-accent);
+    transform: translateX(4px);
+  }
+  td.font-medium { font-weight: 600; color: var(--color-text-primary); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .caption { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 12px; }
+  .state-label {
+    display: inline-block;
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    margin-bottom: 4px;
+  }
+</style>
+</head>
+<body>
+  <h1>SDLCCT-101 — 可點擊列共用元件（ClickableRow）</h1>
+  <p class="meta">
+    靜態原型，示範套用 ClickableRow 後 Agent 清單列（AgentTable）與執行
+    列表列（TopTracesTable）在「預設 / hover / 鍵盤 focus」三種狀態下的
+    視覺呈現（底色、箭頭變色右移、焦點外框）。本檔案僅供 G1b 設計審核
+    閱覽，非實際 React 元件。
+  </p>
+
+  <h2>Agent 清單（AgentTable）</h2>
+  <p class="caption">欄位：Agent / 部門 / Owner / 預算 / 本期花費 / 箭頭（新增尾端欄）</p>
+
+  <span class="state-label">狀態：預設</span>
+  <table>
+    <thead>
+      <tr><th>Agent</th><th>部門</th><th>Owner</th><th style="text-align:right">預算</th><th style="text-align:right">本期花費</th><th aria-hidden="true"></th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="font-medium">Sales Copilot</td>
+        <td>Sales</td>
+        <td>alice</td>
+        <td class="num">US$ 1,000.00</td>
+        <td class="num">US$ 500.00</td>
+        <td><span class="arrow">&#8594;</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="state-label">狀態：滑鼠 hover（底色加深，箭頭變色右移）</span>
+  <table>
+    <thead>
+      <tr><th>Agent</th><th>部門</th><th>Owner</th><th style="text-align:right">預算</th><th style="text-align:right">本期花費</th><th aria-hidden="true"></th></tr>
+    </thead>
+    <tbody>
+      <tr class="row-hover-demo">
+        <td class="font-medium">Sales Copilot</td>
+        <td>Sales</td>
+        <td>alice</td>
+        <td class="num">US$ 1,000.00</td>
+        <td class="num">US$ 500.00</td>
+        <td><span class="arrow">&#8594;</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="state-label">狀態：鍵盤 Tab 聚焦（可見焦點外框，箭頭同步變色右移）</span>
+  <table>
+    <thead>
+      <tr><th>Agent</th><th>部門</th><th>Owner</th><th style="text-align:right">預算</th><th style="text-align:right">本期花費</th><th aria-hidden="true"></th></tr>
+    </thead>
+    <tbody>
+      <tr class="row-focus-demo">
+        <td class="font-medium">Sales Copilot</td>
+        <td>Sales</td>
+        <td>alice</td>
+        <td class="num">US$ 1,000.00</td>
+        <td class="num">US$ 500.00</td>
+        <td><span class="arrow">&#8594;</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>執行列表（TopTracesTable）</h2>
+  <p class="caption">欄位：Trace ID / 成本 / Metadata / 箭頭（新增尾端欄）</p>
+
+  <span class="state-label">狀態：預設</span>
+  <table>
+    <thead>
+      <tr><th>Trace ID</th><th style="text-align:right">成本</th><th>Metadata</th><th aria-hidden="true"></th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="font-medium">trace-001</td>
+        <td class="num">US$ 999.00</td>
+        <td>user_id: u1</td>
+        <td><span class="arrow">&#8594;</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="state-label">狀態：滑鼠 hover（底色加深，箭頭變色右移）</span>
+  <table>
+    <thead>
+      <tr><th>Trace ID</th><th style="text-align:right">成本</th><th>Metadata</th><th aria-hidden="true"></th></tr>
+    </thead>
+    <tbody>
+      <tr class="row-hover-demo">
+        <td class="font-medium">trace-001</td>
+        <td class="num">US$ 999.00</td>
+        <td>user_id: u1</td>
+        <td><span class="arrow">&#8594;</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="state-label">狀態：鍵盤 Tab 聚焦（可見焦點外框，箭頭同步變色右移）</span>
+  <table>
+    <thead>
+      <tr><th>Trace ID</th><th style="text-align:right">成本</th><th>Metadata</th><th aria-hidden="true"></th></tr>
+    </thead>
+    <tbody>
+      <tr class="row-focus-demo">
+        <td class="font-medium">trace-001</td>
+        <td class="num">US$ 999.00</td>
+        <td>user_id: u1</td>
+        <td><span class="arrow">&#8594;</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+</body>
+</html>
