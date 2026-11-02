@@ -48,3 +48,33 @@ describe("StatusBadge", () => {
     expect(dot?.className).toContain("bg-red-600");
   });
 });
+
+// Scenario "對比度": 文字與底色對比 >= 4.5:1。獨立重算 WCAG 相對亮度公式
+// （不只比對 class 名稱），確保兩個 variant 實際使用的色值組合都通過門檻，
+// 而不是信任設計文件裡已經算過的數字。
+function relativeLuminance([r, g, b]: [number, number, number]): number {
+  const [rs, gs, bs] = [r, g, b].map((c) => {
+    const channel = c / 255;
+    return channel <= 0.03928 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
+  }) as [number, number, number];
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+}
+
+function contrastRatio(a: [number, number, number], b: [number, number, number]): number {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  const [lighter, darker] = la > lb ? [la, lb] : [lb, la];
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+describe("StatusBadge contrast", () => {
+  it("success variant text (text-text-secondary #475467) vs background (bg-gray-50 #F9FAFB) is >= 4.5:1", () => {
+    const ratio = contrastRatio([0x47, 0x54, 0x67], [0xf9, 0xfa, 0xfb]);
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("danger variant text (text-red-700 #B91C1C) vs background (bg-red-50 #FEF2F2) is >= 4.5:1", () => {
+    const ratio = contrastRatio([0xb9, 0x1c, 0x1c], [0xfe, 0xf2, 0xf2]);
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  });
+});

@@ -48,3 +48,33 @@ describe("SummarySection currency formats", () => {
     expect(spend.className).toContain("text-right");
   });
 });
+
+// SDLCCT-100 Scenario "套用": 治理缺口彙總標籤改用共用元件 StatusBadge，且
+// 底色/外框/色點須隨 unregistered.agents.length 正確切換（既有瑕疵修正：
+// 原本不論布林值皆固定紅色，此處驗證兩態都正確渲染）。
+describe("SummarySection governance gap badge uses the shared StatusBadge", () => {
+  it("renders a danger-styled badge with border, background and dot when there are unregistered agents", async () => {
+    fetchCostOverviewSummary.mockResolvedValueOnce(summary);
+    render(<SummarySection />);
+
+    const badgeText = await screen.findByText(/治理缺口/);
+    const badge = badgeText.closest("span");
+    expect(badge?.className).toContain("border-red-300");
+    expect(badge?.className).toContain("bg-red-50");
+    expect(badge?.querySelector("span[aria-hidden='true']")).not.toBeNull();
+  });
+
+  it("renders a success-styled badge with border, background and dot when there are no unregistered agents", async () => {
+    fetchCostOverviewSummary.mockResolvedValueOnce({
+      ...summary,
+      unregistered: { agents: [] },
+    });
+    render(<SummarySection />);
+
+    const badgeText = await screen.findByText(/無治理缺口/);
+    const badge = badgeText.closest("span");
+    expect(badge?.className).toContain("border-border");
+    expect(badge?.className).toContain("bg-gray-50");
+    expect(badge?.querySelector("span[aria-hidden='true']")).not.toBeNull();
+  });
+});
