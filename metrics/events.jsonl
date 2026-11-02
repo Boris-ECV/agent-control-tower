@@ -461,3 +461,7 @@
 {"ts":"2026-11-03T01:18:48Z","event":"stage_transition","ticket":"SDLCCT-102","agent":"orch-20261103-f7q2","data":{"from":"Designing","to":"Awaiting Gate"}}
 {"ts":"2026-11-03T01:20:01Z","event":"gate_review","ticket":"SDLCCT-102","agent":"orch-20261103-f7q2","data":{"gate":"G1b","mode":"auto","result":"approved","criteria_results":{"no_human_gate_label":"pass","design_doc_exists":"pass","interface_declared":"pass","data_model_declared":"pass","no_open_design_questions":"pass","ui_prototype_present":"pass"}}}
 {"ts":"2026-11-03T01:35:34Z","event":"stage_transition","ticket":"SDLCCT-102","agent":"orch-20261103-f7q2","data":{"from":"Awaiting Gate","to":"Ready"}}
+{"ts":"2026-11-03T01:50:04Z","event":"stage_transition","ticket":"SDLCCT-102","agent":"orch-20261103-f7q2","data":{"from":"Testing","to":"In Review"}}
+{"ts":"2026-11-03T02:02:34Z","event":"stage_transition","ticket":"SDLCCT-102","agent":"orch-20261103-f7q2","data":{"from":"In Review","to":"Awaiting Gate"}}
+{"ts":"2026-11-03T02:05:00Z","event":"gate_review","ticket":"SDLCCT-102","agent":"orch-20261103-f7q2","data":{"gate":"G2","mode":"auto","result":"approved","criteria_results":{"no_human_gate_label":"pass","protected_paths_untouched":"pass","pr_exists":"pass","ci_green":"pass","reviewer_approve":"pass","checklist_complete":"pass","coverage_met":"n/a-profile-scoped-to-seed","e2e_declared_and_honored":"pass-not-needed"}}}
+{"ts":"2026-11-03T02:07:02Z","event":"stage_transition","ticket":"SDLCCT-102","agent":"orch-20261103-f7q2","data":{"from":"Awaiting Gate","to":"Done"}}
