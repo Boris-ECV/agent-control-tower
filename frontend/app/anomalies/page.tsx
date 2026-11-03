@@ -1,23 +1,67 @@
 "use client";
 
+import { useMemo, useState } from "react";
+
 import { AnomalyErrorBanner } from "@/components/anomalies/anomaly-error-banner";
-import { AnomalyTable } from "@/components/anomalies/anomaly-table";
+import type { EnrichedAnomalyRow } from "@/components/anomalies/anomaly-table";
+import { ANOMALY_TYPE_LABELS, AnomalyTable } from "@/components/anomalies/anomaly-table";
+import { SegmentedFilter } from "@/components/common/segmented-filter";
 import { ErrorCard } from "@/components/cost-overview/error-card";
 import { PageHeaderTimestamp } from "@/components/layout/page-header-timestamp";
+import { fetchAgentsList } from "@/lib/agents-api";
 import type { AnomalyRow } from "@/lib/anomalies-api";
 import { fetchAnomalyFeed } from "@/lib/anomalies-api";
 import { t } from "@/lib/i18n/t";
 import { useFetchOnce } from "@/lib/use-fetch-once";
 
-export default function AnomaliesPage() {
-  const state = useFetchOnce(fetchAnomalyFeed);
+// SDLCCT-84 決策 6：「全部」＋既有 5 種異常類型（沿用 ANOMALY_TYPE_LABELS
+// 的 key 與文案，不新增第 6 種類型）。
+type AnomalyTypeFilter = "all" | keyof typeof ANOMALY_TYPE_LABELS;
 
-  const okRows: AnomalyRow[] = state.status === "success"
-    ? state.data.anomalies.filter((row) => row.status === "ok")
-    : [];
-  const errorRows: AnomalyRow[] = state.status === "success"
-    ? state.data.anomalies.filter((row) => row.status === "error")
-    : [];
+const FILTER_OPTIONS: { value: AnomalyTypeFilter; label: string }[] = [
+  { value: "all", label: t("anomalies.filter.all") },
+  ...(Object.keys(ANOMALY_TYPE_LABELS) as (keyof typeof ANOMALY_TYPE_LABELS)[]).map((key) => ({
+    value: key,
+    label: ANOMALY_TYPE_LABELS[key],
+  })),
+];
+
+export default function AnomaliesPage() {
+  const anomaliesState = useFetchOnce(fetchAnomalyFeed);
+  const agentsState = useFetchOnce(fetchAgentsList);
+  const [filter, setFilter] = useState<AnomalyTypeFilter>("all");
+
+  // SDLCCT-84 決策 4：anomalies 本身是主要資料來源，agents 列表失敗時不阻
+  // 斷整頁渲染——改走 agentDisplayNames 為空 Map 的 fallback（AgentCell 顯
+  // 示系統代號本身），只有 anomalies 自己失敗（或兩者皆失敗，優先顯示
+  // anomalies 的錯誤）才整頁顯示 ErrorCard。
+  const agentDisplayNames = useMemo(() => {
+    const map = new Map<string, string>();
+    if (agentsState.status === "success") {
+      for (const agent of agentsState.data.agents) {
+        map.set(agent.key, agent.display);
+      }
+    }
+    return map;
+  }, [agentsState]);
+
+  const allRows: EnrichedAnomalyRow[] =
+    anomaliesState.status === "success"
+      ? anomaliesState.data.anomalies.map((row: AnomalyRow) => ({
+          ...row,
+          agentDisplay: row.agent !== null ? agentDisplayNames.get(row.agent) : undefined,
+        }))
+      : [];
+
+  const filteredRows =
+    filter === "all" ? allRows : allRows.filter((row) => row.anomaly_type === filter);
+
+  const okRows = filteredRows.filter((row) => row.status === "ok");
+  const errorRows = filteredRows.filter((row) => row.status === "error");
+
+  // 兩個請求都需要成功才能渲染表格（名稱必須先 join 完才顯示列）；任一個
+  // loading 就顯示 skeleton。
+  const isLoading = anomaliesState.status === "loading" || agentsState.status === "loading";
 
   return (
     <div className="flex min-h-full flex-col bg-gray-50">
@@ -34,7 +78,7 @@ export default function AnomaliesPage() {
         </p>
 
         <section aria-label={t("anomalies.header.title")}>
-          {state.status === "loading" && (
+          {isLoading && (
             <div className="flex flex-col gap-3">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div
@@ -45,22 +89,33 @@ export default function AnomaliesPage() {
             </div>
           )}
 
-          {state.status === "error" && (
+          {!isLoading && anomaliesState.status === "error" && (
             <ErrorCard
               title={t("anomalies.header.title")}
-              error={state.error}
-              onRetry={state.retry}
+              error={anomaliesState.error}
+              onRetry={anomaliesState.retry}
             />
           )}
 
-          {state.status === "success" && (
+          {!isLoading && anomaliesState.status === "success" && (
             <>
+              <div className="mb-4">
+                <SegmentedFilter<AnomalyTypeFilter>
+                  aria-label={t("anomalies.filter.ariaLabel")}
+                  options={FILTER_OPTIONS}
+                  value={filter}
+                  onChange={setFilter}
+                  countLabel={t("anomalies.filter.count")(filteredRows.length, allRows.length)}
+                />
+              </div>
+
               {errorRows.map((row, i) => (
                 <AnomalyErrorBanner
                   key={i}
                   agent={row.agent}
                   anomalyType={row.anomaly_type}
                   reason={row.reason}
+                  reasonSegments={row.reason_segments}
                 />
               ))}
 

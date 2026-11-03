@@ -118,12 +118,18 @@ class AgentCostBreakdownResponse(BaseModel):
     top_traces: list[TopTraceItem]
 
 
+class ReasonSegment(BaseModel):
+    text: str
+    code: bool
+
+
 class AnomalyRow(BaseModel):
     agent: str | None
     anomaly_type: str
     date: str | None
     status: str
     reason: str
+    reason_segments: list[ReasonSegment] | None = None
 
 
 class AnomalyFeedResponse(BaseModel):

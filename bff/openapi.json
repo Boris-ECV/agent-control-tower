@@ -239,6 +239,20 @@
             "title": "Reason",
             "type": "string"
           },
+          "reason_segments": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ReasonSegment"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Segments"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -528,6 +542,24 @@
           "end"
         ],
         "title": "PeriodRange",
+        "type": "object"
+      },
+      "ReasonSegment": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "boolean"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "code"
+        ],
+        "title": "ReasonSegment",
         "type": "object"
       },
       "SpanTreeNode": {

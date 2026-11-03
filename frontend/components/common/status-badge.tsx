@@ -11,7 +11,9 @@ import { cn } from "@/lib/utils";
 // 鍵技術決策 3」。色點是裝飾性圖形，標記 aria-hidden（文字本身已傳達狀態，
 // 螢幕閱讀器不需重複唸出）。children 而非 label: string，比照 ClickableRow
 // 既有慣例，呼叫端自行傳入已翻譯文字。
-export type StatusVariant = "success" | "danger";
+// SDLCCT-84: 新增第三個值 warning（琥珀色），success/danger 既有分支與對比度
+// 計算不變——見 docs/design/SDLCCT-84.md 關鍵技術決策 1。
+export type StatusVariant = "success" | "danger" | "warning";
 
 export function StatusBadge({
   variant,
@@ -26,14 +28,20 @@ export function StatusBadge({
         "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold",
         variant === "success"
           ? "border-border bg-gray-50 text-text-secondary"
-          : "border-red-300 bg-red-50 text-red-700",
+          : variant === "warning"
+            ? "border-amber-300 bg-amber-50 text-amber-700"
+            : "border-red-300 bg-red-50 text-red-700",
       )}
     >
       <span
         aria-hidden="true"
         className={cn(
           "h-1.5 w-1.5 flex-none rounded-full",
-          variant === "success" ? "bg-text-secondary" : "bg-red-600",
+          variant === "success"
+            ? "bg-text-secondary"
+            : variant === "warning"
+              ? "bg-amber-600"
+              : "bg-red-600",
         )}
       />
       {children}
