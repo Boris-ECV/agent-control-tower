@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-114 執行詳情頁：標題簡化與 Trace ID 複製按鈕 UI 原型</title>
+<style>
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #475467;
+    --color-text-tertiary: #667085;
+    --color-border: #E5E7EB;
+    --color-accent: #2563EB;
+    --color-danger: #DC2626;
+  }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: #F9FAFB;
+    color: var(--color-text-primary);
+    padding: 32px;
+  }
+  .card {
+    max-width: 960px;
+    margin: 0 auto 32px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 24px;
+  }
+  h1.heading { font-size: 14px; margin: 24px 0 8px; color: var(--color-text-secondary); font-weight: 600; }
+  .subtitle { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 20px; }
+
+  /* --- 以下模擬 trace-detail-content.tsx 的 <main> 內區塊 --- */
+  .page-title {
+    margin: 0 0 4px;
+    text-align: left;
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+  .trace-id-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 24px;
+  }
+  .trace-id-mono {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 14px;
+    color: var(--color-text-secondary);
+  }
+  .copy-btn {
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    border-radius: 6px;
+    padding: 2px 10px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    cursor: default;
+  }
+  .copy-btn.copied {
+    color: #047857;
+    border-color: #A7F3D0;
+    background: #ECFDF5;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+  thead tr { border-bottom: 1px solid var(--color-border); text-align: left; }
+  th { padding: 8px 12px 8px 0; font-size: 12px; color: var(--color-text-secondary); font-weight: 400; }
+  tbody tr { border-bottom: 1px solid var(--color-border); }
+  td { padding: 8px 12px 8px 0; }
+
+  footer {
+    margin-top: 32px;
+    border-top: 1px solid var(--color-border);
+    padding-top: 12px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+  .note {
+    margin-top: 0;
+    padding: 12px;
+    background: #F9FAFB;
+    border: 1px dashed var(--color-border);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+</style>
+</head>
+<body>
+
+  <div class="card">
+    <h2 class="heading" style="margin-top:0;">狀態 A：初始畫面（情境「標題簡化顯示」＋「Trace ID 以等寬字顯示在標題下一行」）</h2>
+
+    <p class="page-title">執行詳情</p>
+    <div class="trace-id-row">
+      <span class="trace-id-mono">trc_a1b2c3d4e5f6</span>
+      <button class="copy-btn" aria-label="複製 Trace ID">複製</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>名稱</th>
+          <th>類型</th>
+          <th>時間</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>root-chain</td>
+          <td>general</td>
+          <td>2026/10/01 08:00:00–2026/10/01 08:00:05</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2 class="heading" style="margin-top:0;">狀態 B：點擊複製按鈕後（情境「點擊複製按鈕複製 Trace ID」，約 2 秒後自動恢復為狀態 A）</h2>
+
+    <p class="page-title">執行詳情</p>
+    <div class="trace-id-row">
+      <span class="trace-id-mono">trc_a1b2c3d4e5f6</span>
+      <button class="copy-btn copied" aria-label="複製 Trace ID">已複製</button>
+    </div>
+
+    <footer>資料來源：Agent registry ＋ 觀測性後端 trace/span 查詢。</footer>
+  </div>
+
+  <div class="note">
+    對應 <code>docs/design/SDLCCT-114.md</code> 關鍵技術決策 1-5：標題
+    <code>&lt;h1&gt;</code> 只放「執行詳情」文字，Trace ID 拆到下一行獨立
+    的 <code>&lt;div&gt;</code>（決策 1）；Trace ID 用 Tailwind
+    <code>font-mono</code> 等寬字 utility（決策 2）；複製按鈕為本票自行
+    實作的 <code>TraceIdCopy</code> 元件，不依賴尚未落地的 SDLCCT-110
+    （決策 3，並記錄「未來可抽共用 <code>CopyButton</code>」的重構機會，
+    非本票範圍）；點擊後按鈕文字暫時變成「已複製」，約 2 秒後由
+    <code>setTimeout</code> 還原，unmount 時清理 timer（決策 4）；按鈕與
+    Trace ID 同一行、靠左對齊標題（決策 5）。本原型為靜態示意，
+    不含真正的剪貼簿寫入與計時器行為；實際行為見 developer 依設計文件
+    實作的 React 版本（<code>components/trace-detail/trace-id-copy.tsx</code>）。
+  </div>
+
+</body>
+</html>
