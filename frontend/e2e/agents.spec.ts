@@ -326,9 +326,17 @@ test("SDLCCT-105: null owner/budget show faded placeholder text, visually distin
   await page.goto("/agents");
 
   const ownerPlaceholder = page.locator("table tbody td", { hasText: "未指定" });
-  const budgetPlaceholder = page.locator("table tbody td", { hasText: "未設定" });
+  // SDLCCT-107: the budget_consumed_pct column now also shows "未設定" for
+  // this row (null budget ⇒ null budget_consumed_pct, same placeholder
+  // text per docs/design/SDLCCT-107.md decision 2), so scope to the Budget
+  // column specifically (4th <td>, index 3) to avoid a strict-mode
+  // ambiguity between the two columns.
+  const budgetPlaceholder = page
+    .locator("table tbody tr", { hasText: "Sales Copilot" })
+    .locator("td")
+    .nth(3);
   await expect(ownerPlaceholder).toBeVisible();
-  await expect(budgetPlaceholder).toBeVisible();
+  await expect(budgetPlaceholder).toHaveText("未設定");
 
   const populatedOwnerCell = page.locator("table tbody tr", { hasText: "Support Bot" }).locator("td").nth(2);
   await expect(populatedOwnerCell).toHaveText("bob");
@@ -374,4 +382,102 @@ test("SDLCCT-105: the agents table footer shows the current-period date range fo
   await page.goto("/agents");
 
   await expect(page.locator("footer").getByText("本期（10/1–10/31）")).toBeVisible();
+});
+
+// SDLCCT-107 Scenario "顯示預算消耗進度條"/"超出預算時進度條變色"/
+// "未設定預算不顯示進度條": 預算消耗%欄旁的進度條依 budget_consumed_pct
+// 渲染，null 時不渲染進度條、僅顯示佔位文字。
+test("SDLCCT-107: budget-consumed progress bar renders filled/clamped/absent per row", async ({
+  page,
+}) => {
+  await page.route("**/api/agents", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        agents: [
+          {
+            key: "normal-agent",
+            display: "Normal Agent",
+            dept: "Ops",
+            owner: "alice",
+            budget: 1000,
+            current_period_spend: 450,
+            budget_consumed_pct: 45,
+            has_governance_gap: false,
+            registered: true,
+            trend: [],
+          },
+          {
+            key: "overspend-agent",
+            display: "Overspend Agent",
+            dept: "Ops",
+            owner: "bob",
+            budget: 1000,
+            current_period_spend: 1200,
+            budget_consumed_pct: 120,
+            has_governance_gap: false,
+            registered: true,
+            trend: [],
+          },
+          {
+            key: "no-budget-agent",
+            display: "No Budget Agent",
+            dept: "Ops",
+            owner: "carol",
+            budget: null,
+            current_period_spend: 88,
+            budget_consumed_pct: null,
+            has_governance_gap: false,
+            registered: true,
+            trend: [],
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/agents");
+
+  const normalRow = page.locator("table tbody tr", { hasText: "Normal Agent" });
+  const normalFill = normalRow.locator("td", { hasText: "45.0%" }).locator(".bg-accent, .bg-red-600");
+  await expect(normalFill).toBeVisible();
+  const normalStyle = await normalFill.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { width: el.style.width, color: cs.backgroundColor };
+  });
+  expect(normalStyle.width).toBe("45%");
+  // bg-accent (#2563EB)
+  expect(normalStyle.color).toBe("rgb(37, 99, 235)");
+
+  const overspendRow = page.locator("table tbody tr", { hasText: "Overspend Agent" });
+  const overspendFill = overspendRow
+    .locator("td", { hasText: "120.0%" })
+    .locator(".bg-accent, .bg-red-600");
+  await expect(overspendFill).toBeVisible();
+  const overspendStyle = await overspendFill.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { width: el.style.width, color: cs.backgroundColor, className: el.className };
+  });
+  expect(overspendStyle.width).toBe("100%");
+  // Tailwind v4 resolves the built-in red-600 palette color via lab(), not
+  // rgb(), unlike the project's custom bg-accent token -- compare the
+  // resolved color against the normal row's (must differ) and confirm the
+  // danger class is the one actually applied, rather than hardcoding a
+  // color-space-specific string.
+  expect(overspendStyle.color).not.toBe(normalStyle.color);
+  expect(overspendStyle.className).toContain("bg-red-600");
+  expect(overspendStyle.className).not.toContain("bg-accent");
+
+  const noBudgetRow = page.locator("table tbody tr", { hasText: "No Budget Agent" });
+  // Column order: Agent, Dept, Owner, Budget, CurrentPeriodSpend,
+  // BudgetConsumedPct, Trend, Governance, (arrow) -- budget_consumed_pct is
+  // the 6th <td> (index 5). Both the Budget and BudgetConsumedPct columns
+  // show "未設定" for this row, so index into the specific column rather
+  // than matching on text alone.
+  const budgetConsumedPctCell = noBudgetRow.locator("td").nth(5);
+  await expect(budgetConsumedPctCell).toHaveText("未設定");
+  await expect(budgetConsumedPctCell.locator("div")).toHaveCount(0);
 });
