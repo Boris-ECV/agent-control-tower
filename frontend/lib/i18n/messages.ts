@@ -93,6 +93,12 @@ export const messages = {
     },
     unknownOwner: "未指定",
     unknownBudget: "未設定",
+    filter: {
+      searchLabel: "搜尋",
+      deptLabel: "部門",
+      statusAriaLabel: "依治理狀態篩選",
+      empty: "沒有符合篩選條件的 Agent",
+    },
     footer: {
       period: (range: string) => `本期（${range}）`,
       dataSource: "資料來源：Agent registry ＋ 觀測性後端成本查詢。",

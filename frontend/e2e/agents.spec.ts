@@ -487,6 +487,127 @@ test("SDLCCT-107: budget-consumed progress bar renders filled/clamped/absent per
 // exactly 100% must render the normal (accent) color, not danger -- the
 // unit tests added alongside this e2e spec did not previously exercise
 // this exact boundary value end-to-end.
+// SDLCCT-108 Scenario "搜尋 Agent（依部門）"／"部門下拉篩選": 搜尋框依部門
+// 子字串、不分大小寫比對；部門下拉選單只顯示該部門的 Agent。
+test("SDLCCT-108: search box filters by department (case-insensitive substring)", async ({
+  page,
+}) => {
+  await page.route("**/api/agents", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        agents: [
+          {
+            key: "sales-copilot",
+            display: "Sales Copilot",
+            dept: "Sales",
+            owner: "alice",
+            budget: 1000,
+            current_period_spend: 500,
+            budget_consumed_pct: 50,
+            has_governance_gap: false,
+            registered: true,
+            trend: [],
+          },
+          {
+            key: "support-bot",
+            display: "Support Bot",
+            dept: "Support",
+            owner: "bob",
+            budget: 2000,
+            current_period_spend: 300,
+            budget_consumed_pct: 15,
+            has_governance_gap: false,
+            registered: true,
+            trend: [],
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/agents");
+
+  await page.getByLabel("搜尋").fill("sales");
+
+  await expect(page.locator("table tbody tr")).toHaveCount(1);
+  await expect(page.locator("table tbody tr", { hasText: "Sales Copilot" })).toBeVisible();
+  await expect(page.locator("table tbody tr", { hasText: "Support Bot" })).toHaveCount(0);
+});
+
+// SDLCCT-108 Scenario "篩選條件疊加": 搜尋字詞與部門篩選以 AND 疊加。
+test("SDLCCT-108: search term and department filter combine with AND", async ({ page }) => {
+  await page.route("**/api/agents", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        agents: [
+          { key: "a1", display: "Alpha", dept: "Sales", owner: "alice", budget: 100, current_period_spend: 10, budget_consumed_pct: 10, has_governance_gap: false, registered: true, trend: [] },
+          { key: "a2", display: "Alpha Two", dept: "Ops", owner: "bob", budget: 100, current_period_spend: 10, budget_consumed_pct: 10, has_governance_gap: false, registered: true, trend: [] },
+          { key: "a3", display: "Beta", dept: "Sales", owner: "carol", budget: 100, current_period_spend: 10, budget_consumed_pct: 10, has_governance_gap: false, registered: true, trend: [] },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/agents");
+
+  await page.getByLabel("搜尋").fill("alpha");
+  await page.getByLabel("部門").selectOption("Sales");
+
+  await expect(page.locator("table tbody tr")).toHaveCount(1);
+  await expect(page.locator("table tbody tr", { hasText: "Alpha" }).first()).toBeVisible();
+  await expect(page.locator("table tbody tr", { hasText: "Alpha Two" })).toHaveCount(0);
+  await expect(page.locator("table tbody tr", { hasText: "Beta" })).toHaveCount(0);
+});
+
+// SDLCCT-108 Scenario "篩選結果為空": 篩選結果為空時顯示空狀態提示，不顯示
+// 表格列（桌面 <table> 不出現任何 <tr>，行動版卡片清單同理不出現）。
+test("SDLCCT-108: empty filter result shows the empty-state message with no table rows or cards", async ({
+  page,
+}) => {
+  await page.route("**/api/agents", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        agents: [
+          {
+            key: "sales-copilot",
+            display: "Sales Copilot",
+            dept: "Sales",
+            owner: "alice",
+            budget: 1000,
+            current_period_spend: 500,
+            budget_consumed_pct: 50,
+            has_governance_gap: false,
+            registered: true,
+            trend: [],
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/agents");
+
+  await page.getByLabel("搜尋").fill("no-such-agent-term");
+
+  await expect(page.getByText("沒有符合篩選條件的 Agent")).toBeVisible();
+  await expect(page.locator("table")).toHaveCount(0);
+  // Scoped to <main> -- the sidebar nav also renders <ul><li>, which would
+  // otherwise make this assertion fail on unrelated nav items.
+  await expect(page.locator("main ul li")).toHaveCount(0);
+});
+
 test("SDLCCT-107 boundary: budget_consumed_pct of exactly 100 uses the normal color, not danger", async ({
   page,
 }) => {
