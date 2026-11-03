@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 
 import { ClickableRow } from "@/components/common/clickable-row";
 import { ProgressBar } from "@/components/common/progress-bar";
+import { SegmentedFilter } from "@/components/common/segmented-filter";
 import { StatusBadge } from "@/components/common/status-badge";
 import { ErrorCard } from "@/components/cost-overview/error-card";
 import { PageHeaderTimestamp } from "@/components/layout/page-header-timestamp";
@@ -13,6 +15,22 @@ import { fetchAgentsList } from "@/lib/agents-api";
 import { formatDateRange, formatTableCurrency, formatPercent } from "@/lib/format";
 import { t } from "@/lib/i18n/t";
 import { useFetchOnce } from "@/lib/use-fetch-once";
+
+// SDLCCT-108 決策 4：狀態篩選沿用既有 SegmentedFilter，三態
+// "all" | "gap" | "ok"，標籤重用既有 agents.governanceBadge 文案。
+type GovernanceStatusFilter = "all" | "gap" | "ok";
+
+// 「全部」文案沿用既有 anomalies.filter.all（同為「篩選器『全部』選項」語意，
+// 非跨模組不同語意的字串，不新增重複 key——決策 6 列出的新 key 僅
+// searchLabel/deptLabel/statusAriaLabel 三個）。
+const STATUS_FILTER_OPTIONS: { value: GovernanceStatusFilter; label: string }[] = [
+  { value: "all", label: t("anomalies.filter.all") },
+  { value: "gap", label: t("agents.governanceBadge.hasGap") },
+  { value: "ok", label: t("agents.governanceBadge.ok") },
+];
+
+// SDLCCT-108 決策 2：部門下拉的 "all" sentinel 值。
+const DEPT_FILTER_ALL = "all";
 
 // Sparkline: 手刻 inline SVG <polyline>（無圖表函式庫依賴，見
 // docs/design/SDLCCT-43.md UI 原型段落）。null 的 trend point 不內插、不顯示
@@ -225,6 +243,39 @@ function AgentCardList({ agents }: { agents: AgentRegistryEntry[] }) {
 
 export default function AgentsPage() {
   const state = useFetchOnce(fetchAgentsList);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [deptFilter, setDeptFilter] = useState<string>(DEPT_FILTER_ALL);
+  const [statusFilter, setStatusFilter] = useState<GovernanceStatusFilter>("all");
+
+  // SDLCCT-108 決策 3：部門下拉選項來自未篩選的原始 agents 清單（dedup +
+  // 排序），不隨其他篩選條件縮小。
+  const deptOptions = useMemo(() => {
+    if (state.status !== "success") return [];
+    return Array.from(new Set(state.data.agents.map((agent) => agent.dept))).sort();
+  }, [state]);
+
+  // SDLCCT-108 決策 2：集中一個 useMemo 同時套用 search／dept／status 三個
+  // AND 條件，結果同時傳給 AgentTable 與 AgentCardList，避免兩處各自重算
+  // 或產生不一致的過濾結果。
+  const term = searchTerm.trim().toLowerCase();
+  const filteredAgents = useMemo(() => {
+    if (state.status !== "success") return [];
+    return state.data.agents.filter((agent) => {
+      if (deptFilter !== DEPT_FILTER_ALL && agent.dept !== deptFilter) return false;
+      if (statusFilter === "gap" && !agent.has_governance_gap) return false;
+      if (statusFilter === "ok" && agent.has_governance_gap) return false;
+      if (
+        term &&
+        !agent.display.toLowerCase().includes(term) &&
+        !agent.dept.toLowerCase().includes(term) &&
+        !(agent.owner !== null && agent.owner.toLowerCase().includes(term)) &&
+        !agent.key.toLowerCase().includes(term)
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [state, term, deptFilter, statusFilter]);
 
   return (
     <div className="flex min-h-full flex-col bg-gray-50">
@@ -258,8 +309,53 @@ export default function AgentsPage() {
 
           {state.status === "success" && (
             <>
-              <AgentTable agents={state.data.agents} />
-              <AgentCardList agents={state.data.agents} />
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="agents-search" className="text-sm text-text-secondary">
+                    {t("agents.filter.searchLabel")}
+                  </label>
+                  <input
+                    id="agents-search"
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-text-primary"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="agents-dept-filter" className="text-sm text-text-secondary">
+                    {t("agents.filter.deptLabel")}
+                  </label>
+                  <select
+                    id="agents-dept-filter"
+                    value={deptFilter}
+                    onChange={(e) => setDeptFilter(e.target.value)}
+                    className="rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-text-primary"
+                  >
+                    <option value={DEPT_FILTER_ALL}>{t("anomalies.filter.all")}</option>
+                    {deptOptions.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <SegmentedFilter<GovernanceStatusFilter>
+                  aria-label={t("agents.filter.statusAriaLabel")}
+                  options={STATUS_FILTER_OPTIONS}
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                />
+              </div>
+
+              {filteredAgents.length === 0 ? (
+                <p className="text-sm text-text-secondary">{t("agents.filter.empty")}</p>
+              ) : (
+                <>
+                  <AgentTable agents={filteredAgents} />
+                  <AgentCardList agents={filteredAgents} />
+                </>
+              )}
             </>
           )}
         </section>

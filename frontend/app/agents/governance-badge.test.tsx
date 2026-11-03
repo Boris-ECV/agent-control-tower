@@ -51,7 +51,11 @@ describe("AgentsPage governance badges use the shared StatusBadge", () => {
     });
     render(<AgentsPage />);
 
-    const badges = await screen.findAllByText("治理缺口");
+    // SDLCCT-108: the filter row's SegmentedFilter status option reuses this
+    // same label text ("治理缺口") per docs/design/SDLCCT-108.md decision 4,
+    // so scope the query to the table/card list badges specifically -- the
+    // toggle button is not a StatusBadge and must not be matched here.
+    const badges = (await screen.findAllByText("治理缺口")).filter((el) => el.closest("span"));
     expect(badges.length).toBeGreaterThanOrEqual(1);
     for (const badge of badges) {
       expect(badge.closest("span")?.className).toContain("border-red-300");
@@ -69,7 +73,9 @@ describe("AgentsPage governance badges use the shared StatusBadge", () => {
     });
     render(<AgentsPage />);
 
-    const badges = await screen.findAllByText("正常");
+    // SDLCCT-108: same reasoning as above -- "正常" is also reused by the
+    // status filter's SegmentedFilter option label.
+    const badges = (await screen.findAllByText("正常")).filter((el) => el.closest("span"));
     expect(badges.length).toBeGreaterThanOrEqual(1);
     for (const badge of badges) {
       expect(badge.closest("span")?.className).toContain("border-border");
