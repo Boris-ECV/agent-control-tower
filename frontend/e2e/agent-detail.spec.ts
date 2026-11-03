@@ -714,7 +714,13 @@ test("SDLCCT-74 AC4: null metadata keeps the existing — behavior with no chips
   await page.goto(`/agents/${MOCK_KEY}`);
 
   const nullRow = page.locator("tr", { hasText: "trace-002" });
-  await expect(nullRow.getByText("—", { exact: true })).toBeVisible();
+  // SDLCCT-110 新增的「執行時間」欄對非合法 UUIDv7 的 trace-002 也顯示
+  // em dash，所以泛用的 getByText("—") 現在在這個列裡會比對到兩個元素
+  // （執行時間欄 + 中繼資料欄）；用第 4 格（中繼資料欄，Trace
+  // ID/執行時間/預估成本/中繼資料/箭頭裝飾欄順序的第 4 個）鎖定本測試真
+  // 正要驗證的欄位。
+  const metadataCell = nullRow.locator("td").nth(3);
+  await expect(metadataCell.getByText("—", { exact: true })).toBeVisible();
   await expect(nullRow.getByRole("button", { name: "更多" })).toHaveCount(0);
   await expect(nullRow.getByRole("button", { name: "收合" })).toHaveCount(0);
 });
@@ -1560,4 +1566,128 @@ test("SDLCCT-90 (tester): at 390px the areas stay aligned with their polylines, 
   expect(info.same).toBe(true);
   expect(info.pe).toEqual(["none", "none"]);
   expect(info.overflow).toBe(true);
+});
+
+test("SDLCCT-110 AC1/AC2: top-traces 執行時間欄顯示從合法 UUIDv7 Trace ID 解析出的時間，非合法格式顯示em dash", async ({
+  page,
+}) => {
+  // Date.UTC(2026, 9, 15, 6, 30, 0) === 1792045800000 ===
+  // 0x01a13e40da40 -> first 48 bits (12 hex chars) embedded in a UUIDv7,
+  // i.e. the first two dash-groups -> 2026/10/15 14:30 Asia/Taipei.
+  const validUuidV7 = "01a13e40-da40-7000-8000-000000000000";
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [],
+        model_cost_breakdown: [],
+        top_traces: [
+          { id: validUuidV7, total_estimated_cost: 999, metadata: null },
+          // Same length/shape but version nibble is "4", not a legal UUIDv7.
+          { id: "01a13e40-da40-4000-8000-000000001234", total_estimated_cost: 500, metadata: null },
+        ],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  await expect(page.getByText("執行時間")).toBeVisible();
+  await expect(page.getByText("2026/10/15 14:30")).toBeVisible();
+
+  const invalidRow = page.locator("tr", { hasText: "01a13e40…1234" });
+  // metadata === null 本身也顯示 "—"（既有行為），所以泛用的 getByText("—")
+  // 在這個列裡會比對到兩個元素；用第 2 格（執行時間欄）鎖定本情境真正要
+  // 驗證的欄位。
+  await expect(invalidRow.locator("td").nth(1).getByText("—")).toBeVisible();
+  // Other cells in that same row still render unaffected.
+  await expect(invalidRow.getByText("US$ 500.00")).toBeVisible();
+});
+
+test("SDLCCT-110 AC3: a full 36-char trace id is truncated with hover title and a working copy button", async ({
+  page,
+  context,
+}) => {
+  const fullId = "0199f06a-9680-7000-8000-abcdef012345";
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [],
+        model_cost_breakdown: [],
+        top_traces: [{ id: fullId, total_estimated_cost: 999, metadata: null }],
+      }),
+    });
+  });
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  // Truncated display: 前8碼…後4碼.
+  await expect(page.getByText("0199f06a…2345")).toBeVisible();
+  await expect(page.getByText(fullId)).toHaveCount(0);
+
+  // getByText with exact element-containing-text matching resolves to the
+  // wrapping <span title=...> itself here (it's the smallest element whose
+  // own text equals the truncated string), not a descendant -- so assert
+  // the title directly on it rather than walking to an ancestor.
+  const cell = page.getByText("0199f06a…2345");
+  await expect(cell).toHaveAttribute("title", fullId);
+
+  // exact: true -- the enclosing <tr role="button"> also has an accessible
+  // name containing "複製完整 Trace ID" (it includes all its cells' text),
+  // so a non-exact match resolves to both the row and the actual button.
+  const copyButton = page.getByRole("button", { name: "複製完整 Trace ID", exact: true });
+  await copyButton.click();
+  const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
+  expect(clipboardText).toBe(fullId);
+  await expect(page.getByText("已複製")).toBeVisible();
+
+  // Clicking the copy button must not trigger the row's own click-to-navigate
+  // behaviour (SDLCCT-101 compatibility -- stopPropagation).
+  await expect(page).toHaveURL(`/agents/${MOCK_KEY}`);
+});
+
+test("SDLCCT-110: short e2e-fixture trace ids (e.g. trace-001) remain fully visible, unaffected by truncation", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [],
+        model_cost_breakdown: [],
+        top_traces: [
+          { id: "trace-001", total_estimated_cost: 999, metadata: { user_id: "u1" } },
+          { id: "trace-002", total_estimated_cost: 500, metadata: null },
+        ],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  await expect(page.getByText("trace-001")).toBeVisible();
+  await expect(page.getByText("trace-002")).toBeVisible();
+  const row = page.getByText("trace-001").locator("xpath=ancestor::tr");
+  await expect(row.getByText("—")).toBeVisible(); // 執行時間欄：非合法 UUIDv7。
+
+  // Row navigation still works for these short-id rows (SDLCCT-56/101).
+  await row.click();
+  await expect(page).toHaveURL(`/agents/${MOCK_KEY}/traces/trace-001`);
 });

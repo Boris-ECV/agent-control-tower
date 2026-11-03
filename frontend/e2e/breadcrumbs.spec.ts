@@ -2,6 +2,12 @@ import { expect, test, type Page } from "@playwright/test";
 
 const KEY = "sales-copilot";
 const LONG_TRACE = "trace-0123456789abcdef";
+// SDLCCT-110: top-traces 表格的 Trace ID 欄對 >12 字元的字串套用「前8碼…
+// 後4碼」截斷顯示，所以用完整 LONG_TRACE 字串當 getByText locator 已經找
+// 不到元素；locator 改用截斷後的顯示文字（與 lib/trace-id.ts
+// truncateTraceId 的輸出一致），這裡測的是「列可點擊導覽」本身，不是
+// Trace ID 的顯示格式，截斷只影響找法，不影響測試意圖。
+const LONG_TRACE_TRUNCATED = "trace-01…cdef";
 const SHORT_TRACE = "trc_123";
 const LONG_NAME = "Very Long Agent Display Name For Mobile Overflow Check Number One Two";
 
@@ -90,7 +96,7 @@ test("agent detail -> trace reuses cached name without a second cost-breakdown r
   let count = 0;
   await mockApis(page, "Sales Copilot", () => count++);
   await page.goto(`/agents/${KEY}`);
-  await page.getByText(LONG_TRACE).locator("xpath=ancestor::tr").click();
+  await page.getByText(LONG_TRACE_TRUNCATED).locator("xpath=ancestor::tr").click();
   await expect(page).toHaveURL(`/agents/${KEY}/traces/${LONG_TRACE}`);
   await expect(crumbs(page).getByRole("link", { name: "Sales Copilot" })).toBeVisible();
   expect(count).toBe(1);
@@ -144,7 +150,7 @@ test.describe("mobile 390px", () => {
   test("trace detail with a long name does not overflow", async ({ page }) => {
     await mockApis(page, LONG_NAME);
     await page.goto(`/agents/${KEY}`);
-    await page.getByText(LONG_TRACE).locator("xpath=ancestor::tr").click();
+    await page.getByText(LONG_TRACE_TRUNCATED).locator("xpath=ancestor::tr").click();
     await expect(page).toHaveURL(`/agents/${KEY}/traces/${LONG_TRACE}`);
     await expect(crumbs(page).getByRole("link", { name: LONG_NAME })).toBeVisible();
     await expectNoOverflow(page, 4);

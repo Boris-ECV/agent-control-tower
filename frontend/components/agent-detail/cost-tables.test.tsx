@@ -39,6 +39,7 @@ describe("TopTracesTable cost column", () => {
     expect(td.className).toContain("text-right");
     expect(td.className).toContain("tabular-nums");
     const ths = container.querySelectorAll("th");
-    expect(ths[1]?.className).toContain("text-right");
+    // Column order (SDLCCT-110): Trace ID, 執行時間, 預估成本, 中繼資料, arrow.
+    expect(ths[2]?.className).toContain("text-right");
   });
 });
