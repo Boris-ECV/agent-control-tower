@@ -6,6 +6,7 @@ import { useCallback } from "react";
 import { TraceBreadcrumbs } from "@/components/trace-detail/trace-breadcrumbs";
 import { SpanTreeRow } from "@/components/trace-detail/span-tree-row";
 import { TraceBackLink } from "@/components/trace-detail/trace-back-link";
+import { TraceIdCopy } from "@/components/trace-detail/trace-id-copy";
 import { ErrorCard } from "@/components/cost-overview/error-card";
 import { fetchTraceSpans } from "@/lib/trace-spans-api";
 import { t } from "@/lib/i18n/t";
@@ -40,9 +41,10 @@ export function TraceDetailContent() {
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-6">
-        <h1 className="mb-6 text-left text-2xl leading-8 font-bold text-text-primary">
-          {t("traceDetail.header.title")} — {traceId}
+        <h1 className="text-left text-2xl leading-8 font-bold text-text-primary">
+          {t("traceDetail.header.title")}
         </h1>
+        <TraceIdCopy traceId={traceId} />
 
         {state.status === "loading" && (
           <div className="flex flex-col gap-3">

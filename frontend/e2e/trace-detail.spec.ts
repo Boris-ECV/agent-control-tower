@@ -301,6 +301,58 @@ test("SDLCCT-64: header back link remains visible and usable while the spans req
   await expect(page).toHaveURL(`/agents/${MOCK_KEY}`);
 });
 
+test("SDLCCT-114: title shows only 執行詳情, with the trace id on its own font-mono line below", async ({
+  page,
+}) => {
+  await mockCostBreakdown(page);
+  await page.route(`**/api/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}/spans`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ key: MOCK_KEY, trace_id: MOCK_TRACE_ID, spans: [] }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}`);
+
+  const heading = page.getByRole("heading", { level: 1 });
+  await expect(heading).toHaveText("執行詳情");
+
+  // The `font-mono` utility class itself is the styling contract (see
+  // docs/design/SDLCCT-114.md decision 2); its actual computed font-family
+  // depends on font loading/pipeline concerns shared with other existing
+  // `font-mono` usages (e.g. anomaly-table.tsx) and is out of this
+  // ticket's scope to verify at the computed-style level.
+  const traceIdText = page.locator("span.font-mono", { hasText: MOCK_TRACE_ID });
+  await expect(traceIdText).toBeVisible();
+});
+
+test("SDLCCT-114: clicking the copy button copies the trace id and shows 已複製 feedback that reverts", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await mockCostBreakdown(page);
+  await page.route(`**/api/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}/spans`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ key: MOCK_KEY, trace_id: MOCK_TRACE_ID, spans: [] }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}`);
+
+  const copyButton = page.getByRole("button", { name: "複製 Trace ID" });
+  await copyButton.click();
+
+  await expect(copyButton).toHaveText("已複製");
+  const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
+  expect(clipboardText).toBe(MOCK_TRACE_ID);
+
+  await expect(copyButton).toHaveText("複製", { timeout: 3000 });
+});
+
 test("SDLCCT-64: header back link remains visible and usable when the spans request errors", async ({
   page,
 }) => {

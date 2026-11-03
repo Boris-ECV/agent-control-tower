@@ -36,4 +36,21 @@ describe("TraceDetailContent header", () => {
     expect(screen.getByRole("link", { name: "返回 Sales Copilot" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^Sales Copilot$/ })).toBeInTheDocument();
   });
+
+  it("renders the title as 執行詳情 only, without the trace id string", async () => {
+    mockFetch.mockResolvedValue({ display: "Sales Copilot" } as never);
+    render(<TraceDetailContent />);
+    await act(async () => {});
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading).toHaveTextContent("執行詳情");
+    expect(heading.textContent).not.toContain("trc_123");
+  });
+
+  it("renders the trace id on its own line below the title in font-mono", async () => {
+    mockFetch.mockResolvedValue({ display: "Sales Copilot" } as never);
+    render(<TraceDetailContent />);
+    await act(async () => {});
+    const idText = screen.getByText("trc_123", { selector: "span.font-mono" });
+    expect(idText.className).toContain("font-mono");
+  });
 });
