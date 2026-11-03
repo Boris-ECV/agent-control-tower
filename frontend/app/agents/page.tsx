@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { ClickableRow } from "@/components/common/clickable-row";
+import { ProgressBar } from "@/components/common/progress-bar";
 import { StatusBadge } from "@/components/common/status-badge";
 import { ErrorCard } from "@/components/cost-overview/error-card";
 import { PageHeaderTimestamp } from "@/components/layout/page-header-timestamp";
@@ -74,6 +75,24 @@ export function Sparkline({ trend }: { trend: AgentTrendPoint[] }) {
   );
 }
 
+// 「預算消耗%」欄共用渲染（SDLCCT-107）。budget_consumed_pct 為 null 恆等於
+// budget 為 null（見 docs/design/SDLCCT-107.md「介面/API 契約」，後端
+// bff/api/agents.py 的一對一不變性），語意上就是「預算未設定」，故沿用
+// SDLCCT-105 定案的 agents.unknownBudget 文案與 text-text-tertiary 淡色、
+// 不渲染進度條；非 null 時維持既有 formatPercent 數字顯示，並在數字旁加上
+// 進度條（寬度 clamp 到 0-100%，>100% 用警示色，沿用 SDLCCT-82 門檻）。
+function BudgetConsumedPct({ pct }: { pct: number | null }) {
+  if (pct === null) {
+    return <span className="text-text-tertiary">{t("agents.unknownBudget")}</span>;
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      <span>{formatPercent(pct)}</span>
+      <ProgressBar pct={pct} danger={pct > 100} />
+    </div>
+  );
+}
+
 function GovernanceBadge({ hasGap }: { hasGap: boolean }) {
   return (
     <StatusBadge variant={hasGap ? "danger" : "success"}>
@@ -120,7 +139,9 @@ function AgentTable({ agents }: { agents: AgentRegistryEntry[] }) {
               )}
             </td>
             <td className="py-2 pr-3 text-right tabular-nums">{formatTableCurrency(agent.current_period_spend)}</td>
-            <td className="py-2 pr-3">{formatPercent(agent.budget_consumed_pct)}</td>
+            <td className="py-2 pr-3">
+              <BudgetConsumedPct pct={agent.budget_consumed_pct} />
+            </td>
             <td className="py-2 pr-3">
               <Sparkline trend={agent.trend} />
             </td>
@@ -188,7 +209,7 @@ function AgentCardList({ agents }: { agents: AgentRegistryEntry[] }) {
               </dd>
               <dt>{t("agents.table.columns.budgetConsumedPct")}</dt>
               <dd className="text-right text-text-primary">
-                {formatPercent(agent.budget_consumed_pct)}
+                <BudgetConsumedPct pct={agent.budget_consumed_pct} />
               </dd>
               <dt>{t("agents.table.columns.trend")}</dt>
               <dd className="text-right">
