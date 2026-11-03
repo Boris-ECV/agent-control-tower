@@ -13,11 +13,16 @@ function Card({
   value,
   sub,
   danger,
+  progressPct,
 }: {
   label: string;
   value: string;
   sub: string;
   danger?: boolean;
+  /** When set, renders a horizontal progress bar between the value and the
+   * sub text (SDLCCT-83 AC "預算消耗數字旁加進度條"). Clamped to [0, 100]
+   * for the fill width; `danger` decides the fill color. */
+  progressPct?: number;
 }) {
   return (
     <div className="rounded-lg border border-border bg-bg p-4">
@@ -27,6 +32,14 @@ function Card({
       >
         {value}
       </p>
+      {progressPct !== undefined && (
+        <div className="mb-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+          <div
+            className={`h-1.5 rounded-full ${danger ? "bg-red-600" : "bg-accent"}`}
+            style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
+          />
+        </div>
+      )}
       <p className="text-xs leading-[18px] text-text-secondary">{sub}</p>
     </div>
   );
@@ -77,6 +90,7 @@ export function SummarySection() {
               : t("costOverview.summary.budgetConsumedPct.subWithinBudget")
           }
           danger={overBudget}
+          progressPct={summary.budget_consumed_pct ?? 0}
         />
         <Card
           label={t("costOverview.summary.projectedOverspend.label")}
