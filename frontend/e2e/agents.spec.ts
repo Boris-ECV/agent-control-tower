@@ -481,3 +481,50 @@ test("SDLCCT-107: budget-consumed progress bar renders filled/clamped/absent per
   await expect(budgetConsumedPctCell).toHaveText("未設定");
   await expect(budgetConsumedPctCell.locator("div")).toHaveCount(0);
 });
+
+// Boundary implied by docs/design/SDLCCT-107.md decision 3 (`pct > 100`,
+// strictly greater, reused from summary-section.tsx's `overBudget` check):
+// exactly 100% must render the normal (accent) color, not danger -- the
+// unit tests added alongside this e2e spec did not previously exercise
+// this exact boundary value end-to-end.
+test("SDLCCT-107 boundary: budget_consumed_pct of exactly 100 uses the normal color, not danger", async ({
+  page,
+}) => {
+  await page.route("**/api/agents", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        agents: [
+          {
+            key: "exact-100-agent",
+            display: "Exact Hundred Agent",
+            dept: "Ops",
+            owner: "dave",
+            budget: 1000,
+            current_period_spend: 1000,
+            budget_consumed_pct: 100,
+            has_governance_gap: false,
+            registered: true,
+            trend: [],
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/agents");
+
+  const row = page.locator("table tbody tr", { hasText: "Exact Hundred Agent" });
+  const fill = row.locator("td", { hasText: "100.0%" }).locator(".bg-accent, .bg-red-600");
+  await expect(fill).toBeVisible();
+  const style = await fill.evaluate((el) => ({
+    width: (el as HTMLElement).style.width,
+    className: el.className,
+  }));
+  expect(style.width).toBe("100%");
+  expect(style.className).toContain("bg-accent");
+  expect(style.className).not.toContain("bg-red-600");
+});

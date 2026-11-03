@@ -120,4 +120,53 @@ describe("AgentsPage budget consumed progress bar", () => {
     expect(fill).not.toBeNull();
     expect(fill.style.width).toBe("45%");
   });
+
+  // Scenario "未設定預算不顯示進度條" also applies to the mobile card list
+  // (AgentCardList), not just the desktop table -- the existing test above
+  // only asserted this for <table>. Both views share the same
+  // BudgetConsumedPct helper, but that's an implementation detail the AC
+  // itself doesn't reference, so this is verified independently here.
+  it("renders no progress bar and only the placeholder text in the mobile card list when budget is null", async () => {
+    fetchAgentsList.mockResolvedValueOnce({
+      agents: [agent({ budget: null, budget_consumed_pct: null })],
+      anchor_date: "2026-10-28",
+      period_start: "2026-10-01",
+    });
+    render(<AgentsPage />);
+
+    const placeholders = await screen.findAllByText("未設定");
+    const inList = placeholders.find((el) => el.closest("ul"));
+    expect(inList).toBeDefined();
+    expect(inList?.tagName).toBe("SPAN");
+    expect(inList?.className).toContain("text-text-tertiary");
+
+    const list = inList?.closest("ul");
+    expect(list?.querySelector(".bg-accent")).toBeNull();
+    expect(list?.querySelector(".bg-red-600")).toBeNull();
+  });
+
+  // Boundary case implied by decision 3 in docs/design/SDLCCT-107.md: the
+  // danger threshold is strictly `pct > 100` (reused from
+  // summary-section.tsx's `overBudget` check), so a value of exactly 100%
+  // must NOT be treated as over budget -- only values strictly greater than
+  // 100 should turn the bar red. Neither the developer's unit tests nor the
+  // e2e spec exercised this exact boundary before this test was added.
+  it("does NOT use the danger color when budget_consumed_pct is exactly 100", async () => {
+    fetchAgentsList.mockResolvedValueOnce({
+      agents: [agent({ budget_consumed_pct: 100 })],
+      anchor_date: "2026-10-28",
+      period_start: "2026-10-01",
+    });
+    render(<AgentsPage />);
+
+    const matches = await screen.findAllByText("100.0%");
+    const inTable = matches.find((el) => el.closest("table"));
+    expect(inTable).toBeDefined();
+    const cell = inTable?.closest("td") as HTMLElement;
+    const fill = cell.querySelector(".bg-accent, .bg-red-600") as HTMLElement;
+    expect(fill).not.toBeNull();
+    expect(fill.style.width).toBe("100%");
+    expect(fill.className).toContain("bg-accent");
+    expect(fill.className).not.toContain("bg-red-600");
+  });
 });

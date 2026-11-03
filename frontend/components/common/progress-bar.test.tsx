@@ -37,4 +37,16 @@ describe("ProgressBar", () => {
     const fill = (container.firstChild as HTMLElement).firstChild as HTMLElement;
     expect(fill.style.width).toBe("0%");
   });
+
+  // Boundary: the component itself does not decide the danger threshold
+  // (the caller passes `danger` in, per the comment above), but it must
+  // still render exactly 100% width -- not over-clamp or under-clamp -- at
+  // the boundary value itself, with whichever color the caller chose.
+  it("renders exactly 100% width at pct=100 without forcing the danger color", () => {
+    const { container } = render(<ProgressBar pct={100} danger={false} />);
+    const fill = (container.firstChild as HTMLElement).firstChild as HTMLElement;
+    expect(fill.style.width).toBe("100%");
+    expect(fill.className).toContain("bg-accent");
+    expect(fill.className).not.toContain("bg-red-600");
+  });
 });
