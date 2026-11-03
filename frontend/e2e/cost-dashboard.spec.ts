@@ -13,7 +13,7 @@ test("cost dashboard page loads and shows the expected static content", async ({
   ).toHaveCount(0);
   await expect(page.getByText("Agent Control Tower")).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "成本總覽" }),
+    page.getByRole("heading", { name: "成本儀表板" }),
   ).toBeVisible();
 });
 

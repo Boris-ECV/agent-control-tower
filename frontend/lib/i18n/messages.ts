@@ -27,21 +27,22 @@ export const messages = {
   },
   costOverview: {
     header: {
-      title: "成本總覽",
+      title: "成本儀表板",
       subtitle: "本月成本 vs 預算、預估月底超支、跨 Agent 期間比較",
     },
     summarySection: { title: "本月成本 vs 預算總覽" },
     periodSection: {
       title: "跨 Agent 期間比較",
       heading: "跨 Agent 期間比較（誰漲最多）",
+      statsPeriod: (range: string) => `統計期間 ${range}`,
     },
     footer: { dataSource: "資料來源：Agent registry ＋ 觀測性後端成本查詢。" },
     summary: {
       totalSpend: {
         label: "本月總花費（含未登錄 Agent）",
-        sub: "9 個 Agent 累計（COST，本月至今）",
+        sub: "9 個 Agent 累計（本月至今）",
       },
-      totalBudget: { label: "本月總預算", sub: "已登錄 Agent 的 budget 加總" },
+      totalBudget: { label: "本月總預算", sub: "已登錄 Agent 的預算加總" },
       budgetConsumedPct: {
         label: "預算消耗百分比",
         subOverBudget: "已超過本月預算",
@@ -62,6 +63,9 @@ export const messages = {
     period: {
       currentPeriod: (range: string) => `本期花費（${range}）`,
       previousPeriod: (range: string) => `前期花費（${range}）`,
+      currentPeriodLabel: "本期花費",
+      previousPeriodLabel: "前期花費",
+      deltaAmount: "增加金額",
       delta: "漲幅",
       notableNewSpendBadge: "新增顯著支出",
     },
@@ -100,7 +104,7 @@ export const messages = {
   },
   app: {
     metadata: {
-      title: "成本總覽 — Agent Control Tower",
+      title: "成本儀表板 — Agent Control Tower",
       description: "本月成本 vs 預算總覽、預估月底超支、跨 Agent 期間比較。",
     },
   },

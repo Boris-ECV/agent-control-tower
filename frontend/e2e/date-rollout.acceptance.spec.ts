@@ -147,7 +147,7 @@ test("trace detail: span start/end are YYYY/MM/DD HH:mm:ss, equal mock UTC +8h",
   expect(m![2]).toBe("2026/11/01 09:02:03");
 });
 
-test("cost dashboard: period-comparison header ranges keep the old 10/1–10/28 style", async ({ page }) => {
+test("cost dashboard: period-comparison header ranges keep the 10/1–10/28 style (SDLCCT-83: now on its own line)", async ({ page }) => {
   await json(page, "**/api/cost-overview/summary", {
     anchor_date: "2026-10-28",
     total_spend: 100,
@@ -166,7 +166,10 @@ test("cost dashboard: period-comparison header ranges keep the old 10/1–10/28 
   });
   await page.clock.setFixedTime("2026-10-28T06:30:00Z");
   await page.goto("/cost-dashboard");
-  await expect(page.getByText("本期花費（10/1–10/28）")).toBeVisible();
+  // SDLCCT-83: column header period text moved to its own second line
+  // (no longer parenthesized on the same line as the label).
+  await expect(page.locator("thead").getByText("本期花費", { exact: true })).toBeVisible();
+  await expect(page.locator("thead").getByText("10/1–10/28", { exact: true })).toBeVisible();
   await expect(page.getByTestId("page-header-timestamp")).toHaveText(
     "資料更新於 2026/10/28 14:30（台灣時間）",
   );
