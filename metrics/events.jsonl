@@ -506,3 +506,16 @@
 {"ts":"2026-11-03T10:54:32Z","event":"stage_transition","ticket":"SDLCCT-107","agent":"orch-20261103-a2k9","data":{"from":"Backlog","to":"Refining"}}
 {"ts":"2026-11-03T10:54:48Z","event":"gate_review","ticket":"SDLCCT-107","agent":"orch-20261103-a2k9","data":{"gate":"G1","mode":"auto","result":"approved","criteria_results":{"no_human_gate_label":"pass","gherkin_present":"pass","out_of_scope_declared":"pass","no_open_questions":"pass","size_ok":"pass"}}}
 {"ts":"2026-11-03T10:55:10Z","event":"stage_transition","ticket":"SDLCCT-107","agent":"orch-20261103-a2k9","data":{"from":"Refining","to":"Designing"}}
+{"ts":"2026-11-03T11:01:56Z","event":"stage_transition","ticket":"SDLCCT-105","agent":"orch-20261103-a2k9","data":{"from":"Designing","to":"Awaiting Gate"}}
+{"ts":"2026-11-03T11:02:30Z","event":"gate_review","ticket":"SDLCCT-105","agent":"orch-20261103-a2k9","data":{"gate":"G1b","mode":"auto","result":"approved","criteria_results":{"no_human_gate_label":"pass","design_doc_exists":"pass","interface_declared":"pass","data_model_declared":"pass","no_open_design_questions":"pass","ui_prototype_present":"pass"}}}
+{"ts":"2026-11-03T11:13:22Z","event":"stage_transition","ticket":"SDLCCT-105","agent":"orch-20261103-a2k9","data":{"from":"Awaiting Gate","to":"Ready"}}
+{"ts":"2026-11-03T11:13:48Z","event":"stage_transition","ticket":"SDLCCT-105","agent":"orch-20261103-a2k9","data":{"from":"Ready","to":"In Progress"}}
+{"ts":"2026-11-03T11:25:03Z","event":"stage_transition","ticket":"SDLCCT-105","agent":"orch-20261103-a2k9","data":{"from":"In Progress","to":"Testing"}}
+{"ts":"2026-11-03T11:41:32Z","event":"stage_transition","ticket":"SDLCCT-105","agent":"orch-20261103-a2k9","data":{"from":"Testing","to":"In Review"}}
+{"ts":"2026-11-03T11:43:26Z","event":"stage_transition","ticket":"SDLCCT-105","agent":"orch-20261103-a2k9","data":{"from":"In Review","to":"Awaiting Gate"}}
+{"ts":"2026-11-03T11:50:00Z","event":"gate_review","ticket":"SDLCCT-105","agent":"orch-20261103-a2k9","data":{"gate":"G2","mode":"auto","result":"approved","criteria_results":{"no_human_gate_label":"pass","protected_paths_untouched":"pass","pr_exists":"pass","ci_green":"pass","reviewer_approve":"pass","checklist_complete":"pass","coverage_met":"n/a-profile-scoped-to-seed","e2e_declared_and_honored":"pass"}}}
+{"ts":"2026-11-03T11:53:11Z","event":"stage_transition","ticket":"SDLCCT-105","agent":"orch-20261103-a2k9","data":{"from":"Awaiting Gate","to":"Done"}}
+{"ts":"2026-11-03T11:01:58Z","event":"stage_transition","ticket":"SDLCCT-107","agent":"orch-20261103-a2k9","data":{"from":"Designing","to":"Awaiting Gate"}}
+{"ts":"2026-11-03T11:02:31Z","event":"gate_review","ticket":"SDLCCT-107","agent":"orch-20261103-a2k9","data":{"gate":"G1b","mode":"auto","result":"approved","criteria_results":{"no_human_gate_label":"pass","design_doc_exists":"pass","interface_declared":"pass","data_model_declared":"pass","no_open_design_questions":"pass","ui_prototype_present":"pass"}}}
+{"ts":"2026-11-03T11:13:24Z","event":"stage_transition","ticket":"SDLCCT-107","agent":"orch-20261103-a2k9","data":{"from":"Awaiting Gate","to":"Ready"}}
+{"ts":"2026-11-03T11:13:50Z","event":"stage_transition","ticket":"SDLCCT-107","agent":"orch-20261103-a2k9","data":{"from":"Ready","to":"In Progress"}}
