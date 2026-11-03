@@ -93,7 +93,10 @@ export const messages = {
     },
     unknownOwner: "未指定",
     unknownBudget: "未設定",
-    footer: { dataSource: "資料來源：Agent registry ＋ 觀測性後端成本查詢。" },
+    footer: {
+      period: (range: string) => `本期（${range}）`,
+      dataSource: "資料來源：Agent registry ＋ 觀測性後端成本查詢。",
+    },
   },
   errorCard: {
     loadFailedTitle: (title: string) => `無法載入「${title}」`,

@@ -279,3 +279,99 @@ test("SDLCCT-94: mobile agent card shows the same two-decimal amounts", async ({
   await expect(card.getByText("US$ 1,000.00")).toBeVisible();
   await expect(card.getByText("US$ 500.00")).toBeVisible();
 });
+
+// SDLCCT-105 Scenario "未登錄資料視覺區分": owner/budget 為 null 時顯示淡色佔位文字，
+// 與有實際資料的一般文字顏色明顯區分（以 getComputedStyle 的 color 實測，
+// 不依賴 class 字串，驗證最終渲染結果而非實作細節）。
+test("SDLCCT-105: null owner/budget show faded placeholder text, visually distinct from populated text color", async ({
+  page,
+}) => {
+  await page.route("**/api/agents", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        agents: [
+          {
+            key: "sales-copilot",
+            display: "Sales Copilot",
+            dept: "Sales",
+            owner: null,
+            budget: null,
+            current_period_spend: 500,
+            budget_consumed_pct: null,
+            has_governance_gap: false,
+            registered: true,
+            trend: [],
+          },
+          {
+            key: "support-bot",
+            display: "Support Bot",
+            dept: "Support",
+            owner: "bob",
+            budget: 2000,
+            current_period_spend: 300,
+            budget_consumed_pct: 15,
+            has_governance_gap: false,
+            registered: true,
+            trend: [],
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/agents");
+
+  const ownerPlaceholder = page.locator("table tbody td", { hasText: "未指定" });
+  const budgetPlaceholder = page.locator("table tbody td", { hasText: "未設定" });
+  await expect(ownerPlaceholder).toBeVisible();
+  await expect(budgetPlaceholder).toBeVisible();
+
+  const populatedOwnerCell = page.locator("table tbody tr", { hasText: "Support Bot" }).locator("td").nth(2);
+  await expect(populatedOwnerCell).toHaveText("bob");
+
+  const placeholderColor = await ownerPlaceholder
+    .locator("span")
+    .evaluate((el) => getComputedStyle(el).color);
+  const populatedColor = await populatedOwnerCell.evaluate((el) => getComputedStyle(el).color);
+
+  expect(placeholderColor).not.toBe(populatedColor);
+});
+
+// SDLCCT-105 Scenario "本期期間標示": 表格下方顯示本期對應的日期區間註腳
+// （以 period_start 至 anchor_date 表示）。
+test("SDLCCT-105: the agents table footer shows the current-period date range footnote", async ({
+  page,
+}) => {
+  await page.route("**/api/agents", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-31",
+        period_start: "2026-10-01",
+        agents: [
+          {
+            key: "sales-copilot",
+            display: "Sales Copilot",
+            dept: "Sales",
+            owner: "alice",
+            budget: 1000,
+            current_period_spend: 500,
+            budget_consumed_pct: 50,
+            has_governance_gap: false,
+            registered: true,
+            trend: [],
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/agents");
+
+  await expect(page.locator("footer").getByText("本期（10/1–10/31）")).toBeVisible();
+});

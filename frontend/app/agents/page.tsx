@@ -9,7 +9,7 @@ import { ErrorCard } from "@/components/cost-overview/error-card";
 import { PageHeaderTimestamp } from "@/components/layout/page-header-timestamp";
 import type { AgentRegistryEntry, AgentTrendPoint } from "@/lib/agents-api";
 import { fetchAgentsList } from "@/lib/agents-api";
-import { formatTableCurrency, formatPercent } from "@/lib/format";
+import { formatDateRange, formatTableCurrency, formatPercent } from "@/lib/format";
 import { t } from "@/lib/i18n/t";
 import { useFetchOnce } from "@/lib/use-fetch-once";
 
@@ -109,9 +109,15 @@ function AgentTable({ agents }: { agents: AgentRegistryEntry[] }) {
           >
             <td className="py-2 pr-3 font-medium text-text-primary">{agent.display}</td>
             <td className="py-2 pr-3">{agent.dept}</td>
-            <td className="py-2 pr-3">{agent.owner ?? t("agents.unknownOwner")}</td>
+            <td className="py-2 pr-3">
+              {agent.owner ?? <span className="text-text-tertiary">{t("agents.unknownOwner")}</span>}
+            </td>
             <td className="py-2 pr-3 text-right tabular-nums">
-              {agent.budget !== null ? formatTableCurrency(agent.budget) : t("agents.unknownBudget")}
+              {agent.budget !== null ? (
+                formatTableCurrency(agent.budget)
+              ) : (
+                <span className="text-text-tertiary">{t("agents.unknownBudget")}</span>
+              )}
             </td>
             <td className="py-2 pr-3 text-right tabular-nums">{formatTableCurrency(agent.current_period_spend)}</td>
             <td className="py-2 pr-3">{formatPercent(agent.budget_consumed_pct)}</td>
@@ -166,11 +172,15 @@ function AgentCardList({ agents }: { agents: AgentRegistryEntry[] }) {
               <dd className="text-right text-text-primary">{agent.dept}</dd>
               <dt>{t("agents.table.columns.owner")}</dt>
               <dd className="text-right text-text-primary">
-                {agent.owner ?? t("agents.unknownOwner")}
+                {agent.owner ?? <span className="text-text-tertiary">{t("agents.unknownOwner")}</span>}
               </dd>
               <dt>{t("agents.table.columns.budget")}</dt>
               <dd className="text-right tabular-nums text-text-primary">
-                {agent.budget !== null ? formatTableCurrency(agent.budget) : t("agents.unknownBudget")}
+                {agent.budget !== null ? (
+                  formatTableCurrency(agent.budget)
+                ) : (
+                  <span className="text-text-tertiary">{t("agents.unknownBudget")}</span>
+                )}
               </dd>
               <dt>{t("agents.table.columns.currentPeriodSpend")}</dt>
               <dd className="text-right tabular-nums text-text-primary">
@@ -234,7 +244,10 @@ export default function AgentsPage() {
         </section>
 
         <footer className="mt-12 border-t border-border py-4 text-left text-xs leading-[18px] text-text-secondary">
-          {t("agents.footer.dataSource")}
+          {state.status === "success" && (
+            <p>{t("agents.footer.period")(formatDateRange(state.data.period_start, state.data.anchor_date))}</p>
+          )}
+          <p>{t("agents.footer.dataSource")}</p>
         </footer>
       </main>
     </div>
