@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-110 UI 原型 — 最貴執行清單：執行時間欄、Trace ID 截斷與複製</title>
+<style>
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #4B5563;
+    --color-border: #E5E7EB;
+    --color-accent: #2563EB;
+  }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    margin: 0;
+    padding: 32px;
+    font-size: 14px;
+    line-height: 22px;
+  }
+  h1 { font-size: 24px; line-height: 32px; font-weight: 700; margin: 0 0 8px; }
+  h2 { font-size: 18px; line-height: 26px; font-weight: 600; margin: 32px 0 8px; }
+  p.meta { color: var(--color-text-secondary); font-size: 12px; line-height: 18px; margin: 0 0 24px; max-width: 760px; }
+  p.caption { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 12px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  thead tr { border-bottom: 1px solid var(--color-border); text-align: left; font-size: 12px; color: var(--color-text-secondary); }
+  th, td { padding: 8px 12px 8px 0; vertical-align: middle; }
+  tbody tr { border-bottom: 1px solid var(--color-border); cursor: pointer; }
+  tbody tr:last-child { border-bottom: none; }
+  td.font-medium { font-weight: 600; color: var(--color-text-primary); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.time { color: var(--color-text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .em-dash { color: var(--color-text-secondary); }
+
+  /* Trace ID 截斷顯示 + 複製按鈕 */
+  .trace-id-cell { display: inline-flex; align-items: center; gap: 6px; }
+  .trace-id-truncated {
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    cursor: help; /* title 屬性 hover 提示 */
+    border-bottom: 1px dotted var(--color-text-secondary);
+  }
+  .trace-id-full { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
+  .copy-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: none;
+    color: var(--color-text-secondary);
+    border-radius: 4px;
+    cursor: pointer;
+    flex: none;
+  }
+  .copy-btn:hover { background: #F3F4F6; color: var(--color-accent); }
+  .copy-btn svg { width: 14px; height: 14px; fill: currentColor; }
+  .copied-feedback {
+    font-size: 12px;
+    color: var(--color-accent);
+    margin-left: 4px;
+  }
+
+  .state-label {
+    display: inline-block;
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    margin-bottom: 4px;
+  }
+  .note-box {
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    margin: 8px 0 24px;
+    max-width: 760px;
+  }
+</style>
+</head>
+<body>
+  <h1>SDLCCT-110 — 最貴執行清單：執行時間欄、Trace ID 截斷與複製</h1>
+  <p class="meta">
+    靜態原型，示範 <code>TopTracesTable</code> 新增「執行時間」欄（從
+    Trace ID 解析 UUIDv7 時間戳）、Trace ID 中間截斷顯示＋hover 顯示完整
+    ID＋複製按鈕三項變更。本檔案僅供 G1b 設計審核閱覽，非實際 React 元
+    件；複製按鈕的剪貼簿寫入與「已複製」計時消失為靠 JS 互動行為，此處
+    以兩種靜態狀態並列示意。
+  </p>
+
+  <h2>最貴執行清單（TopTracesTable）</h2>
+  <p class="caption">
+    欄序：Trace ID → 執行時間（新增）→ 預估成本 → 中繼資料 → 箭頭（既有，裝飾用，不列標題）
+  </p>
+
+  <span class="state-label">列 1：合法 UUIDv7 Trace ID — 顯示解析出的執行時間、Trace ID 截斷＋複製按鈕</span>
+  <table>
+    <thead>
+      <tr>
+        <th>Trace ID</th>
+        <th>執行時間</th>
+        <th style="text-align:right">預估成本</th>
+        <th>中繼資料</th>
+        <th aria-hidden="true"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="font-medium">
+          <span class="trace-id-cell">
+            <span class="trace-id-truncated" title="018f2f6a-9c3b-7a21-8d4e-1a2b3c4d5e6f">018f2f6a…5e6f</span>
+            <button class="copy-btn" type="button" aria-label="複製完整 Trace ID" title="複製完整 Trace ID">
+              <svg viewBox="0 0 16 16"><path d="M4 2a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h1v-1.5H4a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v1H13V4a2 2 0 0 0-2-2H4Zm3 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H7Zm-.5 2a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-.5.5H7a.5.5 0 0 1-.5-.5V8Z"/></svg>
+            </button>
+          </span>
+        </td>
+        <td class="time">2026/10/06 14:22</td>
+        <td class="num">US$ 999.00</td>
+        <td>廠別: P1</td>
+        <td><span style="color:var(--color-text-secondary)">&#8594;</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="state-label">同一列，點擊複製按鈕後的「已複製」回饋狀態（示意，1.5 秒後自動消失）</span>
+  <table>
+    <thead>
+      <tr>
+        <th>Trace ID</th>
+        <th>執行時間</th>
+        <th style="text-align:right">預估成本</th>
+        <th>中繼資料</th>
+        <th aria-hidden="true"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="font-medium">
+          <span class="trace-id-cell">
+            <span class="trace-id-truncated" title="018f2f6a-9c3b-7a21-8d4e-1a2b3c4d5e6f">018f2f6a…5e6f</span>
+            <button class="copy-btn" type="button" aria-label="複製完整 Trace ID" title="複製完整 Trace ID">
+              <svg viewBox="0 0 16 16"><path d="M4 2a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h1v-1.5H4a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v1H13V4a2 2 0 0 0-2-2H4Zm3 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H7Zm-.5 2a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-.5.5H7a.5.5 0 0 1-.5-.5V8Z"/></svg>
+            </button>
+            <span class="copied-feedback" aria-live="polite">已複製</span>
+          </span>
+        </td>
+        <td class="time">2026/10/06 14:22</td>
+        <td class="num">US$ 999.00</td>
+        <td>廠別: P1</td>
+        <td><span style="color:var(--color-text-secondary)">&#8594;</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="state-label">列 2：非合法 UUIDv7 格式（version nibble 非 7）— 執行時間顯示「—」，其他欄位不受影響</span>
+  <table>
+    <thead>
+      <tr>
+        <th>Trace ID</th>
+        <th>執行時間</th>
+        <th style="text-align:right">預估成本</th>
+        <th>中繼資料</th>
+        <th aria-hidden="true"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="font-medium">
+          <span class="trace-id-cell">
+            <span class="trace-id-truncated" title="a1b2c3d4-e5f6-4a21-8d4e-1a2b3c4d5e6f">a1b2c3d4…5e6f</span>
+            <button class="copy-btn" type="button" aria-label="複製完整 Trace ID" title="複製完整 Trace ID">
+              <svg viewBox="0 0 16 16"><path d="M4 2a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h1v-1.5H4a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v1H13V4a2 2 0 0 0-2-2H4Zm3 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H7Zm-.5 2a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-.5.5H7a.5.5 0 0 1-.5-.5V8Z"/></svg>
+            </button>
+          </span>
+        </td>
+        <td class="time em-dash">—</td>
+        <td class="num">US$ 500.00</td>
+        <td>—</td>
+        <td><span style="color:var(--color-text-secondary)">&#8594;</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <span class="state-label">列 3：既有短字串 Trace ID（模擬既有 e2e 測試資料，如 "trace-001"）— 完整顯示不截斷，執行時間顯示「—」</span>
+  <table>
+    <thead>
+      <tr>
+        <th>Trace ID</th>
+        <th>執行時間</th>
+        <th style="text-align:right">預估成本</th>
+        <th>中繼資料</th>
+        <th aria-hidden="true"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="font-medium">
+          <span class="trace-id-cell">
+            <span class="trace-id-full">trace-001</span>
+            <button class="copy-btn" type="button" aria-label="複製完整 Trace ID" title="複製完整 Trace ID">
+              <svg viewBox="0 0 16 16"><path d="M4 2a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h1v-1.5H4a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v1H13V4a2 2 0 0 0-2-2H4Zm3 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H7Zm-.5 2a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-.5.5H7a.5.5 0 0 1-.5-.5V8Z"/></svg>
+            </button>
+          </span>
+        </td>
+        <td class="time em-dash">—</td>
+        <td class="num">US$ 999.00</td>
+        <td>user_id: u1</td>
+        <td><span style="color:var(--color-text-secondary)">&#8594;</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note-box">
+    備註：第 11 碼截斷門檻（<code>length &gt; 12</code> 才截斷）確保既有
+    e2e 測試用的短字串 Trace ID（如上方列 3「trace-001」，9 字元）維持完
+    整顯示，不被誤判為需要截斷的長 ID；複製按鈕的點擊/鍵盤事件皆呼叫
+    <code>stopPropagation()</code>，不會觸發整列既有的 <code>ClickableRow</code>
+    導覽行為（SDLCCT-101）。
+  </div>
+
+</body>
+</html>
