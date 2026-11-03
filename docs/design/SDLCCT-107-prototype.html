@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-107 Agent 清單：預算消耗進度條 UI 原型</title>
+<style>
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #475467;
+    --color-text-tertiary: #667085;
+    --color-border: #E5E7EB;
+    --color-accent: #2563EB;
+    --color-danger: #DC2626;
+    --color-danger-bg: #FEF2F2;
+    --color-track: #F3F4F6;
+  }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: #F9FAFB;
+    color: var(--color-text-primary);
+    padding: 32px;
+  }
+  .card {
+    max-width: 960px;
+    margin: 0 auto;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 24px;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .subtitle { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 20px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead tr { border-bottom: 1px solid var(--color-border); text-align: left; }
+  th { padding: 8px 12px 8px 0; font-size: 12px; color: var(--color-text-secondary); font-weight: 400; }
+  th.right, td.right { text-align: right; }
+  tbody tr { border-bottom: 1px solid var(--color-border); }
+  td { padding: 8px 12px 8px 0; }
+  .placeholder { color: var(--color-text-tertiary); }
+  .normal { color: var(--color-text-primary); }
+  .tabular { font-variant-numeric: tabular-nums; }
+
+  .pct-cell { display: flex; flex-direction: column; gap: 4px; min-width: 140px; }
+  .pct-value { font-size: 13px; }
+  .pct-value.normal { color: var(--color-text-primary); }
+  .pct-value.danger { color: var(--color-danger); font-weight: 600; }
+  .pct-value.placeholder { color: var(--color-text-tertiary); }
+  .bar-track {
+    height: 6px;
+    width: 100%;
+    border-radius: 999px;
+    background: var(--color-track);
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 6px;
+    border-radius: 999px;
+  }
+  .bar-fill.normal { background: var(--color-accent); }
+  .bar-fill.danger { background: var(--color-danger); }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    font-size: 12px;
+    margin: 16px 0 24px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--color-border); }
+  footer {
+    margin-top: 32px;
+    border-top: 1px solid var(--color-border);
+    padding-top: 12px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+  .note {
+    margin-top: 24px;
+    padding: 12px;
+    background: #F9FAFB;
+    border: 1px dashed var(--color-border);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Agent 清單</h1>
+    <p class="subtitle">全部 3 個 Agent 的本期預算消耗、近期花費趨勢、治理缺口一覽</p>
+
+    <div class="legend">
+      <div class="legend-item"><span class="swatch" style="background: var(--color-accent);"></span> 一般色進度條（消耗 &lt; 100%）</div>
+      <div class="legend-item"><span class="swatch" style="background: var(--color-danger);"></span> 警示色進度條（消耗 ≥ 100%，寬度 clamp 到 100%）</div>
+      <div class="legend-item"><span class="swatch" style="background: var(--color-text-tertiary);"></span> 淡色佔位文字（budget 為 null，不渲染進度條）</div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Agent</th>
+          <th class="right">預算</th>
+          <th class="right">本期花費</th>
+          <th>預算消耗%</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="normal">Support Bot</td>
+          <td class="right tabular normal">US$ 1,000.00</td>
+          <td class="right tabular normal">US$ 450.00</td>
+          <td>
+            <div class="pct-cell">
+              <span class="pct-value normal">45.0%</span>
+              <div class="bar-track">
+                <div class="bar-fill normal" style="width: 45%;"></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td class="normal">Overspend Agent</td>
+          <td class="right tabular normal">US$ 1,000.00</td>
+          <td class="right tabular normal">US$ 1,200.00</td>
+          <td>
+            <div class="pct-cell">
+              <span class="pct-value danger">120.0%</span>
+              <div class="bar-track">
+                <div class="bar-fill danger" style="width: 100%;"></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td class="normal">Internal Tooling Agent</td>
+          <td class="right tabular placeholder">未設定</td>
+          <td class="right tabular normal">US$ 88.00</td>
+          <td>
+            <div class="pct-cell">
+              <span class="pct-value placeholder">未設定</span>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <footer>資料來源：Agent registry ＋ 觀測性後端成本查詢。</footer>
+  </div>
+
+  <div class="note">
+    對應 <code>docs/design/SDLCCT-107.md</code> 關鍵技術決策 1、2、3：
+    進度條視覺（<code>h-1.5 rounded-full</code> 容器 + inline <code>style={{width}}</code>
+    填充條）沿用 SDLCCT-82 <code>summary-section.tsx</code> 的既有慣例；
+    <code>budget_consumed_pct</code> 為 null 的列（第三列）不渲染進度條，僅顯示
+    SDLCCT-105 定案的 <code>text-text-tertiary</code> 淡色佔位文字「未設定」
+    （與同列「預算」欄文案一致，因兩者 null 恆為一對一對應）；
+    消耗 ≥100%（第二列，120%）進度條填滿 100% 寬度並使用警示色，
+    門檻沿用 <code>summary-section.tsx</code> 既有的 <code>pct &gt; 100</code> 判斷。
+  </div>
+</body>
+</html>
