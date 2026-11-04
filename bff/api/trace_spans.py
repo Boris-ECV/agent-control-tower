@@ -20,6 +20,7 @@ for _path in (_BFF_ROOT, _SEED_ROOT):
 from registry import get_agent  # noqa: E402
 
 from opik_spans import SpanNode, build_span_tree, get_trace_spans  # noqa: E402
+from opik_traces import get_trace_summary_by_id  # noqa: E402
 
 
 def _to_tree_node(node: SpanNode) -> dict:
@@ -61,6 +62,17 @@ def get_trace_span_tree(key: str, trace_id: str) -> dict | None:
     propagates unchanged (not caught here): the caller (bff/api/app.py's
     existing exception handlers) maps it to an explicit 502 for the
     whole request (Scenario 4).
+
+    SDLCCT-116: also looks up this trace's summary (metadata/cost) via
+    get_trace_summary_by_id() -- an independent query against a different
+    Opik endpoint, called unconditionally after the spans query succeeds.
+    If the trace has no metadata, no total_estimated_cost, or falls
+    outside the enlarged lookup range, get_trace_summary_by_id() returns
+    None and all five new fields are None (not 0/""; see docs/design/
+    SDLCCT-116.md Scenario 2). Any query failure from that lookup
+    (OpikClientError/OpikConfigError) propagates unchanged here too, same
+    502 path as get_trace_spans() failures -- not caught and converted to
+    None (decision #2: "no data" vs. "query failed" are distinct).
     """
     record = get_agent(key)
     if record is None:
@@ -69,8 +81,17 @@ def get_trace_span_tree(key: str, trace_id: str) -> dict | None:
     spans = get_trace_spans(project_name=key, trace_id=trace_id)
     tree = build_span_tree(spans)
 
+    summary = get_trace_summary_by_id(project_name=key, trace_id=trace_id)
+    metadata = summary.metadata if summary is not None else None
+    raw = summary.raw if summary is not None else None
+
     return {
         "key": key,
         "trace_id": trace_id,
         "spans": [_to_tree_node(node) for node in tree],
+        "plant": metadata.get("plant") if metadata is not None else None,
+        "deployed_version": metadata.get("deployed_version") if metadata is not None else None,
+        "dept": metadata.get("dept") if metadata is not None else None,
+        "trigger": metadata.get("trigger") if metadata is not None else None,
+        "total_estimated_cost": raw.get("total_estimated_cost") if raw is not None else None,
     }

@@ -154,6 +154,11 @@ class TraceSpansResponse(BaseModel):
     key: str
     trace_id: str
     spans: list[SpanTreeNode]
+    plant: str | None
+    deployed_version: str | None
+    dept: str | None
+    trigger: str | None
+    total_estimated_cost: float | None
 
 
 class BudgetSimulationResult(BaseModel):

@@ -683,9 +683,42 @@
       },
       "TraceSpansResponse": {
         "properties": {
+          "deployed_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deployed Version"
+          },
+          "dept": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dept"
+          },
           "key": {
             "title": "Key",
             "type": "string"
+          },
+          "plant": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plant"
           },
           "spans": {
             "items": {
@@ -694,15 +727,42 @@
             "title": "Spans",
             "type": "array"
           },
+          "total_estimated_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Estimated Cost"
+          },
           "trace_id": {
             "title": "Trace Id",
             "type": "string"
+          },
+          "trigger": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger"
           }
         },
         "required": [
           "key",
           "trace_id",
-          "spans"
+          "spans",
+          "plant",
+          "deployed_version",
+          "dept",
+          "trigger",
+          "total_estimated_cost"
         ],
         "title": "TraceSpansResponse",
         "type": "object"

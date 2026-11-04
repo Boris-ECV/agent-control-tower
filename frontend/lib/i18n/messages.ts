@@ -165,7 +165,7 @@ export const messages = {
       title: "模型成本分解",
       table: {
         columns: {
-          model: "模型",
+          model: "維度／標籤／成本",
           cost: "成本",
         },
       },
