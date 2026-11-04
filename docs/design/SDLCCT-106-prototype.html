@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-106 UI 原型 — Sparkline 旁顯示近 7 天花費合計</title>
+<style>
+  :root {
+    --color-accent: #2563EB;
+    --color-border: #E5E7EB;
+    --color-bg: #FFFFFF;
+    --text-primary: #111827;
+    --text-secondary: #6B7280;
+    --text-tertiary: #9CA3AF;
+  }
+  body {
+    font-family: -apple-system, "Segoe UI", "Noto Sans TC", sans-serif;
+    background: #F9FAFB;
+    color: var(--text-primary);
+    padding: 24px;
+  }
+  h1 { font-size: 18px; margin-bottom: 4px; }
+  p.note { color: var(--text-secondary); font-size: 12px; margin-bottom: 20px; }
+  table {
+    width: 100%;
+    max-width: 760px;
+    border-collapse: collapse;
+    background: var(--color-bg);
+    font-size: 14px;
+  }
+  th, td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+  }
+  th {
+    font-size: 12px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .trend-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .trend-sum {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+  .trend-sum.dash {
+    color: var(--text-secondary);
+  }
+  svg.sparkline { display: block; }
+  .cards { max-width: 360px; margin-top: 32px; display: flex; flex-direction: column; gap: 12px; }
+  .card {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 16px;
+    background: var(--color-bg);
+  }
+  .card .title { font-weight: 600; margin-bottom: 8px; }
+  .card dl { display: grid; grid-template-columns: 1fr 1fr; row-gap: 4px; font-size: 12px; color: var(--text-secondary); margin: 0; }
+  .card dd { margin: 0; text-align: right; color: var(--text-primary); }
+  .card .trend-cell { align-items: flex-end; }
+  h2 { font-size: 14px; margin-top: 32px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+  <h1>Agent 清單 — Trend 欄（SDLCCT-106）</h1>
+  <p class="note">
+    桌面表格：每個 Agent 的 Sparkline 下方新增近 7 天花費合計金額文字；
+    trend 全為 null 時，sparkline 與合計金額都顯示「—」。
+  </p>
+
+  <h2>桌面表格（AgentTable）</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Agent</th>
+        <th>部門</th>
+        <th>本期花費</th>
+        <th>趨勢（近 7 天）</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Scenario 1: 有花費資料 -->
+      <tr>
+        <td>Sales Copilot</td>
+        <td>Sales</td>
+        <td>US$ 500.00</td>
+        <td>
+          <div class="trend-cell">
+            <svg class="sparkline" viewBox="0 0 84 28" width="84" height="28">
+              <polyline points="0.0,20.0 14.0,15.0 28.0,8.0 42.0,10.0 56.0,2.0 70.0,12.0 84.0,6.0"
+                fill="none" stroke="#111827" stroke-width="1.5" />
+            </svg>
+            <span class="trend-sum">US$ 1,234.56</span>
+          </div>
+        </td>
+      </tr>
+      <!-- Scenario 2: 部分天數為 null（sparkline 斷點，合計只計非 null） -->
+      <tr>
+        <td>Ops Assistant</td>
+        <td>Ops</td>
+        <td>US$ 88.00</td>
+        <td>
+          <div class="trend-cell">
+            <svg class="sparkline" viewBox="0 0 84 28" width="84" height="28">
+              <polyline points="0.0,22.0 14.0,18.0" fill="none" stroke="#111827" stroke-width="1.5" />
+              <polyline points="56.0,10.0 70.0,4.0 84.0,14.0" fill="none" stroke="#111827" stroke-width="1.5" />
+            </svg>
+            <span class="trend-sum">US$ 262.00</span>
+          </div>
+        </td>
+      </tr>
+      <!-- Scenario 3: trend 全為 null -->
+      <tr>
+        <td>Support Bot</td>
+        <td>Support</td>
+        <td>US$ 300.00</td>
+        <td>
+          <div class="trend-cell">
+            <span style="font-size:12px;color:var(--text-secondary);">—</span>
+            <span class="trend-sum dash">—</span>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>手機卡片（AgentCardList）</h2>
+  <div class="cards">
+    <div class="card">
+      <div class="title">Sales Copilot</div>
+      <dl>
+        <dt>本期花費</dt>
+        <dd>US$ 500.00</dd>
+        <dt>趨勢（近 7 天）</dt>
+        <dd>
+          <div class="trend-cell">
+            <svg class="sparkline" viewBox="0 0 84 28" width="84" height="28">
+              <polyline points="0.0,20.0 14.0,15.0 28.0,8.0 42.0,10.0 56.0,2.0 70.0,12.0 84.0,6.0"
+                fill="none" stroke="#111827" stroke-width="1.5" />
+            </svg>
+            <span class="trend-sum">US$ 1,234.56</span>
+          </div>
+        </dd>
+      </dl>
+    </div>
+    <div class="card">
+      <div class="title">Support Bot</div>
+      <dl>
+        <dt>本期花費</dt>
+        <dd>US$ 300.00</dd>
+        <dt>趨勢（近 7 天）</dt>
+        <dd>
+          <div class="trend-cell">
+            <span style="font-size:12px;color:var(--text-secondary);">—</span>
+            <span class="trend-sum dash">—</span>
+          </div>
+        </dd>
+      </dl>
+    </div>
+  </div>
+</body>
+</html>

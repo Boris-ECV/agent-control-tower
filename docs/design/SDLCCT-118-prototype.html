@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<title>SDLCCT-118 Trace span 瀑布圖時間軸 — UI 原型</title>
+<style>
+  body { font-family: -apple-system, "PingFang TC", "Noto Sans TC", sans-serif; background: #f9fafb; margin: 0; padding: 24px; color: #111827; }
+  .card { max-width: 920px; margin: 0 auto 32px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: #6b7280; font-size: 13px; margin-bottom: 20px; }
+  .section-title { font-size: 13px; font-weight: 600; color: #374151; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; background: #fafafa; }
+  .tree-row { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #e5e7eb; padding: 6px 16px; font-size: 13px; }
+  .tree-row:last-child { border-bottom: none; }
+  .name { font-weight: 500; }
+  .badge { font-size: 11px; background: #f3f4f6; color: #6b7280; border-radius: 4px; padding: 1px 6px; }
+  .time { font-size: 12px; color: #6b7280; margin-left: auto; }
+  .waterfall-wrap { padding: 16px; }
+  .wf-row { display: flex; align-items: center; height: 28px; font-size: 11px; }
+  .wf-label { width: 150px; flex-shrink: 0; color: #374151; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .legend { display: flex; gap: 16px; padding: 8px 16px 16px; font-size: 12px; color: #374151; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-swatch { width: 10px; height: 10px; border-radius: 2px; }
+  .empty-state { padding: 24px 16px; color: #6b7280; font-size: 13px; }
+  .note { font-size: 12px; color: #9ca3af; padding: 8px 16px 16px; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div style="padding: 16px 16px 0;">
+    <h1>執行詳情 — trc_123</h1>
+    <div class="sub">Scenario 1/2/3：有效起訖時間依類型上色，null 時間 span 不進瀑布圖但仍在樹狀列表</div>
+  </div>
+
+  <div class="section-title">Span 列表（既有樹狀結構，本票不變更）</div>
+  <div class="tree-row">
+    <span class="name">root-chain</span>
+    <span class="badge">general</span>
+    <span class="time">2026/10/01 08:00:00–2026/10/01 08:00:08</span>
+  </div>
+  <div class="tree-row" style="padding-left: 36px;">
+    <span class="name">search-tool</span>
+    <span class="badge">tool</span>
+    <span class="time">2026/10/01 08:00:00–2026/10/01 08:00:03</span>
+  </div>
+  <div class="tree-row" style="padding-left: 36px;">
+    <span class="name">summarize</span>
+    <span class="badge">llm</span>
+    <span class="time">2026/10/01 08:00:03–2026/10/01 08:00:07</span>
+  </div>
+  <div class="tree-row" style="padding-left: 36px;">
+    <span class="name">cleanup-step</span>
+    <span class="badge">general</span>
+    <span class="time">—（start_time 為 null，不進瀑布圖）</span>
+  </div>
+
+  <div class="section-title">Span 耗時時間軸（本票新增，SVG 瀑布圖）</div>
+  <div class="waterfall-wrap">
+    <svg viewBox="0 0 420 116" width="100%" height="116" role="img" aria-label="Span 耗時時間軸">
+      <!-- 格線：每 2 秒經過時間一條，純視覺，無文字標籤 -->
+      <g stroke="#e5e7eb" stroke-width="1">
+        <line x1="0"   y1="0" x2="0"   y2="112" />
+        <line x1="60"  y1="0" x2="60"  y2="112" />
+        <line x1="120" y1="0" x2="120" y2="112" />
+        <line x1="180" y1="0" x2="180" y2="112" />
+        <line x1="240" y1="0" x2="240" y2="112" />
+      </g>
+
+      <!-- row 1: root-chain, general (灰), 0s~8s -->
+      <rect x="0" y="6"  width="240" height="14" rx="2" fill="#9ca3af" />
+      <text x="244" y="16" font-size="10" fill="#374151">8.0s</text>
+
+      <!-- row 2: search-tool, tool (青), 0s~3s -->
+      <rect x="0" y="44" width="90" height="14" rx="2" fill="#06b6d4" />
+      <text x="94" y="54" font-size="10" fill="#374151">3.0s</text>
+
+      <!-- row 3: summarize, llm (紫), 3s~7s -->
+      <rect x="90" y="82" width="120" height="14" rx="2" fill="#7c3aed" />
+      <text x="214" y="92" font-size="10" fill="#374151">4.0s</text>
+    </svg>
+    <div class="note">
+      注：cleanup-step（start_time 為 null）完全不出現在上方瀑布圖中，不佔列、不渲染空色條——與樹狀列表仍顯示該 span 互不衝突（AC3）。
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="legend-swatch" style="background:#7c3aed;"></span>llm</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#06b6d4;"></span>tool</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#9ca3af;"></span>general</div>
+  </div>
+</div>
+
+<div class="card">
+  <div style="padding: 16px 16px 0;">
+    <h1>執行詳情 — trc_empty</h1>
+    <div class="sub">Scenario 4：spans 為空陣列時的時間軸區塊空狀態（不渲染 SVG/假格線）——
+      本原型展示「若」時間軸區塊獨立渲染時的樣子；此情境與既有 SDLCCT-56
+      整頁「查無資料」文案如何共存，是本設計文件的開放設計問題，尚待
+      HUMAN-INPUT 決定，見設計文件「開放設計問題」一節。</div>
+  </div>
+  <div class="section-title">Span 耗時時間軸</div>
+  <div class="empty-state">沒有可顯示的資料</div>
+</div>
+
+</body>
+</html>
