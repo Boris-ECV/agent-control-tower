@@ -194,7 +194,13 @@ export const messages = {
     unknown: "—",
   },
   traceDetail: {
-    header: { title: "執行詳情", backToAgent: (agentName: string) => `返回 ${agentName}` },
+    header: {
+      title: "執行詳情",
+      backToAgent: (agentName: string) => `返回 ${agentName}`,
+      copyButton: "複製",
+      copied: "已複製",
+      copyAriaLabel: "複製 Trace ID",
+    },
     empty: "查無資料",
     expand: "展開查看個別",
     collapse: "收合",

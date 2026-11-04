@@ -115,7 +115,10 @@ test("falls back to the agent key when cost-breakdown fails", async ({ page }) =
   );
   await page.goto(`/agents/${KEY}/traces/${SHORT_TRACE}`);
   await expect(crumbs(page).getByRole("link", { name: KEY })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(SHORT_TRACE);
+  // SDLCCT-114: the <h1> now shows only the static title text; the trace id
+  // moved to its own font-mono line below it (see trace-detail.spec.ts).
+  await expect(page.getByRole("heading", { level: 1 })).not.toContainText(SHORT_TRACE);
+  await expect(page.locator("span.font-mono", { hasText: SHORT_TRACE })).toBeVisible();
 });
 
 test.describe("mobile 390px", () => {
