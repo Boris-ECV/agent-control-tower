@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-115 prototype — span 排序 + type 顏色</title>
+<style>
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: #FFFFFF;
+    color: #1F2937;
+    margin: 0;
+    padding: 24px;
+  }
+  .panel {
+    max-width: 720px;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 16px;
+    border-bottom: 1px solid #E5E7EB;
+    font-weight: 700;
+    font-size: 18px;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid #E5E7EB;
+    padding: 6px 16px;
+    font-size: 14px;
+  }
+  .row:last-child { border-bottom: none; }
+  .depth-1 { padding-left: 36px; }
+  .name { font-weight: 500; color: #1F2937; }
+  .badge {
+    border-radius: 4px;
+    border: 1px solid transparent;
+    padding: 2px 6px;
+    font-size: 12px;
+  }
+  .badge-llm {
+    border-color: #D8B4FE; /* border-purple-300 */
+    background: #FAF5FF;   /* bg-purple-50 */
+    color: #6D28D9;        /* text-purple-700 */
+  }
+  .badge-tool {
+    border-color: #A5F3FC; /* border-cyan-300 */
+    background: #ECFEFF;  /* bg-cyan-50 */
+    color: #0E7490;       /* text-cyan-700 */
+  }
+  .badge-general {
+    border-color: transparent;
+    background: #F3F4F6; /* bg-gray-100 */
+    color: #475467;      /* text-text-secondary */
+  }
+  .repeat-badge {
+    border-radius: 4px;
+    background: #EFF6FF;
+    color: #1D4ED8;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 6px;
+  }
+  .time {
+    margin-left: auto;
+    font-size: 12px;
+    color: #475467;
+  }
+  .annotation {
+    padding: 8px 16px;
+    font-size: 12px;
+    color: #475467;
+    background: #F9FAFB;
+    border-top: 1px dashed #E5E7EB;
+  }
+</style>
+</head>
+<body>
+  <h2>執行詳情 — trc_123（span 排序 + type 顏色原型）</h2>
+
+  <div class="panel">
+    <div class="panel-header">root-chain <span class="badge badge-general">general</span></div>
+
+    <!-- 依 start_time 遞增: 08:00:01(llm) -> 08:00:02(tool group, 以第一個節點 start_time 排序) -> 08:00:09(general) -> null(排最後) -->
+    <div class="row depth-1">
+      <span class="name">summarize</span>
+      <span class="badge badge-llm">llm</span>
+      <span class="time">2026/10/01 08:00:01–2026/10/01 08:00:03</span>
+    </div>
+    <div class="row depth-1">
+      <span class="name">search-tool</span>
+      <span class="badge badge-tool">tool</span>
+      <span class="repeat-badge">× 45</span>
+      <span class="time">2026/10/01 08:00:02–（展開查看個別）</span>
+    </div>
+    <div class="row depth-1">
+      <span class="name">finalize-step</span>
+      <span class="badge badge-general">general</span>
+      <span class="time">2026/10/01 08:00:09–2026/10/01 08:00:10</span>
+    </div>
+    <div class="row depth-1">
+      <span class="name">background-cleanup</span>
+      <span class="badge badge-general">general</span>
+      <span class="time">—–—</span>
+    </div>
+
+    <div class="annotation">
+      排序說明：summarize(llm, 08:00:01) → search-tool 群組(tool, 組內第一個節點
+      08:00:02) → finalize-step(general, 08:00:09) → background-cleanup
+      (start_time 為 null，排在同層最後，而非依 type 固定順序)。
+      llm/tool/general 三種徽章高度一致（皆含 1px border，灰色徽章用
+      transparent border 補齊，不因為多了彩色 border 而比灰色徽章大）。
+    </div>
+  </div>
+</body>
+</html>
