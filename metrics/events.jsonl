@@ -564,3 +564,7 @@
 {"ts":"2026-11-04T17:34:28Z","event":"stage_transition","ticket":"SDLCCT-111","agent":"orch-20261104-s1","data":{"from":"Designing","to":"Awaiting Gate"}}
 {"ts":"2026-11-04T17:34:40Z","event":"gate_review","ticket":"SDLCCT-111","agent":"orch-20261104-s1","data":{"gate":"G1b","mode":"auto","result":"approved","criteria_results":{"no_human_gate_label":"pass","design_doc_exists":"pass","interface_declared":"pass","data_model_declared":"pass","no_open_design_questions":"pass","ui_prototype_present":"pass"}}}
 {"ts":"2026-11-04T17:34:40Z","event":"stage_transition","ticket":"SDLCCT-111","agent":"orch-20261104-s1","data":{"from":"Awaiting Gate","to":"Ready"}}
+{"ts":"2026-11-04T17:48:00Z","event":"design_completed","ticket":"SDLCCT-116","agent":"orch-20261104-s1","data":{"design_doc":"docs/design/SDLCCT-116.md","prototype":"n/a - backend-only story"}}
+{"ts":"2026-11-04T17:48:36Z","event":"stage_transition","ticket":"SDLCCT-116","agent":"orch-20261104-s1","data":{"from":"Designing","to":"Awaiting Gate"}}
+{"ts":"2026-11-04T17:48:50Z","event":"gate_review","ticket":"SDLCCT-116","agent":"orch-20261104-s1","data":{"gate":"G1b","mode":"auto","result":"approved","criteria_results":{"no_human_gate_label":"pass","design_doc_exists":"pass","interface_declared":"pass","data_model_declared":"pass","no_open_design_questions":"pass","ui_prototype_present":"pass-na-backend-only"}}}
+{"ts":"2026-11-04T17:48:50Z","event":"stage_transition","ticket":"SDLCCT-116","agent":"orch-20261104-s1","data":{"from":"Awaiting Gate","to":"Ready"}}
