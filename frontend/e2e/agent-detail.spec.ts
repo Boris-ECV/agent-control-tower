@@ -567,11 +567,19 @@ test("SDLCCT-74 AC1/AC2: top_traces metadata renders the 4 known fields as label
   await page.goto(`/agents/${MOCK_KEY}`);
 
   const row = page.locator("tr", { hasText: "trace-001" });
-  // AC1: the 4 known fields show as labelled chips, always visible.
-  await expect(row.getByText("廠別: P1")).toBeVisible();
-  await expect(row.getByText("版本: v2.1")).toBeVisible();
-  await expect(row.getByText("部門: Sales")).toBeVisible();
-  await expect(row.getByText("觸發方式: manual")).toBeVisible();
+  // SDLCCT-111: with a single row, 版本/部門/觸發方式 are trivially
+  // "all the same" across the (one-row) displayed list, so they fold up
+  // into the one-time summary chip row above the table instead of
+  // rendering per-row chips; 廠別 is now its own independent column
+  // (plain value, no "廠別:" chip label) that never folds.
+  await expect(row.getByText("P1", { exact: true })).toBeVisible();
+  await expect(row.getByText("廠別: P1")).toHaveCount(0);
+  await expect(page.getByText("版本: v2.1")).toBeVisible();
+  await expect(page.getByText("部門: Sales")).toBeVisible();
+  await expect(page.getByText("觸發方式: manual")).toBeVisible();
+  await expect(row.getByText("版本: v2.1")).toHaveCount(0);
+  await expect(row.getByText("部門: Sales")).toHaveCount(0);
+  await expect(row.getByText("觸發方式: manual")).toHaveCount(0);
 
   // AC2: the remaining fields (providers/cost_center) are collapsed by
   // default behind "更多", and not shown until expanded.
@@ -677,11 +685,17 @@ test("SDLCCT-74 AC3: a missing known field (dept) renders no blank/undefined chi
   await page.goto(`/agents/${MOCK_KEY}`);
 
   const row = page.locator("tr", { hasText: "trace-001" });
-  await expect(row.getByText("廠別: P1")).toBeVisible();
-  await expect(row.getByText("版本: v2.1")).toBeVisible();
-  await expect(row.getByText("觸發方式: manual")).toBeVisible();
-  // dept is missing: no blank/undefined/null text, and no "部門:" label at all.
-  await expect(row.getByText("部門", { exact: false })).toHaveCount(0);
+  // SDLCCT-111: single row again folds 版本/觸發方式 (both present and
+  // trivially consistent) into the summary chip row; 廠別 is its own
+  // column, plain value, never folded.
+  await expect(row.getByText("P1", { exact: true })).toBeVisible();
+  await expect(row.getByText("廠別: P1")).toHaveCount(0);
+  await expect(page.getByText("版本: v2.1")).toBeVisible();
+  await expect(page.getByText("觸發方式: manual")).toBeVisible();
+  // dept is missing from the only row -> always "inconsistent" (decision 3),
+  // never folded, and this row has no value for it either, so no chip
+  // anywhere: no blank/undefined/null text, and no "部門:" label at all.
+  await expect(page.getByText("部門", { exact: false })).toHaveCount(0);
   await expect(row.getByText("undefined", { exact: false })).toHaveCount(0);
   await expect(row.getByText("null", { exact: false })).toHaveCount(0);
   // All 4 known fields present except dept -> no "other fields" remain, so
@@ -719,10 +733,179 @@ test("SDLCCT-74 AC4: null metadata keeps the existing — behavior with no chips
   // （執行時間欄 + 中繼資料欄）；用第 4 格（中繼資料欄，Trace
   // ID/執行時間/預估成本/中繼資料/箭頭裝飾欄順序的第 4 個）鎖定本測試真
   // 正要驗證的欄位。
-  const metadataCell = nullRow.locator("td").nth(3);
+  // SDLCCT-111 新增廠別獨立欄插在中繼資料欄之前，欄序變為 Trace ID／執
+  // 行時間／預估成本／廠別／中繼資料／箭頭，中繼資料欄索引從 3 移到 4。
+  const metadataCell = nullRow.locator("td").nth(4);
   await expect(metadataCell.getByText("—", { exact: true })).toBeVisible();
   await expect(nullRow.getByRole("button", { name: "更多" })).toHaveCount(0);
   await expect(nullRow.getByRole("button", { name: "收合" })).toHaveCount(0);
+});
+
+test("SDLCCT-111 AC1: 版本/部門/觸發方式 all consistent across rows fold into a one-time summary chip row, 廠別 stays an independent per-row column", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [],
+        model_cost_breakdown: [],
+        top_traces: [
+          {
+            id: "trace-001",
+            total_estimated_cost: 999,
+            metadata: { plant: "P1", deployed_version: "v2.1", dept: "Sales", trigger: "manual" },
+          },
+          {
+            id: "trace-002",
+            total_estimated_cost: 500,
+            metadata: { plant: "P2", deployed_version: "v2.1", dept: "Sales", trigger: "manual" },
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  // Summary chips render once, above the table, not per row.
+  await expect(page.getByText("版本: v2.1")).toHaveCount(1);
+  await expect(page.getByText("部門: Sales")).toHaveCount(1);
+  await expect(page.getByText("觸發方式: manual")).toHaveCount(1);
+
+  // 廠別 differs per row and renders independently in its own column.
+  const row1 = page.locator("tr", { hasText: "trace-001" });
+  const row2 = page.locator("tr", { hasText: "trace-002" });
+  await expect(row1.getByText("P1", { exact: true })).toBeVisible();
+  await expect(row2.getByText("P2", { exact: true })).toBeVisible();
+  // Neither row repeats the folded fields as its own chip.
+  await expect(row1.getByText("版本: v2.1")).toHaveCount(0);
+  await expect(row2.getByText("版本: v2.1")).toHaveCount(0);
+});
+
+test("SDLCCT-111 AC2: only the inconsistent field (版本) stays per-row; 部門/觸發方式 still fold even though 版本 differs", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [],
+        model_cost_breakdown: [],
+        top_traces: [
+          {
+            id: "trace-001",
+            total_estimated_cost: 999,
+            metadata: { plant: "P1", deployed_version: "v2.1", dept: "Sales", trigger: "manual" },
+          },
+          {
+            id: "trace-002",
+            total_estimated_cost: 500,
+            metadata: { plant: "P1", deployed_version: "v2.2", dept: "Sales", trigger: "manual" },
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  // 部門/觸發方式 still fold into the one-time summary row.
+  await expect(page.getByText("部門: Sales")).toHaveCount(1);
+  await expect(page.getByText("觸發方式: manual")).toHaveCount(1);
+  // 版本 is NOT folded (values differ) -> no summary chip for it, stays
+  // per-row instead.
+  await expect(page.getByText("版本: v2.1")).toHaveCount(0);
+  await expect(page.getByText("版本: v2.2")).toHaveCount(0);
+  const row1 = page.locator("tr", { hasText: "trace-001" });
+  const row2 = page.locator("tr", { hasText: "trace-002" });
+  await expect(row1.getByText("版本: v2.1", { exact: false })).toBeVisible();
+  await expect(row2.getByText("版本: v2.2", { exact: false })).toBeVisible();
+});
+
+test("SDLCCT-111 AC3: 廠別篩選 only shows rows for the selected plant, and options list only plants actually present in the (unfiltered) list", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [],
+        model_cost_breakdown: [],
+        top_traces: [
+          { id: "trace-001", total_estimated_cost: 999, metadata: { plant: "P1" } },
+          { id: "trace-002", total_estimated_cost: 500, metadata: { plant: "P2" } },
+        ],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const filter = page.locator('[aria-label="依廠別篩選"]');
+  await expect(filter.getByRole("button", { name: "全部" })).toBeVisible();
+  await expect(filter.getByRole("button", { name: "P1" })).toBeVisible();
+  await expect(filter.getByRole("button", { name: "P2" })).toBeVisible();
+  // No extra plant options beyond what's actually present.
+  await expect(filter.getByRole("button")).toHaveCount(3);
+
+  await filter.getByRole("button", { name: "P1" }).click();
+  await expect(page.locator("tr", { hasText: "trace-001" })).toBeVisible();
+  await expect(page.locator("tr", { hasText: "trace-002" })).toHaveCount(0);
+
+  // Filter options remain stable (not narrowed) after filtering.
+  await expect(filter.getByRole("button", { name: "P2" })).toBeVisible();
+
+  await filter.getByRole("button", { name: "全部" }).click();
+  await expect(page.locator("tr", { hasText: "trace-002" })).toBeVisible();
+});
+
+test("SDLCCT-111 AC4 (regression): a row in the filtered top traces list is still clickable and navigates to trace detail", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [],
+        model_cost_breakdown: [],
+        top_traces: [{ id: "trace-001", total_estimated_cost: 999, metadata: { plant: "P1" } }],
+      }),
+    });
+  });
+  await page.route(`**/api/agents/${MOCK_KEY}/traces/trace-001/spans`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ key: MOCK_KEY, trace_id: "trace-001", spans: [] }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+  await page.locator("tr", { hasText: "trace-001" }).click();
+  await expect(page).toHaveURL(
+    `/agents/${MOCK_KEY}/traces/${encodeURIComponent("trace-001")}`,
+  );
 });
 
 test("mobile viewport: version series, model breakdown, and top traces sections all remain visible with no horizontal overflow", async ({
