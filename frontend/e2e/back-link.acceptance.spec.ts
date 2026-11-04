@@ -2,6 +2,11 @@ import { expect, test, type Page } from "@playwright/test";
 
 const KEY = "sales-copilot";
 const TRACE = "trace-0123456789abcdef";
+// SDLCCT-110: top-traces 表格對 >12 字元的 Trace ID 套用「前8碼…後4碼」
+// 截斷顯示（lib/trace-id.ts truncateTraceId），所以用來定位可點擊列的
+// locator 要用截斷後的顯示文字，而非完整 TRACE 字串；這裡測的是導覽/快取
+// 行為本身，不是 Trace ID 顯示格式。
+const TRACE_TRUNCATED = "trace-01…cdef";
 const SHORT_TRACE = "t1";
 
 type Mode = "ok" | "error" | "blank";
@@ -156,7 +161,7 @@ test("agent page -> trace page via client navigation: name immediate, still 1 re
   await expect(
     page.getByRole("navigation", { name: "麵包屑" }).getByText("Sales Copilot", { exact: true }),
   ).toBeVisible();
-  const traceLink = page.locator("main tr[role=button]", { hasText: TRACE });
+  const traceLink = page.locator("main tr[role=button]", { hasText: TRACE_TRUNCATED });
   await expect(traceLink).toBeVisible();
   await traceLink.click();
   await expect(page).toHaveURL(new RegExp(`${traceUrl()}$`));
