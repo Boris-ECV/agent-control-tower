@@ -334,12 +334,22 @@ export interface components {
         };
         /** TraceSpansResponse */
         TraceSpansResponse: {
+            /** Deployed Version */
+            deployed_version: string | null;
+            /** Dept */
+            dept: string | null;
             /** Key */
             key: string;
+            /** Plant */
+            plant: string | null;
             /** Spans */
             spans: components["schemas"]["SpanTreeNode"][];
+            /** Total Estimated Cost */
+            total_estimated_cost: number | null;
             /** Trace Id */
             trace_id: string;
+            /** Trigger */
+            trigger: string | null;
         };
         /** Unregistered */
         Unregistered: {

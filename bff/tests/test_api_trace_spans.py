@@ -21,6 +21,7 @@ from opik_metrics import (
     OpikTimeoutError,
 )
 from opik_spans import SpanSummary
+from opik_traces import TraceSummary
 
 client = TestClient(app)
 
@@ -48,6 +49,15 @@ def _patch_spans(monkeypatch, spans, *, capture=None):
         return spans
 
     monkeypatch.setattr(trace_spans_module, "get_trace_spans", fake)
+    # SDLCCT-116: existing (pre-SDLCCT-116) tests exercise only the spans
+    # query; default the new independent trace-summary lookup to "not
+    # found" (None) so the new fields are all null and existing behavior
+    # (spans/404/502) is unaffected, per AC3.
+    monkeypatch.setattr(trace_spans_module, "get_trace_summary_by_id", lambda *a, **kw: None)
+
+
+def _patch_summary(monkeypatch, summary):
+    monkeypatch.setattr(trace_spans_module, "get_trace_summary_by_id", lambda *a, **kw: summary)
 
 
 # -- Scenario 1: valid key + trace_id, 1+ spans -> 200 tree -------------------
@@ -185,7 +195,117 @@ def test_duplicate_sibling_spans_preserve_order_and_full_data(monkeypatch):
     assert [c["start_time"] for c in children] == [f"t{i}" for i in range(45)]
 
 
+# -- SDLCCT-116 Scenario 1: metadata/cost present -> five new fields populated
+
+def test_trace_with_metadata_and_cost_returns_populated_new_fields(monkeypatch):
+    spans = (_span("root", None, name="agent-run", type_="llm"),)
+    _patch_spans(monkeypatch, spans)
+    summary = TraceSummary(
+        id=TRACE_ID,
+        metadata={
+            "plant": "台中廠",
+            "deployed_version": "v3.1",
+            "dept": "品保部",
+            "trigger": "scheduler",
+            "cost_center": "cc-1",
+        },
+        raw={"id": TRACE_ID, "total_estimated_cost": 12.3456},
+    )
+    _patch_summary(monkeypatch, summary)
+
+    resp = client.get(f"/api/agents/{AGENT_KEY}/traces/{TRACE_ID}/spans")
+    assert resp.status_code == 200
+    body = resp.json()
+
+    assert body["plant"] == "台中廠"
+    assert body["deployed_version"] == "v3.1"
+    assert body["dept"] == "品保部"
+    assert body["trigger"] == "scheduler"
+    assert body["total_estimated_cost"] == 12.3456
+    # existing spans field untouched
+    assert len(body["spans"]) == 1
+
+
+# -- SDLCCT-116 Scenario 2: no metadata / no cost / out of range -> all null --
+
+
+def test_trace_summary_not_found_returns_all_five_new_fields_as_null(monkeypatch):
+    spans = (_span("root", None, name="agent-run", type_="llm"),)
+    _patch_spans(monkeypatch, spans)
+    # _patch_spans already defaults get_trace_summary_by_id to None (not
+    # found / out of the enlarged lookup range).
+
+    resp = client.get(f"/api/agents/{AGENT_KEY}/traces/{TRACE_ID}/spans")
+    assert resp.status_code == 200
+    body = resp.json()
+
+    assert body["plant"] is None
+    assert body["deployed_version"] is None
+    assert body["dept"] is None
+    assert body["trigger"] is None
+    assert body["total_estimated_cost"] is None
+
+
+def test_trace_with_null_metadata_and_missing_cost_returns_all_five_fields_null(monkeypatch):
+    spans = (_span("root", None, name="agent-run", type_="llm"),)
+    _patch_spans(monkeypatch, spans)
+    # metadata is None (trace has no metadata at all); raw has no
+    # total_estimated_cost key either -- both must independently yield None.
+    summary = TraceSummary(id=TRACE_ID, metadata=None, raw={"id": TRACE_ID})
+    _patch_summary(monkeypatch, summary)
+
+    resp = client.get(f"/api/agents/{AGENT_KEY}/traces/{TRACE_ID}/spans")
+    assert resp.status_code == 200
+    body = resp.json()
+
+    assert body["plant"] is None
+    assert body["deployed_version"] is None
+    assert body["dept"] is None
+    assert body["trigger"] is None
+    assert body["total_estimated_cost"] is None
+
+
+def test_trace_summary_query_failure_maps_to_502_not_null(monkeypatch):
+    spans = (_span("root", None, name="agent-run", type_="llm"),)
+    monkeypatch.setattr(trace_spans_module, "get_trace_spans", lambda *a, **kw: spans)
+
+    def raiser(*a, **kw):
+        raise OpikHTTPError("non-2xx response", endpoint="/v1/private/traces", status_code=503)
+
+    monkeypatch.setattr(trace_spans_module, "get_trace_summary_by_id", raiser)
+
+    resp = client.get(f"/api/agents/{AGENT_KEY}/traces/{TRACE_ID}/spans")
+    assert resp.status_code == 502
+    body = resp.json()
+    assert body["error"]["endpoint"] == "/v1/private/traces"
+
+
 # -- Edge case: orphan span (parent not in result set) passes through --------
+
+
+def test_trace_with_partial_metadata_fields_returns_null_only_for_missing_keys(monkeypatch):
+    # SDLCCT-116 Scenario 2 (tester-added): metadata dict present but only
+    # some of the four expected keys are set, and total_estimated_cost is
+    # present -- each new field must independently reflect its own source
+    # key, not collapse to all-null or all-populated as a group.
+    spans = (_span("root", None, name="agent-run", type_="llm"),)
+    _patch_spans(monkeypatch, spans)
+    summary = TraceSummary(
+        id=TRACE_ID,
+        metadata={"plant": "高雄廠"},  # deployed_version/dept/trigger absent
+        raw={"id": TRACE_ID, "total_estimated_cost": 7.5},
+    )
+    _patch_summary(monkeypatch, summary)
+
+    resp = client.get(f"/api/agents/{AGENT_KEY}/traces/{TRACE_ID}/spans")
+    assert resp.status_code == 200
+    body = resp.json()
+
+    assert body["plant"] == "高雄廠"
+    assert body["deployed_version"] is None
+    assert body["dept"] is None
+    assert body["trigger"] is None
+    assert body["total_estimated_cost"] == 7.5
 
 
 def test_orphan_span_appears_as_top_level_node_not_dropped(monkeypatch):
