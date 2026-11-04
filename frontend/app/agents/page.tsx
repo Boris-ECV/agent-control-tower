@@ -38,6 +38,15 @@ const DEPT_FILTER_ALL = "all";
 const SPARKLINE_WIDTH = 84;
 const SPARKLINE_HEIGHT = 28;
 
+// SDLCCT-106 決策 1：與 Sparkline 同檔共置，兩者都要對同一份 trend 陣列做
+// 「過濾 null」的操作——sparkline 畫線用非 null 點，合計也用非 null 點。
+// 過濾後長度為 0（全為 null）時回傳 null，交給 formatTableCurrency 顯示「—」。
+export function sumTrend(trend: AgentTrendPoint[]): number | null {
+  const values = trend.filter((p): p is { date: string; value: number } => p.value !== null);
+  if (values.length === 0) return null;
+  return values.reduce((sum, p) => sum + p.value, 0);
+}
+
 export function Sparkline({ trend }: { trend: AgentTrendPoint[] }) {
   const defined = trend.filter((p): p is { date: string; value: number } => p.value !== null);
   if (defined.length === 0) {
@@ -90,6 +99,18 @@ export function Sparkline({ trend }: { trend: AgentTrendPoint[] }) {
         />
       ))}
     </svg>
+  );
+}
+
+// SDLCCT-106 決策 3：合計文字疊在 Sparkline 下方（flex-col），不並排，
+// 避免 SPARKLINE_WIDTH 固定 84px 的欄寬因金額文字長度變動。表格與手機卡片
+// 版共用同一元件、同一邏輯。
+function SparklineWithTotal({ trend }: { trend: AgentTrendPoint[] }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Sparkline trend={trend} />
+      <span className="text-xs text-text-secondary tabular-nums">{formatTableCurrency(sumTrend(trend))}</span>
+    </div>
   );
 }
 
@@ -161,7 +182,7 @@ function AgentTable({ agents }: { agents: AgentRegistryEntry[] }) {
               <BudgetConsumedPct pct={agent.budget_consumed_pct} />
             </td>
             <td className="py-2 pr-3">
-              <Sparkline trend={agent.trend} />
+              <SparklineWithTotal trend={agent.trend} />
             </td>
             <td className="py-2 pr-3">
               <GovernanceBadge hasGap={agent.has_governance_gap} />
@@ -231,7 +252,7 @@ function AgentCardList({ agents }: { agents: AgentRegistryEntry[] }) {
               </dd>
               <dt>{t("agents.table.columns.trend")}</dt>
               <dd className="text-right">
-                <Sparkline trend={agent.trend} />
+                <SparklineWithTotal trend={agent.trend} />
               </dd>
             </dl>
           </Link>
