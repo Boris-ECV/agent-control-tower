@@ -16,11 +16,13 @@ import opik_traces
 from opik_metrics import BASE_URL_ENV_VAR, WORKSPACE_ENV_VAR
 from opik_traces import (
     DEFAULT_TOP_TRACES_SIZE,
+    ENLARGED_TRACE_LOOKUP_SIZE,
     MissingProjectIdsError,
     OpikHTTPError,
     OpikResponseFormatError,
     OpikTimeoutError,
     get_top_traces_by_cost,
+    get_trace_summary_by_id,
 )
 
 
@@ -180,6 +182,47 @@ def test_top_traces_malformed_response_raises_opik_response_format_error(monkeyp
 
     assert exc_info.value.endpoint == "/v1/private/traces"
     assert exc_info.value.status_code == 200
+
+
+# --- SDLCCT-116: get_trace_summary_by_id() ---------------------------------
+
+
+def test_get_trace_summary_by_id_finds_matching_trace_and_uses_enlarged_size(monkeypatch):
+    payload = {
+        "content": [
+            {"id": "t1", "metadata": {"plant": "台中廠"}, "total_estimated_cost": 5.0},
+            {"id": "t2", "metadata": None, "total_estimated_cost": 1.0},
+        ]
+    }
+    fake = FakeClient(responses={"/v1/private/traces": FakeResponse(payload=payload)})
+    monkeypatch.setattr(opik_traces, "_client", lambda: fake)
+
+    result = get_trace_summary_by_id("proj-1", "t2")
+
+    assert result is not None
+    assert result.id == "t2"
+    assert result.metadata is None
+
+    _, _, params = fake.calls[0]
+    assert params["size"] == ENLARGED_TRACE_LOOKUP_SIZE  # not DEFAULT_TOP_TRACES_SIZE
+
+
+def test_get_trace_summary_by_id_returns_none_when_not_found(monkeypatch):
+    payload = {"content": [{"id": "t1", "metadata": None, "total_estimated_cost": 5.0}]}
+    fake = FakeClient(responses={"/v1/private/traces": FakeResponse(payload=payload)})
+    monkeypatch.setattr(opik_traces, "_client", lambda: fake)
+
+    result = get_trace_summary_by_id("proj-1", "does-not-exist")
+
+    assert result is None
+
+
+def test_get_trace_summary_by_id_propagates_backend_failure_not_none(monkeypatch):
+    fake = FakeClient(responses={"/v1/private/traces": FakeResponse(status_code=500)})
+    monkeypatch.setattr(opik_traces, "_client", lambda: fake)
+
+    with pytest.raises(OpikHTTPError):
+        get_trace_summary_by_id("proj-1", "t1")
 
 
 # --- AC4: Comet-Workspace header always present ----------------------------
