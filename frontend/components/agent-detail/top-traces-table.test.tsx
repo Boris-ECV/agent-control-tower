@@ -65,7 +65,7 @@ describe("TopTracesTable Trace ID 截斷與複製", () => {
   it("點擊複製按鈕會把完整 36 字元 ID 寫入剪貼簿，且不觸發整列導覽", () => {
     const id = "0199abcd-ef01-7234-8abc-def012345678";
     render(<TopTracesTable traces={tracesWith(id)} />);
-    const button = screen.getByRole("button", { name: "複製完整 Trace ID", exact: true });
+    const button = screen.getByRole("button", { name: "複製完整 Trace ID" });
     fireEvent.click(button);
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(id);
     expect(push).not.toHaveBeenCalled();
@@ -74,7 +74,7 @@ describe("TopTracesTable Trace ID 截斷與複製", () => {
   it("按下 Enter/空白鍵在複製按鈕上時不會觸發整列導覽", () => {
     const id = "0199abcd-ef01-7234-8abc-def012345678";
     render(<TopTracesTable traces={tracesWith(id)} />);
-    const button = screen.getByRole("button", { name: "複製完整 Trace ID", exact: true });
+    const button = screen.getByRole("button", { name: "複製完整 Trace ID" });
     fireEvent.keyDown(button, { key: "Enter" });
     fireEvent.keyDown(button, { key: " " });
     expect(push).not.toHaveBeenCalled();
@@ -95,7 +95,7 @@ describe("TopTracesTable Trace ID 截斷與複製", () => {
   it("複製成功後短暫顯示「已複製」文字回饋", () => {
     const id = "0199abcd-ef01-7234-8abc-def012345678";
     render(<TopTracesTable traces={tracesWith(id)} />);
-    const button = screen.getByRole("button", { name: "複製完整 Trace ID", exact: true });
+    const button = screen.getByRole("button", { name: "複製完整 Trace ID" });
     fireEvent.click(button);
     expect(screen.getByText("已複製")).toBeInTheDocument();
   });
