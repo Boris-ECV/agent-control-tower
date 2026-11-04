@@ -649,3 +649,95 @@ test("SDLCCT-107 boundary: budget_consumed_pct of exactly 100 uses the normal co
   expect(style.className).toContain("bg-accent");
   expect(style.className).not.toContain("bg-red-600");
 });
+
+test("SDLCCT-106: trend sparkline shows the 7-day total beside it, in both desktop table and mobile card list", async ({
+  page,
+}) => {
+  await page.route("**/api/agents", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-28",
+        period_start: "2026-10-01",
+        agents: [
+          {
+            key: "sales-copilot",
+            display: "Sales Copilot",
+            dept: "Sales",
+            owner: "alice",
+            budget: 1000,
+            current_period_spend: 500,
+            budget_consumed_pct: 50,
+            has_governance_gap: false,
+            registered: true,
+            trend: [
+              { date: "2026-10-22", value: null },
+              { date: "2026-10-23", value: 10 },
+              { date: "2026-10-24", value: 20.5 },
+              { date: "2026-10-25", value: null },
+              { date: "2026-10-26", value: 5 },
+              { date: "2026-10-27", value: null },
+              { date: "2026-10-28", value: null },
+            ],
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/agents");
+
+  const row = page.locator("table tbody tr", { hasText: "Sales Copilot" });
+  await expect(row.getByText("US$ 35.50")).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const card = page.locator("li", { hasText: "Sales Copilot" });
+  await expect(card.getByText("US$ 35.50")).toBeVisible();
+});
+
+test("SDLCCT-106: an agent with no spend data in its trend shows a dash, never US$ 0.00, beside the sparkline", async ({
+  page,
+}) => {
+  await page.route("**/api/agents", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-28",
+        period_start: "2026-10-01",
+        agents: [
+          {
+            key: "no-spend-agent",
+            display: "No Spend Agent",
+            dept: "Ops",
+            owner: "bob",
+            budget: 1000,
+            current_period_spend: 123.45,
+            budget_consumed_pct: 12,
+            has_governance_gap: false,
+            registered: true,
+            trend: [
+              { date: "2026-10-22", value: null },
+              { date: "2026-10-23", value: null },
+              { date: "2026-10-24", value: null },
+              { date: "2026-10-25", value: null },
+              { date: "2026-10-26", value: null },
+              { date: "2026-10-27", value: null },
+              { date: "2026-10-28", value: null },
+            ],
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/agents");
+
+  // current_period_spend is a real, non-zero value (123.45) deliberately
+  // distinct from the trend-total under test, so the only possible source
+  // of a stray "US$ 0.00" in this row would be the sparkline total itself.
+  const row = page.locator("table tbody tr", { hasText: "No Spend Agent" });
+  await expect(row).toContainText("—");
+  await expect(row.getByText("US$ 0.00")).toHaveCount(0);
+});
