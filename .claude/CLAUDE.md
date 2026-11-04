@@ -434,6 +434,27 @@ Do NOT read docs/03/04/05/07 at bootstrap; read them only when needed.
   fails loudly instead of reusing a foreign server; (3) if an e2e result
   was produced while another worktree may have been running e2e, treat
   it as unverified and rerun before writing it into a Jira comment.
+- **Running e2e with `-g "<ticket>"` only proves the NEW tests pass — it
+  cannot catch a regression the change introduces in an existing,
+  unrelated e2e test, because that test never runs.** This is distinct
+  from rule 2b's CI-false-positive concern (stale/wrong install state);
+  here the filtered run is accurate for what it checks, it's just
+  scoped too narrowly to see the problem at all — the same principle as
+  "a test suite subset passing doesn't mean the whole suite is green,"
+  applied to e2e. Observed in this framework's pilot: SDLCCT-106 added a
+  dollar amount inside an existing table column's `<td>`; both the
+  developer and tester ran `-g "SDLCCT-106"` locally, saw green, and
+  declared e2e clean. The full GitHub Actions run (177 tests) failed on
+  an unrelated pre-existing SDLCCT-94 regression test asserting every
+  `<td>` containing a `US$` amount is right-aligned + tabular-nums,
+  checked on the `<td>` itself — a condition the new column's cell
+  didn't meet. **Rule:** before declaring e2e green for a UI-touching
+  story, run the full `npx playwright test` (or at minimum the full
+  spec file covering any shared layout/column/component the change
+  touches), not just a `-g <ticket>` filtered subset. If a filtered run
+  is all that's practical mid-iteration, say so explicitly in the
+  report and flag that a full-suite run is still owed before gate
+  processing.
 - **Sequential (one-ticket-at-a-time) delegation still needs care in
   the shared checkout — it is not exempt from git-state races.** Two
   confirmed failure modes from this framework's pilot, neither
