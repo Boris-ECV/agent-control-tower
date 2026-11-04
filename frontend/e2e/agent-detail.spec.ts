@@ -532,6 +532,46 @@ test("AC3: model-breakdown table shows — (not 0) for a null cost", async ({
   await expect(populatedRow.getByText("—")).toHaveCount(0);
 });
 
+test("SDLCCT-109 (tester): model-breakdown column header reads 維度／標籤／成本, single model group, and no empty 環境/團隊 group or error appears when backend only supplies model dimension data", async ({
+  page,
+}) => {
+  await page.route(`**/api/agents/${MOCK_KEY}/cost-breakdown`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        display: "Sales Copilot",
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        version_cost_series: [],
+        model_cost_breakdown: [
+          { model: "gpt-4o", cost: 1300.13 },
+          { model: "claude-3-opus", cost: 842.07 },
+        ],
+        top_traces: [],
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}`);
+
+  const breakdownSection = page.locator("section", { hasText: "模型成本分解" });
+  await expect(breakdownSection.getByText("維度／標籤／成本")).toBeVisible();
+
+  // Both tags render, with two-decimal amounts, inside the same table.
+  await expect(breakdownSection.getByText("gpt-4o", { exact: true })).toBeVisible();
+  await expect(breakdownSection.getByText("claude-3-opus")).toBeVisible();
+  await expect(breakdownSection.getByText("US$ 1,300.13")).toBeVisible();
+  await expect(breakdownSection.getByText("US$ 842.07")).toBeVisible();
+  await expect(breakdownSection.locator("tbody")).toHaveCount(1);
+
+  // No empty "環境"/"團隊" dimension group or error message anywhere on the page.
+  await expect(page.getByText("環境")).toHaveCount(0);
+  await expect(page.getByText("團隊")).toHaveCount(0);
+  await expect(page.getByText(/錯誤/)).toHaveCount(0);
+});
+
 test("SDLCCT-74 AC1/AC2: top_traces metadata renders the 4 known fields as labelled chips, with other fields collapsed behind 更多/收合", async ({
   page,
 }) => {
