@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-111 UI 原型 — 最貴執行清單：共同中繼資料摘要與廠別篩選</title>
+<style>
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #4B5563;
+    --color-border: #E5E7EB;
+    --color-accent: #2563EB;
+    --color-gray-50: #F9FAFB;
+    --color-gray-100: #F3F4F6;
+  }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    margin: 0;
+    padding: 32px;
+    font-size: 14px;
+    line-height: 22px;
+  }
+  h1 { font-size: 24px; line-height: 32px; font-weight: 700; margin: 0 0 8px; }
+  h2 { font-size: 18px; line-height: 26px; font-weight: 600; margin: 32px 0 8px; }
+  p.meta { color: var(--color-text-secondary); font-size: 12px; line-height: 18px; margin: 0 0 24px; max-width: 760px; }
+  p.caption { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 12px; max-width: 760px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  thead tr { border-bottom: 1px solid var(--color-border); text-align: left; font-size: 12px; color: var(--color-text-secondary); }
+  th, td { padding: 8px 12px 8px 0; vertical-align: middle; }
+  tbody tr { border-bottom: 1px solid var(--color-border); cursor: pointer; }
+  tbody tr:last-child { border-bottom: none; }
+  td.font-medium { font-weight: 600; color: var(--color-text-primary); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.time { color: var(--color-text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .em-dash { color: var(--color-text-secondary); }
+
+  /* 工具列：廠別篩選器（左）＋ 摘要 chip（右） */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .segmented {
+    display: inline-flex;
+    gap: 2px;
+    background: var(--color-gray-50);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 4px;
+  }
+  .segmented button {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    padding: 4px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .segmented button.active {
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    border: 1px solid var(--color-border);
+  }
+  .summary-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-block;
+    background: var(--color-gray-100);
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .state-label {
+    display: inline-block;
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    margin-bottom: 4px;
+  }
+  .note-box {
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    margin: 8px 0 24px;
+    max-width: 760px;
+  }
+</style>
+</head>
+<body>
+  <h1>SDLCCT-111 — 最貴執行清單：共同中繼資料不重複顯示＋廠別獨立欄與篩選</h1>
+  <p class="meta">
+    靜態原型，示範 <code>TopTracesTable</code> 把版本／部門／觸發方式三個
+    欄位依「目前顯示列表是否全部相同」逐欄位獨立判斷是否摺疊到表格上方
+    的摘要列；廠別獨立成一欄（不摺疊）；並新增廠別篩選器（沿用
+    <code>SegmentedFilter</code>，純前端篩選）。本檔案僅供 G1b 設計審核
+    閱覽，非實際 React 元件；篩選器點擊切換為靜態示意（下方三組表格分別
+    對應三種狀態，非同一個互動元件）。
+  </p>
+
+  <h2>狀態一：版本／部門／觸發方式皆相同（AC1）</h2>
+  <p class="caption">
+    工具列顯示廠別篩選器（目前選「全部」）＋ 右側三個摘要 chip（版本/
+    部門/觸發方式各顯示一次）；表格廠別欄逐列顯示，中繼資料欄不再重複
+    這三項。
+  </p>
+  <div class="toolbar">
+    <div class="segmented">
+      <button type="button" class="active">全部</button>
+      <button type="button">P1</button>
+      <button type="button">P2</button>
+    </div>
+    <div class="summary-chips">
+      <span class="chip">版本: v2.3</span>
+      <span class="chip">部門: Finance</span>
+      <span class="chip">觸發方式: scheduled</span>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Trace ID</th>
+        <th>執行時間</th>
+        <th style="text-align:right">預估成本</th>
+        <th>廠別</th>
+        <th>中繼資料</th>
+        <th aria-hidden="true"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="font-medium">018f2f6a…5e6f</td>
+        <td class="time">2026/10/06 14:22</td>
+        <td class="num">US$ 1,999.00</td>
+        <td>P1</td>
+        <td><span class="chip">user_id: u1</span></td>
+        <td><span style="color:var(--color-text-secondary)">&#8594;</span></td>
+      </tr>
+      <tr>
+        <td class="font-medium">018f2f6b…7a21</td>
+        <td class="time">2026/10/06 10:05</td>
+        <td class="num">US$ 1,500.00</td>
+        <td>P2</td>
+        <td><span class="chip">user_id: u2</span></td>
+        <td><span style="color:var(--color-text-secondary)">&#8594;</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>狀態二：僅「版本」不一致，部門／觸發方式仍相同（AC2）</h2>
+  <p class="caption">
+    摘要列只剩「部門」「觸發方式」兩個 chip；「版本」改回逐列顯示在中
+    繼資料欄（每列各自的版本值），不受部門/觸發方式仍然一致影響——三個
+    欄位逐欄位獨立判斷（HUMAN-INPUT SDLCCT-113 選項 A）。
+  </p>
+  <div class="toolbar">
+    <div class="segmented">
+      <button type="button" class="active">全部</button>
+      <button type="button">P1</button>
+      <button type="button">P2</button>
+    </div>
+    <div class="summary-chips">
+      <span class="chip">部門: Finance</span>
+      <span class="chip">觸發方式: scheduled</span>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Trace ID</th>
+        <th>執行時間</th>
+        <th style="text-align:right">預估成本</th>
+        <th>廠別</th>
+        <th>中繼資料</th>
+        <th aria-hidden="true"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="font-medium">018f2f6a…5e6f</td>
+        <td class="time">2026/10/06 14:22</td>
+        <td class="num">US$ 1,999.00</td>
+        <td>P1</td>
+        <td><span class="chip">版本: v2.3</span></td>
+        <td><span style="color:var(--color-text-secondary)">&#8594;</span></td>
+      </tr>
+      <tr>
+        <td class="font-medium">018f2f6b…7a21</td>
+        <td class="time">2026/10/06 10:05</td>
+        <td class="num">US$ 1,500.00</td>
+        <td>P2</td>
+        <td><span class="chip">版本: v2.2</span></td>
+        <td><span style="color:var(--color-text-secondary)">&#8594;</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>狀態三：套用廠別篩選後（選擇「P1」，AC3＋廠別欄回歸確認）</h2>
+  <p class="caption">
+    清單只剩 P1 的列；廠別欄仍照常顯示「P1」文字，不因篩選後只剩單一值
+    而摺疊（廠別欄位本身不參與摺疊判斷，見設計文件決策 2）。篩選選項
+    （全部/P1/P2）只列出目前清單中實際出現過的廠別。
+  </p>
+  <div class="toolbar">
+    <div class="segmented">
+      <button type="button">全部</button>
+      <button type="button" class="active">P1</button>
+      <button type="button">P2</button>
+    </div>
+    <div class="summary-chips">
+      <span class="chip">版本: v2.3</span>
+      <span class="chip">部門: Finance</span>
+      <span class="chip">觸發方式: scheduled</span>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Trace ID</th>
+        <th>執行時間</th>
+        <th style="text-align:right">預估成本</th>
+        <th>廠別</th>
+        <th>中繼資料</th>
+        <th aria-hidden="true"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="font-medium">018f2f6a…5e6f</td>
+        <td class="time">2026/10/06 14:22</td>
+        <td class="num">US$ 1,999.00</td>
+        <td>P1</td>
+        <td><span class="chip">user_id: u1</span></td>
+        <td><span style="color:var(--color-text-secondary)">&#8594;</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note-box">
+    備註：整列仍是既有 <code>ClickableRow</code>（SDLCCT-101），點擊任一
+    列導航至該筆執行詳情頁，本票新增的廠別欄與工具列（篩選器＋摘要
+    chip）皆為純文字/按鈕，不攔截或影響列本身的點擊/鍵盤導覽行為。摘要
+    chip 與廠別篩選器渲染在 <code>&lt;table&gt;</code> 上方、父層
+    <code>&lt;h2&gt;最貴執行清單&lt;/h2&gt;</code> 下方，視覺上即「卡片
+    標題列」的延伸。
+  </div>
+
+</body>
+</html>
