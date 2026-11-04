@@ -283,6 +283,31 @@ def test_trace_summary_query_failure_maps_to_502_not_null(monkeypatch):
 # -- Edge case: orphan span (parent not in result set) passes through --------
 
 
+def test_trace_with_partial_metadata_fields_returns_null_only_for_missing_keys(monkeypatch):
+    # SDLCCT-116 Scenario 2 (tester-added): metadata dict present but only
+    # some of the four expected keys are set, and total_estimated_cost is
+    # present -- each new field must independently reflect its own source
+    # key, not collapse to all-null or all-populated as a group.
+    spans = (_span("root", None, name="agent-run", type_="llm"),)
+    _patch_spans(monkeypatch, spans)
+    summary = TraceSummary(
+        id=TRACE_ID,
+        metadata={"plant": "高雄廠"},  # deployed_version/dept/trigger absent
+        raw={"id": TRACE_ID, "total_estimated_cost": 7.5},
+    )
+    _patch_summary(monkeypatch, summary)
+
+    resp = client.get(f"/api/agents/{AGENT_KEY}/traces/{TRACE_ID}/spans")
+    assert resp.status_code == 200
+    body = resp.json()
+
+    assert body["plant"] == "高雄廠"
+    assert body["deployed_version"] is None
+    assert body["dept"] is None
+    assert body["trigger"] is None
+    assert body["total_estimated_cost"] == 7.5
+
+
 def test_orphan_span_appears_as_top_level_node_not_dropped(monkeypatch):
     spans = (
         _span("root", None, name="agent-run", type_="llm"),
