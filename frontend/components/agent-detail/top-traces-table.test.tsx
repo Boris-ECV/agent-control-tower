@@ -263,4 +263,42 @@ describe("TopTracesTable SDLCCT-111 共同中繼資料摘要與廠別欄/篩選"
     );
     expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(2);
   });
+
+  it("所有列皆缺少廠別 key 時，廠別篩選只剩「全部」選項，不因此拋錯或顯示空白選項", () => {
+    render(
+      <TopTracesTable
+        traces={tracesWithMetadata([
+          { id: "trace-001", metadata: { dept: "Sales" } },
+          { id: "trace-002", metadata: { dept: "Sales" } },
+        ])}
+      />,
+    );
+    const filter = screen.getByRole("group", { name: "依廠別篩選" });
+    expect(within(filter).getAllByRole("button")).toHaveLength(1);
+    expect(within(filter).getByRole("button", { name: "全部" })).toBeInTheDocument();
+  });
+
+  it("廠別選項依字母排序顯示，不依原始資料出現順序", () => {
+    render(
+      <TopTracesTable
+        traces={tracesWithMetadata([
+          { id: "trace-001", metadata: { plant: "P9" } },
+          { id: "trace-002", metadata: { plant: "P2" } },
+        ])}
+      />,
+    );
+    const filter = screen.getByRole("group", { name: "依廠別篩選" });
+    const labels = within(filter)
+      .getAllByRole("button")
+      .map((btn) => btn.textContent);
+    expect(labels).toEqual(["全部", "P2", "P9"]);
+  });
+
+  it("空清單時不拋錯，且不顯示廠別以外的篩選選項", () => {
+    render(<TopTracesTable traces={tracesWithMetadata([])} />);
+    const filter = screen.getByRole("group", { name: "依廠別篩選" });
+    expect(within(filter).getAllByRole("button")).toHaveLength(1);
+    const table = screen.getByRole("table");
+    expect(within(table).queryAllByRole("row")).toHaveLength(1); // header row only, no data rows
+  });
 });
