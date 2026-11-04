@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-109 原型 — 成本標籤（模型成本分解）欄位標題與維度分組</title>
+<style>
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #475467;
+    --color-text-tertiary: #667085;
+    --color-border: #E5E7EB;
+    --color-accent: #2563EB;
+  }
+  body {
+    margin: 0;
+    padding: 48px;
+    background: #F9FAFB;
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei",
+      Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    color: var(--color-text-primary);
+  }
+  .card {
+    max-width: 720px;
+    margin: 0 auto;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 24px;
+  }
+  h1 {
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 700;
+    margin: 0 0 24px;
+    text-align: left;
+  }
+  h2 {
+    font-size: 18px;
+    line-height: 26px;
+    font-weight: 600;
+    margin: 0 0 12px;
+    text-align: left;
+  }
+  .note {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+    margin: 8px 0 16px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  thead tr {
+    border-bottom: 1px solid var(--color-border);
+    text-align: left;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+  th {
+    padding: 8px 12px 8px 0;
+    font-weight: 400;
+  }
+  th.col-cost {
+    text-align: right;
+  }
+  /* 分組容器：目前只有「model」一組，依決策 4 不產生組間分隔線，
+     只保留表格本身的外框作為這一組的邊界。 */
+  tbody.group {
+    border-bottom: 1px solid var(--color-border);
+  }
+  tbody.group:last-of-type {
+    border-bottom: none;
+  }
+  td {
+    padding: 8px 12px 8px 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  tr:last-child td {
+    border-bottom: none;
+  }
+  td.col-tag {
+    font-weight: 500;
+  }
+  td.col-cost {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .footer-note {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-border);
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+  }
+</style>
+</head>
+<body>
+  <h1>Agent 明細（原型片段）</h1>
+
+  <div class="card">
+    <!-- 區塊標題維持「模型成本分解」，不改成「成本標籤」—— 見設計文件決策 1 -->
+    <h2>模型成本分解</h2>
+    <p class="note">
+      欄位標題改為「維度／標籤／成本」；目前僅有 model 維度，所有標籤皆屬
+      同一分組，無組間分隔線（只有一組，見設計文件決策 4）。
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>維度／標籤／成本</th>
+          <th class="col-cost">成本</th>
+        </tr>
+      </thead>
+      <!-- 單一「model」分組：本票只實作這一個維度（HUMAN-INPUT SDLCCT-112 選項 B） -->
+      <tbody class="group">
+        <tr>
+          <td class="col-tag">gpt-4o</td>
+          <td class="col-cost">US$ 1,300.13</td>
+        </tr>
+        <tr>
+          <td class="col-tag">claude-3-opus</td>
+          <td class="col-cost">US$ 842.07</td>
+        </tr>
+        <tr>
+          <td class="col-tag">gpt-3.5-turbo</td>
+          <td class="col-cost">US$ 3.39</td>
+        </tr>
+        <tr>
+          <td class="col-tag">gemini-pro</td>
+          <td class="col-cost">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer-note">
+    範例資料僅示意，實際資料來自後端 API。目前僅有 model 維度；環境／團隊
+    維度待後續故事補齊資料來源後再開發（本票範圍外）。「—」表示該筆成本
+    查無資料，不顯示為 0。
+  </div>
+</body>
+</html>
