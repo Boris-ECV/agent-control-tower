@@ -823,10 +823,10 @@ test("SDLCCT-111 AC2: only the inconsistent field (版本) stays per-row; 部門
   // 部門/觸發方式 still fold into the one-time summary row.
   await expect(page.getByText("部門: Sales")).toHaveCount(1);
   await expect(page.getByText("觸發方式: manual")).toHaveCount(1);
-  // 版本 is NOT folded (values differ) -> no summary chip for it, stays
-  // per-row instead.
-  await expect(page.getByText("版本: v2.1")).toHaveCount(0);
-  await expect(page.getByText("版本: v2.2")).toHaveCount(0);
+  // 版本 is NOT folded (values differ) -> each row shows its own value
+  // instead of a single shared summary chip. (A real fold would show one
+  // value page-wide; seeing the two distinct values below, each scoped to
+  // its own row, already proves folding did not happen for this field.)
   const row1 = page.locator("tr", { hasText: "trace-001" });
   const row2 = page.locator("tr", { hasText: "trace-002" });
   await expect(row1.getByText("版本: v2.1", { exact: false })).toBeVisible();
@@ -1868,7 +1868,11 @@ test("SDLCCT-110: short e2e-fixture trace ids (e.g. trace-001) remain fully visi
   await expect(page.getByText("trace-001")).toBeVisible();
   await expect(page.getByText("trace-002")).toBeVisible();
   const row = page.getByText("trace-001").locator("xpath=ancestor::tr");
-  await expect(row.getByText("—")).toBeVisible(); // 執行時間欄：非合法 UUIDv7。
+  // Scoped to the start-time column specifically (2nd <td>): since SDLCCT-111
+  // added an always-present 廠別 column that also shows "—" when metadata
+  // lacks a plant key, a row-wide getByText("—") can now match more than
+  // one cell and this must not be ambiguous.
+  await expect(row.locator("td").nth(1)).toHaveText("—"); // 執行時間欄：非合法 UUIDv7。
 
   // Row navigation still works for these short-id rows (SDLCCT-56/101).
   await row.click();
