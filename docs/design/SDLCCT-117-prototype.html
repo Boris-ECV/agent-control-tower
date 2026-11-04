@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SDLCCT-117 執行詳情頁：標籤列與摘要列 UI 原型</title>
+<style>
+  :root {
+    --color-bg: #FFFFFF;
+    --color-text-primary: #1F2937;
+    --color-text-secondary: #475467;
+    --color-border: #E5E7EB;
+  }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: #F9FAFB;
+    color: var(--color-text-primary);
+    padding: 32px;
+  }
+  .card {
+    max-width: 960px;
+    margin: 0 auto 32px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 24px;
+  }
+  h2.heading { font-size: 14px; margin: 0 0 16px; color: var(--color-text-secondary); font-weight: 600; }
+
+  /* --- 以下模擬 trace-detail-content.tsx 的 <main> 內區塊 --- */
+  .page-title {
+    margin: 0 0 4px;
+    text-align: left;
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+  .trace-id-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px;
+  }
+  .trace-id-mono {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 14px;
+    color: var(--color-text-secondary);
+  }
+  .copy-btn {
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    border-radius: 6px;
+    padding: 2px 10px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+
+  /* 標籤列 -- 沿用 span-tree-row.tsx 既有 "type" 中性標籤樣式 */
+  .tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 0;
+  }
+  .tag {
+    border-radius: 4px;
+    background: #F3F4F6;
+    padding: 2px 6px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+
+  /* 摘要列 -- 純文字 label：value，與標籤列視覺區分 */
+  .summary-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    margin: 12px 0 20px;
+    font-size: 14px;
+    color: var(--color-text-secondary);
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+  thead tr { border-bottom: 1px solid var(--color-border); text-align: left; }
+  th { padding: 8px 12px 8px 0; font-size: 12px; color: var(--color-text-secondary); font-weight: 400; }
+  tbody tr { border-bottom: 1px solid var(--color-border); }
+  td { padding: 8px 12px 8px 0; }
+
+  .empty-note {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    margin: 8px 0;
+  }
+
+  .note {
+    margin-top: 0;
+    padding: 12px;
+    background: #F9FAFB;
+    border: 1px dashed var(--color-border);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+</style>
+</head>
+<body>
+
+  <div class="card">
+    <h2 class="heading">狀態 A：五個標籤皆有值 + spans 非空（Scenario「標籤列顯示所屬 Agent 與廠別等五個標籤」＋「摘要列顯示開始時間總耗時 Span 數與預估成本」）</h2>
+
+    <p class="page-title">執行詳情</p>
+    <div class="trace-id-row">
+      <span class="trace-id-mono">trc_a1b2c3d4e5f6</span>
+      <button class="copy-btn" aria-label="複製 Trace ID">複製</button>
+    </div>
+
+    <div class="tag-row">
+      <span class="tag">Agent：品保異常偵測 Agent</span>
+      <span class="tag">廠別：台中廠</span>
+      <span class="tag">版本：v3.1</span>
+      <span class="tag">部門：品保部</span>
+      <span class="tag">觸發方式：scheduler</span>
+    </div>
+
+    <div class="summary-row">
+      <span>開始時間：2026/11/04 08:00:00</span>
+      <span>總耗時：5.2s</span>
+      <span>Span 數：12</span>
+      <span>預估成本：US$ 12.35</span>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>名稱</th><th>類型</th><th>時間</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>root-chain</td><td>general</td><td>2026/11/04 08:00:00–2026/11/04 08:00:05</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2 class="heading">狀態 B：部門為 null（Scenario「標籤值為 null 時該標籤不顯示」—— 標籤列只顯示 4 個標籤，不出現「部門：—」或空白標籤）</h2>
+
+    <p class="page-title">執行詳情</p>
+    <div class="trace-id-row">
+      <span class="trace-id-mono">trc_b2c3d4e5f6a7</span>
+      <button class="copy-btn" aria-label="複製 Trace ID">複製</button>
+    </div>
+
+    <div class="tag-row">
+      <span class="tag">Agent：品保異常偵測 Agent</span>
+      <span class="tag">廠別：台中廠</span>
+      <span class="tag">版本：v3.1</span>
+      <span class="tag">觸發方式：scheduler</span>
+    </div>
+
+    <div class="summary-row">
+      <span>開始時間：2026/11/04 09:12:00</span>
+      <span>總耗時：2.8s</span>
+      <span>Span 數：7</span>
+      <span>預估成本：US$ 4.80</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="heading">狀態 C：spans 為空陣列（Scenario「無 span 資料時摘要列的時間與數量欄位退回佔位符」—— 標籤列正常顯示；摘要列開始時間/總耗時顯示「—」、Span 數顯示 0、預估成本仍依自身值顯示）</h2>
+
+    <p class="page-title">執行詳情</p>
+    <div class="trace-id-row">
+      <span class="trace-id-mono">trc_c3d4e5f6a7b8</span>
+      <button class="copy-btn" aria-label="複製 Trace ID">複製</button>
+    </div>
+
+    <div class="tag-row">
+      <span class="tag">Agent：品保異常偵測 Agent</span>
+      <span class="tag">廠別：台中廠</span>
+      <span class="tag">版本：v3.1</span>
+      <span class="tag">部門：品保部</span>
+      <span class="tag">觸發方式：scheduler</span>
+    </div>
+
+    <div class="summary-row">
+      <span>開始時間：—</span>
+      <span>總耗時：—</span>
+      <span>Span 數：0</span>
+      <span>預估成本：US$ 4.80</span>
+    </div>
+
+    <p class="empty-note">查無資料</p>
+
+    <footer></footer>
+  </div>
+
+  <div class="note">
+    對應 <code>docs/design/SDLCCT-117.md</code> 關鍵技術決策 1-6：Agent
+    標籤永遠渲染（決策 1）；五個標籤沿用 <code>span-tree-row.tsx</code>
+    既有的中性 "type" 標籤樣式，不借用 <code>StatusBadge</code>（決策
+    2）；Span 數/開始時間/總耗時由新增的純函式
+    <code>computeSpanSummary()</code> 遞迴走訪整棵樹計算，與
+    <code>group-spans.ts</code> 的顯示分組/展開狀態無關（決策 3）；開始
+    時間/預估成本沿用規格指名的既有 <code>formatTaiwanDateTime</code>/
+    <code>formatCurrency</code>（決策 4）；總耗時由新增的
+    <code>formatDurationSeconds()</code> 格式化（決策 5）；標籤列/摘要
+    列只在資料成功取得後渲染，loading/error 畫面不變（決策 6）。本原型
+    為靜態示意，實際行為見 developer 依設計文件實作的 React 版本
+    （<code>components/trace-detail/trace-meta-tags.tsx</code> /
+    <code>trace-summary-row.tsx</code>）。
+  </div>
+
+</body>
+</html>
