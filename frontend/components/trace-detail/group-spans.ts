@@ -42,3 +42,26 @@ export function groupSiblings(nodes: SpanTreeNode[]): SpanGroup[] {
     return { kind: "group", name: group[0].name, type: group[0].type, nodes: group };
   });
 }
+
+// Sorts one level's SpanGroup[] (the output of groupSiblings()) by start
+// time (SDLCCT-115 Scenario 1/2). Sort key: single uses its own
+// node.start_time; group uses nodes[0].start_time (the group's first node,
+// not a min-search across the group -- see docs/design/SDLCCT-115.md
+// decision #1). Spans with a null start_time sort last, preserving their
+// relative order from the input array (stable sort, guaranteed by
+// Array.prototype.sort since ES2019).
+export function sortGroupsByStartTime(groups: SpanGroup[]): SpanGroup[] {
+  const keyOf = (g: SpanGroup): string | null =>
+    g.kind === "single" ? g.node.start_time : g.nodes[0].start_time;
+
+  return [...groups].sort((a, b) => {
+    const ka = keyOf(a);
+    const kb = keyOf(b);
+    if (ka === null && kb === null) return 0;
+    if (ka === null) return 1; // null sorts last
+    if (kb === null) return -1;
+    if (ka < kb) return -1;
+    if (ka > kb) return 1;
+    return 0;
+  });
+}
