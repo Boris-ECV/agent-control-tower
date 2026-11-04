@@ -1,38 +1,59 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useParams, useRouter } from "next/navigation";
 
 import { ClickableRow } from "@/components/common/clickable-row";
+import { SegmentedFilter } from "@/components/common/segmented-filter";
 import type { TopTraceItem } from "@/lib/agent-detail-api";
 import { formatSlashDateTimeMinute, formatTableCurrency } from "@/lib/format";
 import { t } from "@/lib/i18n/t";
 import { parseTraceStartTime, truncateTraceId } from "@/lib/trace-id";
 
 // metadata 是未型別化的 dict | None（SDLCCT-74，見 docs/design/SDLCCT-74.md）。
-// 4 個常用欄位（plant/deployed_version/dept/trigger）固定依此陣列順序以標籤
-// 顯示，缺少的欄位不顯示空白；其餘欄位（包含未知 key）預設收合，點擊「更多」
-// 展開查看 key:value，再點擊收回。metadata 為 null 時維持既有
+// 「廠別」自 SDLCCT-111 起獨立成表格欄位（見下方 PlantCell），永遠逐列顯
+// 示，不參與「是否所有列相同」的摺疊判斷（docs/design/SDLCCT-111.md 決策
+// 2）。剩下 3 個常用欄位（deployed_version/dept/trigger）固定依此陣列順
+// 序以標籤顯示；若目前顯示列表中，某欄位所有列皆存在且值相同，則不在逐
+// 列的 MetadataCell 渲染該欄位的 chip，改由上層摘要列渲染一次（決策 2/
+// 3）。缺少的欄位不顯示空白；其餘欄位（包含未知 key，含 plant 本身——避
+// 免獨立成欄後又在「更多」重複出現，見決策 2）預設收合，點擊「更多」展
+// 開查看 key:value，再點擊收回。metadata 為 null 時維持既有
 // t("agentDetail.unknown") 行為，不渲染標籤/展開控制項。
 const KNOWN_METADATA_FIELDS: Array<{
   key: string;
-  labelKey: "plant" | "deployedVersion" | "dept" | "trigger";
+  labelKey: "deployedVersion" | "dept" | "trigger";
 }> = [
-  { key: "plant", labelKey: "plant" },
   { key: "deployed_version", labelKey: "deployedVersion" },
   { key: "dept", labelKey: "dept" },
   { key: "trigger", labelKey: "trigger" },
 ];
 
-function MetadataCell({ metadata }: { metadata: Record<string, unknown> }) {
+// 「更多」展開段落排除的已知 key 集合：含 plant，即使它已獨立成欄，避免
+// 在「更多」展開裡重複出現同一份資料（決策 2）。
+const ALL_KNOWN_KEYS = new Set<string>(["plant", ...KNOWN_METADATA_FIELDS.map(({ key }) => key)]);
+
+function PlantCell({ metadata }: { metadata: Record<string, unknown> | null }) {
+  if (metadata === null || typeof metadata.plant === "undefined") {
+    return <>{t("agentDetail.unknown")}</>;
+  }
+  return <>{String(metadata.plant)}</>;
+}
+
+function MetadataCell({
+  metadata,
+  foldedFields,
+}: {
+  metadata: Record<string, unknown>;
+  foldedFields: Set<string>;
+}) {
   const [expanded, setExpanded] = useState(false);
 
-  const knownEntries = KNOWN_METADATA_FIELDS.filter(({ key }) =>
-    Object.prototype.hasOwnProperty.call(metadata, key),
+  const knownEntries = KNOWN_METADATA_FIELDS.filter(
+    ({ key }) => Object.prototype.hasOwnProperty.call(metadata, key) && !foldedFields.has(key),
   );
-  const knownKeys = new Set(KNOWN_METADATA_FIELDS.map(({ key }) => key));
-  const otherEntries = Object.entries(metadata).filter(([key]) => !knownKeys.has(key));
+  const otherEntries = Object.entries(metadata).filter(([key]) => !ALL_KNOWN_KEYS.has(key));
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
@@ -126,60 +147,148 @@ function TraceIdCell({
   );
 }
 
+const PLANT_FILTER_ALL = "all";
+
+// 「全部相同」比對：以目前（已套用廠別篩選後）顯示列表為準，任一列缺少
+// 該欄位（含 metadata === null）即視為「不一致」；一律用 String(value)
+// 字串化後比較（docs/design/SDLCCT-111.md 決策 3）。
+function computeFoldedFields(traces: TopTraceItem[]): Set<string> {
+  const folded = new Set<string>();
+  if (traces.length === 0) return folded;
+
+  for (const { key } of KNOWN_METADATA_FIELDS) {
+    let allSame = true;
+    let firstValue: string | undefined;
+    for (const trace of traces) {
+      if (trace.metadata === null || !Object.prototype.hasOwnProperty.call(trace.metadata, key)) {
+        allSame = false;
+        break;
+      }
+      const value = String(trace.metadata[key]);
+      if (firstValue === undefined) {
+        firstValue = value;
+      } else if (value !== firstValue) {
+        allSame = false;
+        break;
+      }
+    }
+    if (allSame && firstValue !== undefined) {
+      folded.add(key);
+    }
+  }
+  return folded;
+}
+
 export function TopTracesTable({ traces }: { traces: TopTraceItem[] }) {
   const router = useRouter();
   const params = useParams<{ key: string }>();
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [plantFilter, setPlantFilter] = useState<string>(PLANT_FILTER_ALL);
 
   const goToTrace = (traceId: string) => {
     router.push(`/agents/${encodeURIComponent(params.key)}/traces/${encodeURIComponent(traceId)}`);
   };
 
+  // 篩選選項從未篩選的原始清單算出，不隨篩選結果縮小（決策 4）。
+  const plantOptions = useMemo(() => {
+    const plants = new Set<string>();
+    for (const trace of traces) {
+      if (trace.metadata !== null && typeof trace.metadata.plant !== "undefined") {
+        plants.add(String(trace.metadata.plant));
+      }
+    }
+    return Array.from(plants).sort();
+  }, [traces]);
+
+  const filteredTraces = useMemo(
+    () =>
+      plantFilter === PLANT_FILTER_ALL
+        ? traces
+        : traces.filter(
+            (trace) => trace.metadata !== null && String(trace.metadata.plant) === plantFilter,
+          ),
+    [traces, plantFilter],
+  );
+
+  const foldedFields = useMemo(() => computeFoldedFields(filteredTraces), [filteredTraces]);
+
   return (
-    <table className="w-full border-collapse text-sm">
-      <thead>
-        <tr className="border-b border-border text-left text-xs text-text-secondary">
-          <th className="py-2 pr-3">{t("agentDetail.topTraces.table.columns.id")}</th>
-          <th className="py-2 pr-3">{t("agentDetail.topTraces.table.columns.startTime")}</th>
-          <th className="py-2 pr-3 text-right">{t("agentDetail.topTraces.table.columns.cost")}</th>
-          <th className="py-2 pr-3">
-            {t("agentDetail.topTraces.table.columns.metadata")}
-          </th>
-          <th className="py-2 pr-3" aria-hidden="true" />
-        </tr>
-      </thead>
-      <tbody>
-        {traces.map((trace) => (
-          <ClickableRow key={trace.id} onActivate={() => goToTrace(trace.id)}>
-            <td className="py-2 pr-3 font-medium text-text-primary">
-              <TraceIdCell traceId={trace.id} copiedId={copiedId} setCopiedId={setCopiedId} />
-            </td>
-            <td className="py-2 pr-3 whitespace-nowrap">
-              {formatSlashDateTimeMinute(parseTraceStartTime(trace.id) ?? new Date(NaN))}
-            </td>
-            <td className="py-2 pr-3 text-right tabular-nums">{formatTableCurrency(trace.total_estimated_cost)}</td>
-            <td className="py-2 pr-3">
-              {trace.metadata === null ? (
-                t("agentDetail.unknown")
-              ) : (
-                <MetadataCell metadata={trace.metadata} />
-              )}
-            </td>
-            <td className="py-2 pr-3" aria-hidden="true">
-              {/* SDLCCT-101 CI fix: see app/agents/page.tsx's arrow <svg> for
-                  the full rationale -- `translate-x-*` sets the native CSS
-                  `translate` property in Tailwind v4, not `transform`, so
-                  only `translate` belongs in the transition list here. */}
-              <svg
-                viewBox="0 0 16 16"
-                className="h-4 w-4 flex-none fill-current text-text-secondary transition-[translate] group-hover:translate-x-1 group-hover:text-accent group-focus-visible:translate-x-1 group-focus-visible:text-accent"
-              >
-                <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
-              </svg>
-            </td>
-          </ClickableRow>
-        ))}
-      </tbody>
-    </table>
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <SegmentedFilter<string>
+          aria-label={t("agentDetail.topTraces.filter.plantAriaLabel")}
+          value={plantFilter}
+          onChange={setPlantFilter}
+          options={[
+            { value: PLANT_FILTER_ALL, label: t("anomalies.filter.all") },
+            ...plantOptions.map((plant) => ({ value: plant, label: plant })),
+          ]}
+        />
+        {foldedFields.size > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {KNOWN_METADATA_FIELDS.filter(({ key }) => foldedFields.has(key)).map(
+              ({ key, labelKey }) => (
+                <span
+                  key={key}
+                  className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-text-secondary"
+                >
+                  {t(`agentDetail.topTraces.metadata.fields.${labelKey}`)}:{" "}
+                  {String((filteredTraces[0]?.metadata as Record<string, unknown>)[key])}
+                </span>
+              ),
+            )}
+          </div>
+        )}
+      </div>
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-border text-left text-xs text-text-secondary">
+            <th className="py-2 pr-3">{t("agentDetail.topTraces.table.columns.id")}</th>
+            <th className="py-2 pr-3">{t("agentDetail.topTraces.table.columns.startTime")}</th>
+            <th className="py-2 pr-3 text-right">{t("agentDetail.topTraces.table.columns.cost")}</th>
+            <th className="py-2 pr-3">{t("agentDetail.topTraces.table.columns.plant")}</th>
+            <th className="py-2 pr-3">
+              {t("agentDetail.topTraces.table.columns.metadata")}
+            </th>
+            <th className="py-2 pr-3" aria-hidden="true" />
+          </tr>
+        </thead>
+        <tbody>
+          {filteredTraces.map((trace) => (
+            <ClickableRow key={trace.id} onActivate={() => goToTrace(trace.id)}>
+              <td className="py-2 pr-3 font-medium text-text-primary">
+                <TraceIdCell traceId={trace.id} copiedId={copiedId} setCopiedId={setCopiedId} />
+              </td>
+              <td className="py-2 pr-3 whitespace-nowrap">
+                {formatSlashDateTimeMinute(parseTraceStartTime(trace.id) ?? new Date(NaN))}
+              </td>
+              <td className="py-2 pr-3 text-right tabular-nums">{formatTableCurrency(trace.total_estimated_cost)}</td>
+              <td className="py-2 pr-3">
+                <PlantCell metadata={trace.metadata} />
+              </td>
+              <td className="py-2 pr-3">
+                {trace.metadata === null ? (
+                  t("agentDetail.unknown")
+                ) : (
+                  <MetadataCell metadata={trace.metadata} foldedFields={foldedFields} />
+                )}
+              </td>
+              <td className="py-2 pr-3" aria-hidden="true">
+                {/* SDLCCT-101 CI fix: see app/agents/page.tsx's arrow <svg> for
+                    the full rationale -- `translate-x-*` sets the native CSS
+                    `translate` property in Tailwind v4, not `transform`, so
+                    only `translate` belongs in the transition list here. */}
+                <svg
+                  viewBox="0 0 16 16"
+                  className="h-4 w-4 flex-none fill-current text-text-secondary transition-[translate] group-hover:translate-x-1 group-hover:text-accent group-focus-visible:translate-x-1 group-focus-visible:text-accent"
+                >
+                  <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
+                </svg>
+              </td>
+            </ClickableRow>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

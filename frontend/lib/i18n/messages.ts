@@ -177,6 +177,7 @@ export const messages = {
           id: "Trace ID",
           startTime: "執行時間",
           cost: "預估成本",
+          plant: "廠別",
           metadata: "中繼資料",
         },
       },
@@ -184,6 +185,9 @@ export const messages = {
         fields: { plant: "廠別", deployedVersion: "版本", dept: "部門", trigger: "觸發方式" },
         more: "更多",
         collapse: "收合",
+      },
+      filter: {
+        plantAriaLabel: "依廠別篩選",
       },
       traceId: {
         copyAriaLabel: "複製完整 Trace ID",
