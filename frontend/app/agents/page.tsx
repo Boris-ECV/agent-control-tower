@@ -109,7 +109,9 @@ function SparklineWithTotal({ trend }: { trend: AgentTrendPoint[] }) {
   return (
     <div className="flex flex-col gap-1">
       <Sparkline trend={trend} />
-      <span className="text-xs text-text-secondary tabular-nums">{formatTableCurrency(sumTrend(trend))}</span>
+      <span className="text-right text-xs text-text-secondary tabular-nums">
+        {formatTableCurrency(sumTrend(trend))}
+      </span>
     </div>
   );
 }
@@ -153,7 +155,7 @@ function AgentTable({ agents }: { agents: AgentRegistryEntry[] }) {
           <th className="py-2 pr-3 text-right">{t("agents.table.columns.budget")}</th>
           <th className="py-2 pr-3 text-right">{t("agents.table.columns.currentPeriodSpend")}</th>
           <th className="py-2 pr-3">{t("agents.table.columns.budgetConsumedPct")}</th>
-          <th className="py-2 pr-3">{t("agents.table.columns.trend")}</th>
+          <th className="py-2 pr-3 text-right">{t("agents.table.columns.trend")}</th>
           <th className="py-2 pr-3">{t("agents.table.columns.governance")}</th>
           <th className="py-2 pr-3" aria-hidden="true" />
         </tr>
@@ -181,7 +183,7 @@ function AgentTable({ agents }: { agents: AgentRegistryEntry[] }) {
             <td className="py-2 pr-3">
               <BudgetConsumedPct pct={agent.budget_consumed_pct} />
             </td>
-            <td className="py-2 pr-3">
+            <td className="py-2 pr-3 text-right tabular-nums">
               <SparklineWithTotal trend={agent.trend} />
             </td>
             <td className="py-2 pr-3">
