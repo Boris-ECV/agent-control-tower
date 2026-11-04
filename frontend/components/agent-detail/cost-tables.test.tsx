@@ -29,6 +29,25 @@ describe("ModelBreakdownTable cost column", () => {
   });
 });
 
+describe("ModelBreakdownTable dimension/tag column (SDLCCT-109)", () => {
+  it('renders the first column header as "維度／標籤／成本" and groups all entries in a single model group', () => {
+    const entries = [
+      { model: "gpt-4o", cost: 1300.13 },
+      { model: "claude-3-opus", cost: 842.07 },
+      { model: "gemini-pro", cost: null },
+    ] as unknown as Parameters<typeof ModelBreakdownTable>[0]["entries"];
+    const { container } = render(<ModelBreakdownTable entries={entries} />);
+
+    expect(screen.getByText("維度／標籤／成本")).toBeInTheDocument();
+    expect(screen.queryByText("環境")).not.toBeInTheDocument();
+    expect(screen.queryByText("團隊")).not.toBeInTheDocument();
+
+    const tbodies = container.querySelectorAll("tbody");
+    expect(tbodies.length).toBe(1);
+    expect(tbodies[0]?.querySelectorAll("tr").length).toBe(3);
+  });
+});
+
 describe("TopTracesTable cost column", () => {
   it("renders two-decimal cost, right-aligned with tabular-nums", () => {
     const traces = [
