@@ -329,6 +329,29 @@ report to the human supervisor.
     on the platform side; this rule exists because the orchestrator runs
     with the repository owner's credentials, so the platform alone
     cannot tell an orchestrator merge from a human one.
+11. **G1's auto-check (Gherkin present, scope-外 non-empty, no open questions,
+    size within limit) does not verify that the prose "範圍與修正方向" section
+    and the Gherkin acceptance criteria actually agree with each other** —
+    a finalized spec can pass G1 while internally self-contradictory, and
+    this will not surface until an architect/developer/reviewer reads both
+    sections side by side. Observed: SDLCCT-115's prose said a repeated-span
+    group's sort key is its "第一個節點" (first node); its own Gherkin Then
+    clause said "組內最早" (the group's earliest/minimum). G1 passed; the
+    architect picked one reading without flagging the conflict; the
+    discrepancy was only caught by a reviewer at the In Review stage, after
+    a full dev+test cycle had already locked in one interpretation. **Rule:**
+    when processing a G1 gate, in addition to the existing auto-criteria,
+    read the prose and the Gherkin against each other for this class of
+    conflict (a described mechanism in prose contradicted or left
+    ambiguous by at least one Scenario's Given/When/Then) — if found, do
+    not approve G1 as-is; send back to requirements-analyst for a wording
+    fix, or raise HUMAN-INPUT before Designing starts. If a contradiction is
+    only found later (Designing/Review/etc.), treat it exactly like any
+    other unresolved spec ambiguity per the Delegation rules' HUMAN-INPUT
+    pattern: never let any single agent (architect, developer, or reviewer)
+    unilaterally pick a reading — escalate, and the ticket goes to `Blocked`
+    until a human decides, with a reopen recorded if the pick had already
+    propagated into merged/reviewed work.
 
 ## Bootstrap (every new session)
 
