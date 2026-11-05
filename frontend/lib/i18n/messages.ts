@@ -209,6 +209,13 @@ export const messages = {
     expand: "展開查看個別",
     collapse: "收合",
     repeatBadge: (count: number) => `× ${count}`,
+    metaTags: { plant: "廠別", deployedVersion: "版本", dept: "部門", trigger: "觸發方式" },
+    summaryRow: {
+      startTime: "開始時間",
+      duration: "總耗時",
+      spanCount: "Span 數",
+      cost: "預估成本",
+    },
     footer: { dataSource: "資料來源：Agent registry ＋ 觀測性後端 trace/span 查詢。" },
   },
 } as const;

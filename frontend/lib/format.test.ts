@@ -4,6 +4,7 @@ import {
   formatCardCurrency,
   formatCurrency,
   formatDayColumnHeader,
+  formatDurationSeconds,
   formatPercent,
   formatPercentGrouped,
   formatSignedCurrency,
@@ -317,6 +318,23 @@ describe("formatSignedTableCurrency", () => {
     "renders %j as em dash",
     (v) => {
       expect(formatSignedTableCurrency(v)).toBe("—");
+    },
+  );
+});
+
+describe("formatDurationSeconds", () => {
+  it.each([
+    [12.34, "12.3s"],
+    [0, "0.0s"],
+    [1, "1.0s"],
+    [59.96, "60.0s"],
+  ])("renders %j as %j", (v, expected) => {
+    expect(formatDurationSeconds(v)).toBe(expected);
+  });
+  it.each([null, undefined, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    "renders %j as em dash",
+    (v) => {
+      expect(formatDurationSeconds(v)).toBe("—");
     },
   );
 });

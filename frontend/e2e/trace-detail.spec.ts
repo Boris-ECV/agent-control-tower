@@ -373,3 +373,143 @@ test("SDLCCT-64: header back link remains visible and usable when the spans requ
   await backLink.click();
   await expect(page).toHaveURL(`/agents/${MOCK_KEY}`);
 });
+
+test("SDLCCT-117 Scenario 1: meta tag row shows Agent/廠別/版本/部門/觸發方式 in order when all metadata is present", async ({
+  page,
+}) => {
+  await mockCostBreakdown(page);
+  await page.route(`**/api/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}/spans`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        trace_id: MOCK_TRACE_ID,
+        spans: [],
+        plant: "Plant A",
+        deployed_version: "1.2.3",
+        dept: "Sales",
+        trigger: "cron",
+        total_estimated_cost: 12.5,
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}`);
+
+  const tagRow = page.getByTestId("trace-meta-tags");
+  await expect(tagRow.getByText("Sales Copilot", { exact: true })).toBeVisible();
+  await expect(tagRow.getByText("廠別：Plant A")).toBeVisible();
+  await expect(tagRow.getByText("版本：1.2.3")).toBeVisible();
+  await expect(tagRow.getByText("部門：Sales")).toBeVisible();
+  await expect(tagRow.getByText("觸發方式：cron")).toBeVisible();
+});
+
+test("SDLCCT-117 Scenario 2: a null metadata field (dept) is omitted entirely, never a 「部門：—」 placeholder", async ({
+  page,
+}) => {
+  await mockCostBreakdown(page);
+  await page.route(`**/api/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}/spans`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        trace_id: MOCK_TRACE_ID,
+        spans: [],
+        plant: "Plant A",
+        deployed_version: "1.2.3",
+        dept: null,
+        trigger: "cron",
+        total_estimated_cost: 12.5,
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}`);
+
+  const tagRow = page.getByTestId("trace-meta-tags");
+  await expect(tagRow.getByText("廠別：Plant A")).toBeVisible();
+  await expect(tagRow.getByText(/部門/)).toHaveCount(0);
+});
+
+test("SDLCCT-117 Scenario 3: summary row shows start time, duration, span count and cost from span data", async ({
+  page,
+}) => {
+  await mockCostBreakdown(page);
+  await page.route(`**/api/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}/spans`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        trace_id: MOCK_TRACE_ID,
+        spans: [
+          {
+            id: "spn_1",
+            parent_span_id: null,
+            name: "root-chain",
+            type: "general",
+            start_time: "2026-10-01T00:00:00Z",
+            end_time: "2026-10-01T00:00:08Z",
+            children: [
+              {
+                id: "spn_2",
+                parent_span_id: "spn_1",
+                name: "summarize",
+                type: "llm",
+                start_time: "2026-10-01T00:00:01Z",
+                end_time: "2026-10-01T00:00:03Z",
+                children: [],
+              },
+            ],
+          },
+        ],
+        plant: "Plant A",
+        deployed_version: "1.2.3",
+        dept: "Sales",
+        trigger: "cron",
+        total_estimated_cost: 12.5,
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}`);
+
+  const summaryRow = page.getByTestId("trace-summary-row");
+  await expect(summaryRow.getByText("2026/10/01", { exact: false })).toBeVisible();
+  await expect(summaryRow.getByText("8.0s")).toBeVisible();
+  await expect(summaryRow.getByText("2", { exact: true })).toBeVisible();
+  await expect(summaryRow.getByText(/US\$/)).toBeVisible();
+});
+
+test("SDLCCT-117 Scenario 4: empty spans fall back to 「—」 for start time/duration and 0 for span count, while cost and the tag row still render", async ({
+  page,
+}) => {
+  await mockCostBreakdown(page);
+  await page.route(`**/api/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}/spans`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        key: MOCK_KEY,
+        trace_id: MOCK_TRACE_ID,
+        spans: [],
+        plant: "Plant A",
+        deployed_version: "1.2.3",
+        dept: "Sales",
+        trigger: "cron",
+        total_estimated_cost: 42,
+      }),
+    });
+  });
+
+  await page.goto(`/agents/${MOCK_KEY}/traces/${MOCK_TRACE_ID}`);
+
+  const tagRow = page.getByTestId("trace-meta-tags");
+  const summaryRow = page.getByTestId("trace-summary-row");
+  await expect(tagRow.getByText("廠別：Plant A")).toBeVisible();
+  await expect(summaryRow.getByText("—")).toHaveCount(2); // start time + duration placeholders
+  await expect(summaryRow.getByText("0", { exact: true })).toBeVisible();
+  await expect(summaryRow.getByText(/US\$/)).toBeVisible();
+});
