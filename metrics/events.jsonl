@@ -624,3 +624,10 @@
 {"ts":"2026-11-05T12:30:00Z","event":"escalation_resolved","ticket":"SDLCCT-45","agent":"orch-20261104-s1","data":{"note":"HUMAN-INPUT SDLCCT-49 resolved weeks earlier but ticket spec was never finalized; found via main-loop Blocked sweep, finalized, split, superseded"}}
 {"ts":"2026-11-05T12:30:00Z","event":"stage_transition","ticket":"SDLCCT-45","agent":"orch-20261104-s1","data":{"from":"Blocked","to":"Done","data":{"resolution":"superseded"}}}
 {"ts":"2026-11-05T12:30:00Z","event":"split","ticket":"SDLCCT-45","agent":"orch-20261104-s1","data":{"into":["SDLCCT-122","SDLCCT-123"],"reason":"combined BFF+frontend scope exceeded G1 size_ok (<=1 dev-day) threshold"}}
+{"ts":"2026-11-05T12:29:00Z","event":"split","ticket":"SDLCCT-45","agent":"orch-20261104-s1","data":{"created":["SDLCCT-122","SDLCCT-123"]}}
+{"ts":"2026-11-05T12:30:11Z","event":"stage_transition","ticket":"SDLCCT-122","agent":"orch-20261104-s1","data":{"from":"Backlog","to":"Refining"}}
+{"ts":"2026-11-05T12:30:30Z","event":"gate_review","ticket":"SDLCCT-122","agent":"orch-20261104-s1","data":{"gate":"G1","mode":"auto","result":"approved"}}
+{"ts":"2026-11-05T12:30:30Z","event":"stage_transition","ticket":"SDLCCT-122","agent":"orch-20261104-s1","data":{"from":"Awaiting Gate","to":"Designing"}}
+{"ts":"2026-11-05T12:30:13Z","event":"stage_transition","ticket":"SDLCCT-123","agent":"orch-20261104-s1","data":{"from":"Backlog","to":"Refining"}}
+{"ts":"2026-11-05T12:30:31Z","event":"gate_review","ticket":"SDLCCT-123","agent":"orch-20261104-s1","data":{"gate":"G1","mode":"auto","result":"approved"}}
+{"ts":"2026-11-05T12:30:31Z","event":"stage_transition","ticket":"SDLCCT-123","agent":"orch-20261104-s1","data":{"from":"Awaiting Gate","to":"Designing"}}
