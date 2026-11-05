@@ -631,3 +631,4 @@
 {"ts":"2026-11-05T12:30:13Z","event":"stage_transition","ticket":"SDLCCT-123","agent":"orch-20261104-s1","data":{"from":"Backlog","to":"Refining"}}
 {"ts":"2026-11-05T12:30:31Z","event":"gate_review","ticket":"SDLCCT-123","agent":"orch-20261104-s1","data":{"gate":"G1","mode":"auto","result":"approved"}}
 {"ts":"2026-11-05T12:30:31Z","event":"stage_transition","ticket":"SDLCCT-123","agent":"orch-20261104-s1","data":{"from":"Awaiting Gate","to":"Designing"}}
+{"ts":"2026-11-05T12:40:00Z","event":"session_end","agent":"orch-20261104-s1","data":{"report":"docs/session-report-20261105.md","stories_touched":["SDLCCT-115","SDLCCT-117","SDLCCT-45","SDLCCT-122","SDLCCT-123"],"open_human_inputs":["SDLCCT-120","SDLCCT-121"]}}
