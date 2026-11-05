@@ -621,3 +621,6 @@
 {"ts":"2026-11-05T12:10:00Z","event":"gate_review","ticket":"SDLCCT-117","agent":"orch-20261104-s1","data":{"gate":"G2","mode":"auto","result":"approved","criteria_results":{"no_human_gate_label":"pass","protected_paths_untouched":"pass","pr_exists":"pass","ci_green":"pass","reviewer_approve":"pass","checklist_complete":"pass","coverage_met":"n/a-frontend-no-threshold","e2e_declared_and_honored":"pass"}}}
 {"ts":"2026-11-05T12:14:00Z","event":"merge","ticket":"SDLCCT-117","agent":"orch-20261104-s1","data":{"pr":358}}
 {"ts":"2026-11-05T12:14:00Z","event":"stage_transition","ticket":"SDLCCT-117","agent":"orch-20261104-s1","data":{"from":"Awaiting Gate","to":"Done"}}
+{"ts":"2026-11-05T12:30:00Z","event":"escalation_resolved","ticket":"SDLCCT-45","agent":"orch-20261104-s1","data":{"note":"HUMAN-INPUT SDLCCT-49 resolved weeks earlier but ticket spec was never finalized; found via main-loop Blocked sweep, finalized, split, superseded"}}
+{"ts":"2026-11-05T12:30:00Z","event":"stage_transition","ticket":"SDLCCT-45","agent":"orch-20261104-s1","data":{"from":"Blocked","to":"Done","data":{"resolution":"superseded"}}}
+{"ts":"2026-11-05T12:30:00Z","event":"split","ticket":"SDLCCT-45","agent":"orch-20261104-s1","data":{"into":["SDLCCT-122","SDLCCT-123"],"reason":"combined BFF+frontend scope exceeded G1 size_ok (<=1 dev-day) threshold"}}
