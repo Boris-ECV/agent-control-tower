@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 
-import { groupSiblings } from "@/components/trace-detail/group-spans";
+import { groupSiblings, sortGroupsByStartTime } from "@/components/trace-detail/group-spans";
 import { formatSlashDateTime } from "@/lib/format";
 import { t } from "@/lib/i18n/t";
+import { SPAN_TYPE_COLORS } from "@/lib/span-type-colors";
 import type { SpanTreeNode } from "@/lib/trace-spans-api";
 
 // Recursive tree renderer (docs/design/SDLCCT-56.md decision #4): CSS
@@ -29,7 +30,11 @@ function SpanLabel({ node }: { node: SpanTreeNode }) {
     <>
       <span className="font-medium text-text-primary">{node.name ?? t("agentDetail.unknown")}</span>
       {node.type !== null && (
-        <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-text-secondary">
+        <span
+          className={`rounded border px-1.5 py-0.5 text-xs ${
+            SPAN_TYPE_COLORS[node.type] ?? "border-transparent bg-gray-100 text-text-secondary"
+          }`}
+        >
           {node.type}
         </span>
       )}
@@ -75,7 +80,11 @@ function GroupSpanRow({
         >
           <span className="font-medium text-text-primary">{name ?? t("agentDetail.unknown")}</span>
           {type !== null && (
-            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-text-secondary">
+            <span
+              className={`rounded border px-1.5 py-0.5 text-xs ${
+                SPAN_TYPE_COLORS[type] ?? "border-transparent bg-gray-100 text-text-secondary"
+              }`}
+            >
               {type}
             </span>
           )}
@@ -94,7 +103,7 @@ function GroupSpanRow({
 }
 
 export function SpanTreeRow({ nodes, depth }: { nodes: SpanTreeNode[]; depth: number }) {
-  const groups = groupSiblings(nodes);
+  const groups = sortGroupsByStartTime(groupSiblings(nodes));
 
   return (
     <>
