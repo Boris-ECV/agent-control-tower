@@ -217,5 +217,9 @@ export const messages = {
       cost: "預估成本",
     },
     footer: { dataSource: "資料來源：Agent registry ＋ 觀測性後端 trace/span 查詢。" },
+    waterfall: {
+      title: "Span 耗時時間軸",
+      empty: "沒有可顯示的資料",
+    },
   },
 } as const;

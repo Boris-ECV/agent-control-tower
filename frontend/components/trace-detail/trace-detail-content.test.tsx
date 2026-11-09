@@ -205,3 +205,53 @@ describe("TraceDetailContent meta tags + summary row wiring (SDLCCT-117)", () =>
     expect(spanCountValue).toContain("3");
   });
 });
+
+describe("TraceDetailContent waterfall timeline (SDLCCT-118)", () => {
+  it("shows both the existing 查無資料 text and the waterfall's own 沒有可顯示的資料 text when spans is empty", async () => {
+    mockFetch.mockResolvedValue({ display: "Sales Copilot" } as never);
+    mockFetchTraceSpans.mockResolvedValue({
+      key: "sales-copilot",
+      trace_id: "trc_123",
+      spans: [],
+      plant: null,
+      deployed_version: null,
+      dept: null,
+      trigger: null,
+      total_estimated_cost: null,
+    });
+    render(<TraceDetailContent />);
+    await act(async () => {});
+
+    expect(screen.getByText("查無資料")).toBeInTheDocument();
+    expect(screen.getByText("沒有可顯示的資料")).toBeInTheDocument();
+  });
+
+  it("renders a waterfall gridline/bar for spans with valid start and end times, alongside the existing tree list", async () => {
+    mockFetch.mockResolvedValue({ display: "Sales Copilot" } as never);
+    mockFetchTraceSpans.mockResolvedValue({
+      key: "sales-copilot",
+      trace_id: "trc_123",
+      spans: [
+        {
+          id: "1",
+          parent_span_id: null,
+          name: "root",
+          type: "tool",
+          start_time: "2026-10-01T00:00:00Z",
+          end_time: "2026-10-01T00:00:03Z",
+          children: [],
+        },
+      ],
+      plant: null,
+      deployed_version: null,
+      dept: null,
+      trigger: null,
+      total_estimated_cost: null,
+    });
+    const { container } = render(<TraceDetailContent />);
+    await act(async () => {});
+
+    expect(container.querySelector('[data-span-row="1"]')).not.toBeNull();
+    expect(container.textContent).toContain("3.0s");
+  });
+});
