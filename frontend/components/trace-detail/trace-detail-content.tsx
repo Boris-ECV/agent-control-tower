@@ -5,9 +5,13 @@ import { useCallback } from "react";
 
 import { TraceBreadcrumbs } from "@/components/trace-detail/trace-breadcrumbs";
 import { SpanTreeRow } from "@/components/trace-detail/span-tree-row";
+import { computeSpanSummary } from "@/components/trace-detail/span-summary";
 import { TraceBackLink } from "@/components/trace-detail/trace-back-link";
 import { TraceIdCopy } from "@/components/trace-detail/trace-id-copy";
+import { TraceMetaTags } from "@/components/trace-detail/trace-meta-tags";
+import { TraceSummaryRow } from "@/components/trace-detail/trace-summary-row";
 import { ErrorCard } from "@/components/cost-overview/error-card";
+import { useAgentDisplayName } from "@/lib/agent-display";
 import { fetchTraceSpans } from "@/lib/trace-spans-api";
 import { t } from "@/lib/i18n/t";
 import { useFetchOnce } from "@/lib/use-fetch-once";
@@ -30,6 +34,7 @@ export function TraceDetailContent() {
 
   const fetcher = useCallback(() => fetchTraceSpans(key, traceId), [key, traceId]);
   const state = useFetchOnce(fetcher);
+  const agentName = useAgentDisplayName(key);
 
   return (
     <div className="flex min-h-full flex-col bg-gray-50">
@@ -45,6 +50,28 @@ export function TraceDetailContent() {
           {t("traceDetail.header.title")}
         </h1>
         <TraceIdCopy traceId={traceId} />
+
+        {state.status === "success" &&
+          (() => {
+            const { startIso, durationSeconds, count } = computeSpanSummary(state.data.spans);
+            return (
+              <div className="mt-3 flex flex-col gap-3">
+                <TraceMetaTags
+                  agentName={agentName}
+                  plant={state.data.plant}
+                  deployedVersion={state.data.deployed_version}
+                  dept={state.data.dept}
+                  trigger={state.data.trigger}
+                />
+                <TraceSummaryRow
+                  startIso={startIso}
+                  durationSeconds={durationSeconds}
+                  spanCount={count}
+                  totalEstimatedCost={state.data.total_estimated_cost}
+                />
+              </div>
+            );
+          })()}
 
         {state.status === "loading" && (
           <div className="flex flex-col gap-3">

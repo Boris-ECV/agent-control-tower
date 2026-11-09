@@ -211,3 +211,10 @@ export function formatDayColumnHeader(isoDate: string | null | undefined): strin
   if (!parsed) return "—";
   return `${parsed.m}/${parsed.d} (${WEEKDAYS[parsed.weekday]})`;
 }
+
+/** Duration in seconds, rounded to 1 decimal: 12.34 -> "12.3s". Missing/
+ * non-finite -> "—" (docs/design/SDLCCT-117.md decision 5). */
+export function formatDurationSeconds(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined || !Number.isFinite(seconds)) return "—";
+  return `${seconds.toFixed(1)}s`;
+}
