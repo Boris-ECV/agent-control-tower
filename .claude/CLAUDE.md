@@ -80,6 +80,29 @@ report to the human supervisor.
    draft's count. Cost almost nothing to catch here since the orchestrator
    was already running the suite for G2 prep — the fix is just: always
    recompute the specific number, don't copy it from a subagent's report.
+2d. **This host has only ~2GB RAM.** `npm run build` (and anything that invokes Next.js's
+   type-check step, including `npx playwright test` when it has to boot the dev server
+   fresh) can OOM-crash with "FATAL ERROR: Zone Allocation failed - process out of
+   memory" or "Failed to type check." — this is a resource ceiling, not a code defect.
+   Observed twice in one session on a correct, reviewer-approved change
+   (SDLCCT-118): `npm run build` crashed locally both with and without a constrained
+   `NODE_OPTIONS=--max-old-space-size`, while `powershell -Command "Get-CimInstance
+   Win32_OperatingSystem | Select-Object TotalVisibleMemorySize,FreePhysicalMemory"`
+   showed free memory consistently under 450MB. **Rule:** (1) `npm run lint` and
+   `npm run test` (vitest, no Next.js build step) are reliable locally and remain
+   mandatory to run yourself — don't skip those; (2) if `npm run build` or local
+   `npm run test:e2e` OOM-crashes, do not treat that as a failing test or a reason to
+   send the ticket back to the developer/tester — note the crash and its exact error
+   text in the Jira comment, then treat the GitHub Actions CI run (hosted runners have
+   normal RAM) as the authoritative source for the build/e2e result, same as rule 2b's
+   principle but inverted: a local PASS isn't proof, and here a local resource-ceiling
+   FAILURE isn't proof of a defect either — always cross-check against what CI actually
+   reports for that exact commit before accepting either reading at face value; (3) if a
+   single `npm run test` run shows spurious "Worker exited unexpectedly" errors, suspect
+   this same resource contention (e.g. a concurrent `next build` competing for memory)
+   before concluding tests are flaky — rerun sequentially (not in parallel with any other
+   heavy local process) before trusting a failure.
+
 3. **Never modify `config/gates.yaml`.** Human-only file.
 3b. **Posting a gate report and moving the ticket to `Awaiting Gate` are
    one atomic step, never one without the other** — for every gate,
