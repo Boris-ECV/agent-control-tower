@@ -17,10 +17,14 @@ AC 對應範圍：
    SVG 或假格線。
 
 依賴：SDLCCT-56（Done，`trace-detail-content.tsx`/`span-tree-row.tsx`
-既有結構，本文件沿用不動其樹狀縮排/分組/展開互動）；SDLCCT-115（今日
-已過 G1、Designing 中，尚未合併——本文件假設其 export 的色票常數命名
-為 `SPAN_TYPE_COLORS`，見下方「關鍵技術決策 #1」的明確假設與理由，不
-是開放設計問題）；SDLCCT-117（軟依賴，未觸碰）。
+既有結構，本文件沿用不動其樹狀縮排/分組/展開互動）；SDLCCT-115（設計
+文件已核准並合併至 `main`，`docs/design/SDLCCT-115.md`——其 export 的
+色票常數為 `SPAN_TYPE_COLORS`，定義於新檔 `frontend/lib/
+span-type-colors.ts`，只含 `llm`/`tool` 兩個鍵，見下方「關鍵技術決策
+#1」；但截至本次修訂，該程式碼本身尚未合併至 `main`——`frontend/lib/
+span-type-colors.ts` 仍不存在於本分支/`main`，開發者應在實作本票前先
+確認 SDLCCT-115 程式碼是否已合併，若尚未合併需等待或協調合併順序）；
+SDLCCT-117（軟依賴，未觸碰）。
 
 範圍外（spec 已明定，本文件不觸碰）：縮放/互動式平移；span 分組
 （「× N」）判定或展開互動的任何變更；巢狀深度過深時的版面擁擠處理。
@@ -55,28 +59,33 @@ export function flattenSpans(nodes: SpanTreeNode[], depth?: number): FlatSpan[];
 
 ## 關鍵技術決策
 
-### 1. 色票常數 import 路徑：假設 `SPAN_TYPE_COLORS` 從
-`frontend/components/trace-detail/group-spans.ts` export
+### 1. 色票常數 import 路徑：`SPAN_TYPE_COLORS` 從新檔
+`frontend/lib/span-type-colors.ts` export（已確認，非假設）
 
-SDLCCT-115 的設計文件尚未產出（已確認 `docs/design/SDLCCT-115.md`
-不存在，程式碼中也尚無 `SPAN_TYPE_COLORS` 任何蹤跡——該票仍在
-Designing）。依本票 spec 原文「import 其 export 的 `SPAN_TYPE_COLORS`
-常數命名，不重複定義一份」，常數命名已由 spec 定案，唯一待確認的是
-它會從哪個檔案 export。`group-spans.ts` 是目前唯一處理「span 類型」
-邏輯（分組代表的 `type` 選取）的既有純邏輯檔案，不像
-`span-tree-row.tsx` 混雜 UI render，色票常數（純資料，無 JSX）更適合
-與它同檔或至少同目錄共享——因此假設從
-`frontend/components/trace-detail/group-spans.ts` import：
+本文件先前曾假設 `SPAN_TYPE_COLORS` 會與 `group-spans.ts`（既有唯一
+處理「span 類型」邏輯的純邏輯檔案）同檔或同目錄 export，理由是色票常數
+（純資料、無 JSX）性質上更適合與該檔共享，而非混雜 UI render 的
+`span-tree-row.tsx`。此假設已由 SDLCCT-115 已核准並合併的設計文件
+（`docs/design/SDLCCT-115.md`）證實**不成立**：該文件明訂 `SPAN_TYPE_
+COLORS` 放在獨立新檔 `frontend/lib/span-type-colors.ts`（刻意不放在
+`components/trace-detail/` 底下，理由同上——讓本票可以直接 import 同一
+份色票而不依賴 trace-detail 的樹狀 render 元件樹），且只含 `llm`/
+`tool` 兩個鍵（不含 `general`），`type` 不在表中時呼叫端須 fallback 到
+既有灰色樣式（見決策 #4）。本票 import 路徑改為：
 
 ```ts
-import { SPAN_TYPE_COLORS } from "@/components/trace-detail/group-spans";
+import { SPAN_TYPE_COLORS } from "@/lib/span-type-colors";
 ```
 
-若 SDLCCT-115 實際合併後常數位於別處（例如獨立新檔
-`span-type-colors.ts`），開發者只需改這一行 import 路徑，不影響本票
-任何渲染邏輯——不視為開放設計問題（常數命名已由 spec 定案，只有
-import 路徑待確認，屬機械性調整，開發階段依 SDLCCT-115 實際合併結果
-核對即可）。
+（路徑別名沿用 `tsconfig.json` 既有 `@/*` → `frontend/*` 設定，與
+SDLCCT-115 設計文件中 `frontend/lib/span-type-colors.ts` 的實際檔案
+位置對應一致。）
+
+**注意**：截至本次修訂，`frontend/lib/span-type-colors.ts` 檔案本身
+仍不存在於本分支/`main`（已實際搜尋確認）——即 SDLCCT-115 的設計文件
+已核准合併，但其程式碼尚未合併。本決策的 import 路徑是依據 SDLCCT-115
+**設計文件文字**推得，不是依據現存程式碼核對得出；開發本票前應先確認
+SDLCCT-115 程式碼合併狀態，避免 import 一個尚不存在的模組。
 
 ### 2. 瀑布圖的列順序/深度＝對整棵樹做前序走訪的順序/深度，不經過
 `groupSiblings`
@@ -139,6 +148,22 @@ Spec 明文的 AC4 只描述 `spans` 為空陣列這一種情況，但其陳述�
   `t("traceDetail.waterfall.empty")`＝「沒有可顯示的資料」文字，不渲染
   `<svg>`。
 
+**`spans` 為空陣列時與 SDLCCT-56 既有「查無資料」文案如何共存，已由
+人類於 SDLCCT-120 決定採選項 1**（見下方「開放設計問題」一節）：
+`trace-detail-content.tsx` 第 95-97 行 SDLCCT-56 既有的
+`state.data.spans.length === 0 && <p>{t("traceDetail.empty")}</p>`
+邏輯**完全不動**；本票的時間軸區塊是在同一個 `state.status ===
+"success"` 分支內，與第 95-97 行（`spans.length === 0` 顯示「查無
+資料」）、第 99-103 行（`spans.length > 0` 顯示樹狀列表）**平行並列
+（sibling）**渲染的第三個子區塊，其渲染條件不依賴 `spans.length`
+是否為 0——時間軸區塊永遠渲染（success 狀態下），內部再依「是否有任何
+一筆有效起訖時間的 span」決定顯示 SVG 或自己的「沒有可顯示的資料」空
+狀態文字（見上方 UI 原型空狀態條件）。也就是說新增的 JSX 應插入在第
+97 行與第 99 行之間（或第 103 行之後，順序不影響邏輯），作為獨立的
+第三個 `{state.status === "success" && ...}` 區塊，不嵌套在既有任一
+分支內部，兩段文字（「查無資料」與「沒有可顯示的資料」）可以同時出現
+在畫面上，彼此獨立、互不取代。
+
 新增 i18n key（append-only，接在既有 `traceDetail` 區塊下新增
 `waterfall` 子區塊，不改動既有任何既有 key）：
 
@@ -176,27 +201,14 @@ SDLCCT-115 合併其設計文件/測試後一併確認；本票未發現任何�
 
 ## 開放設計問題
 
-### SDLCCT-56 既有「`spans` 為空陣列 → 整頁顯示『查無資料』」與本票
-AC4「時間軸區塊顯示『沒有可顯示的資料』」如何共存，需要產品決定
+（無）
 
-`trace-detail-content.tsx` 目前的結構（SDLCCT-56 既有行為，見該檔案
-第 68-76 行）是：`state.data.spans.length === 0` 時，**整個內容區**
-只顯示一行 `t("traceDetail.empty")`＝「查無資料」，連樹狀列表容器
-`<div className="rounded-lg border ...">` 都不會渲染——也就是說，目前
-架構下根本不存在一個「時間軸區塊」可以在 `spans` 為空陣列時被渲染出來
-顯示本票要求的「沒有可顯示的資料」文字；本票 spec 原文卻明確指定這個
-情境（「`spans` 為空陣列」，與 SDLCCT-56 AC4 文字上是同一種情況）要
-顯示一段**不同**的文字。
-
-這兩種行為無法同時成立而不修改既有架構，有兩種可能的解法，但 spec
-都沒有講清楚要選哪一種，而這是一個會影響使用者看到的畫面文字/版面的
-產品決策，不是我可以自行決定的技術細節：
-
-1. 把 `trace-detail-content.tsx` 的空狀態分支改成「仍渲染一個時間軸
-   區塊容器，裡面顯示『沒有可顯示的資料』」，但樹狀列表部分維持顯示
-   『查無資料』（兩段不同文字同時出現在畫面上）；或
-2. 把整頁空狀態文字直接改成『沒有可顯示的資料』，取代 SDLCCT-56 原有
-   的『查無資料』（兩者不並存，等於本票收斂/取代了上一票的文案決定）。
-
-需要 HUMAN-INPUT 決定選哪一種（或是否有第三種處理方式），不應由本設計
-文件自行假設。
+> 原開放設計問題「SDLCCT-56 既有『`spans` 為空陣列 → 整頁顯示『查無
+> 資料』』與本票 AC4『時間軸區塊顯示『沒有可顯示的資料』』如何共存」
+> 已由人類於 SDLCCT-120 決定：**採選項 1**——SDLCCT-56 既有整頁
+> 「查無資料」空狀態邏輯（`trace-detail-content.tsx` 第 95-97 行，
+> `spans.length === 0` 時顯示 `t("traceDetail.empty")`）維持不變，不
+> 修改；時間軸區塊在同一個 success 狀態分支內，作為獨立、平行的子
+> 區塊額外渲染自己的空狀態文字「沒有可顯示的資料」（AC4 字面要求），
+> 兩段文字彼此獨立、同時可能出現在同一頁面，互不取代。具體渲染位置
+> 見上方「UI 原型」一節的說明。
