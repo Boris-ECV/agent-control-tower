@@ -658,3 +658,4 @@
 {"ts": "2026-11-10T17:24:39+08:00", "event": "stage_transition", "ticket": "SDLCCT-123", "agent": "tester", "data": {"from": "Testing", "to": "In Review", "e2e_full_suite": "190 passed, 0 failed", "e2e_declared": "needed"}}
 {"ts": "2026-11-10T17:27:50+08:00", "event": "gate_review", "ticket": "SDLCCT-123", "agent": "reviewer", "data": {"stage": "review", "verdict": "APPROVE"}}
 {"ts": "2026-11-10T17:28:59+08:00", "event": "gate_review", "ticket": "SDLCCT-123", "agent": "orch-20261110-s1", "data": {"gate": "G2", "mode": "auto", "result": "pass", "pr": 376, "ci": "green", "merged": true}}
+{"ts": "2026-11-10T17:35:00+08:00", "event": "session_end", "ticket": null, "agent": "orch-20261110-s1", "data": {"stories_advanced": ["SDLCCT-118", "SDLCCT-122", "SDLCCT-123"], "reopens": 1, "escalations_used": 0, "duplicate_tickets_closed": 1}}
