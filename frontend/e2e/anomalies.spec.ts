@@ -437,6 +437,100 @@ test("SDLCCT-84 AC4: 點擊告警列導航至該告警對應 Agent 的詳情頁"
   await expect(page).toHaveURL(/\/agents\/sales-copilot$/);
 });
 
+// SDLCCT-123 scenario below (tester-authored).
+
+test("SDLCCT-123: 依 Agent 篩選異常清單，且可與異常類型篩選同時生效（AND 組合）", async ({
+  page,
+}) => {
+  await page.route("**/api/anomalies", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-20",
+        anomalies: [
+          { agent: "a1", anomaly_type: "model_switch", date: "2026-10-18", status: "ok", reason: "r1" },
+          { agent: "a1", anomaly_type: "governance_gap", date: null, status: "ok", reason: "r2" },
+          { agent: "a2", anomaly_type: "model_switch", date: "2026-10-18", status: "ok", reason: "r3" },
+          { agent: null, anomaly_type: "model_switch", date: "2026-10-18", status: "ok", reason: "r4" },
+        ],
+      }),
+    });
+  });
+  await page.route("**/api/agents", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        anchor_date: "2026-10-20",
+        period_start: "2026-10-01",
+        agents: [
+          {
+            key: "a1",
+            display: "一號助手",
+            dept: "Sales",
+            owner: "alice",
+            budget: 1000,
+            current_period_spend: 500,
+            budget_consumed_pct: 50,
+            has_governance_gap: false,
+            registered: true,
+            trend: [],
+          },
+          {
+            key: "a2",
+            display: "二號助手",
+            dept: "Sales",
+            owner: "bob",
+            budget: 1000,
+            current_period_spend: 500,
+            budget_consumed_pct: 50,
+            has_governance_gap: false,
+            registered: true,
+            trend: [],
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/anomalies");
+
+  // agent === null 的列選「全部」時仍顯示「不明」。
+  await expect(page.getByText("不明").first()).toBeVisible();
+  await expect(page.getByText("顯示 4 / 4")).toBeVisible();
+
+  // 依 Agent 篩選：只顯示該 Agent 的列，其他 Agent（及 agent===null）的列消失。
+  const agentFilterGroup = page.getByRole("group", { name: "依 Agent 篩選" });
+  const typeFilterGroup = page.getByRole("group", { name: "依異常類型篩選" });
+  await agentFilterGroup.getByText("一號助手").click();
+
+  await expect(page.getByText("r1").first()).toBeVisible();
+  await expect(page.getByText("r2").first()).toBeVisible();
+  await expect(page.getByText("r3")).not.toBeVisible();
+  await expect(page.getByText("r4")).not.toBeVisible();
+  await expect(page.getByText("不明")).not.toBeVisible();
+  await expect(page.getByText("顯示 2 / 4")).toBeVisible();
+
+  // AND 組合：再疊加異常類型篩選。
+  await typeFilterGroup.getByText("模型切換").click();
+  await expect(page.getByText("r1").first()).toBeVisible();
+  await expect(page.getByText("r2")).not.toBeVisible();
+  await expect(page.getByText("顯示 1 / 4")).toBeVisible();
+
+  // 異常類型篩選改回「全部」：Agent 篩選條件仍維持生效。
+  await typeFilterGroup.getByText("全部").click();
+  await expect(page.getByText("r1").first()).toBeVisible();
+  await expect(page.getByText("r2").first()).toBeVisible();
+  await expect(page.getByText("r3")).not.toBeVisible();
+  await expect(page.getByText("顯示 2 / 4")).toBeVisible();
+
+  // 清除 Agent 篩選回到「全部」：重新顯示所有列（含 agent===null 的「不明」）。
+  await agentFilterGroup.getByText("全部").click();
+  await expect(page.getByText("顯示 4 / 4")).toBeVisible();
+  await expect(page.getByText("不明").first()).toBeVisible();
+});
+
 test("SDLCCT-84: agent 為 null 的列不可點擊（沒有有效 Agent key 可供導航）", async ({ page }) => {
   await page.route("**/api/anomalies", async (route) => {
     await route.fulfill({
