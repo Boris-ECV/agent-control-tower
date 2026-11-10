@@ -1460,59 +1460,45 @@ E3 Portal MVP
 **規模預估**
 接近 1 個開發日
 
-## SDLCCT-122 — 異常清單彙整 BFF 端點
+## SDLCCT-122 — 異常清單彙整 BFF 端點（重複票，已關閉）
 
 來源：split from SDLCCT-45（Anomalies screen, Portal MVP screen 5 of 6）
 
+**狀態更新**：本票與已 Done 的 SDLCCT-51（Anomaly aggregation endpoint）規格幾乎完全相同——SDLCCT-45 曾被拆分兩次，第一次（產出 SDLCCT-51/52）未被第二次拆分（產出本票與 SDLCCT-123）的 requirements-analyst 注意到。orchestrator 核實 `bff/api/anomalies.py`（docstring 明確記載「SDLCCT-51, split from SDLCCT-45」）已完整實作本票全部 5 條 Gherkin AC，無任何缺口。本票標記為重複票並轉入 Done，未產生任何程式碼變更。實際交付內容請見 SDLCCT-51。
+
+## SDLCCT-123 — 異常清單依 Agent 篩選（原「異常清單前端畫面」，範圍因 SDLCCT-52 已交付大部分內容而收斂）
+
+來源：split from SDLCCT-45（Anomalies screen, Portal MVP screen 5 of 6）
+
+**狀態更新**：本票原描述為完整的「異常清單前端畫面」，並宣稱依賴 SDLCCT-122。經核實，SDLCCT-122 為重複票（見上），且本票原列 4 條 AC 中 3 條（清單呈現、依異常類型篩選、明確錯誤狀態）已由已完成的 SDLCCT-52（`frontend/app/anomalies/page.tsx`）實作並上線。真實範圍收斂為僅「在既有 `/anomalies` 頁面新增依 Agent 篩選維度」。已 Done（PR #376）。
+
 **目的與背景**
-這是 E3 Portal MVP 畫面 #5（異常清單）的後端部分。E4 已完成的 5 條異常偵測規則，每一條各自對應一個 demo 情境。本票負責把這 5 條規則組裝成一個統一的異常清單端點；前端呈現頁面為獨立的姊妹票（SDLCCT-123），依賴本票的輸出。本票不新增任何判斷規則本身，純粹是既有偵測邏輯的彙整。
+在既有 `/anomalies` 頁面（SDLCCT-52 交付）上，新增一個「依 Agent 篩選」維度，與既有「異常類型」篩選器並列、以 AND 條件組合，消費既有的 `GET /api/anomalies`（SDLCCT-51）與 `GET /api/agents` 回應。
 
 **驗收條件（Gherkin 情境名稱摘要）**
-1. 異常清單彙整全部 5 種規則類型
-2. 治理缺口異常的 date 欄位為 null
-3. 模型切換異常的 date 欄位來自 switch_date
-4. 疑似原因文字僅來自規則判斷依據
-5. 後端查詢失敗時端點明確回傳錯誤，不可回傳成沒有異常
+
+非回歸（SDLCCT-52 已交付，本票僅確認仍成立）：
+1. 清單呈現維持正常
+2. 依異常類型篩選維持正常
+3. 端點錯誤時維持明確錯誤狀態
+
+新範圍：
+4. 依 Agent 篩選異常清單
+5. Agent 篩選與異常類型篩選可同時生效（AND 組合）
+6. 清除 Agent 篩選回到「全部」
+7. 沒有有效 Agent 的列不受 Agent 篩選影響而消失或誤顯示
 
 **範圍外**
-- 前端呈現、篩選/排序 UI（SDLCCT-123 範圍）
-- 可建立預算與告警（Opik Alerts API 未驗證，不做）
-- 畫面#4執行詳情
-- 任何異常的處置動作
+- 重新實作已上線的清單呈現/類型篩選/錯誤狀態（SDLCCT-52 已交付行為）
+- 任何後端變更
+- 以完整 Agent registry（而非清單中實際出現的 Agent）產生篩選選項
+- 可建立預算與告警、畫面#4執行詳情、任何異常的處置動作
 
 **依賴**
-SDLCCT-27/28/29/30/31（已Done）、SDLCCT-12（已Done）、SDLCCT-10/11（已Done）。SDLCCT-49（HUMAN-INPUT，已解決，決議併入範圍）。拆分自 SDLCCT-45。
+`GET /api/anomalies`（SDLCCT-51，已上線）、`GET /api/agents`（已上線）、SDLCCT-52（已完成，本票疊加其上）。拆分自 SDLCCT-45。
 
 **Epic 歸屬**
 E3 Portal MVP
 
 **規模預估**
-約 0.5～1 個開發日
-
-## SDLCCT-123 — 異常清單前端畫面
-
-來源：split from SDLCCT-45（Anomalies screen, Portal MVP screen 5 of 6）
-
-**目的與背景**
-這是 E3 Portal MVP 畫面 #5（異常清單）的前端部分。後端已由 SDLCCT-122 彙整出統一的異常清單端點；本票負責把該清單呈現給使用者，並提供依 Agent、依異常類型的篩選能力。本票不涉及任何偵測規則邏輯，純粹消費 SDLCCT-122 的 API 輸出。
-
-**驗收條件（Gherkin 情境名稱摘要）**
-1. 畫面呈現 SDLCCT-122 端點回傳的異常清單
-2. 依 Agent 篩選異常清單
-3. 依異常類型篩選異常清單
-4. SDLCCT-122 端點回傳錯誤時畫面明確顯示錯誤
-
-**範圍外**
-- SDLCCT-122 的後端彙整邏輯、5 條規則本身、date 欄位對齊邏輯
-- 可建立預算與告警
-- 畫面#4執行詳情
-- 任何異常的處置動作
-
-**依賴**
-SDLCCT-122（硬依賴）、SDLCCT-37/38/39（已Done）。拆分自 SDLCCT-45。
-
-**Epic 歸屬**
-E3 Portal MVP
-
-**規模預估**
-約 0.5～1 個開發日
+約 0.25 個開發日（修正後，遠小於原估的 0.5～1 個開發日）
