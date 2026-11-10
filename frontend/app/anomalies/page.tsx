@@ -18,6 +18,10 @@ import { useFetchOnce } from "@/lib/use-fetch-once";
 // 的 key 與文案，不新增第 6 種類型）。
 type AnomalyTypeFilter = "all" | keyof typeof ANOMALY_TYPE_LABELS;
 
+// SDLCCT-123：第二個獨立篩選維度（依 Agent），與既有 anomaly-type 篩選
+// 完全不互相依賴，以 AND 條件組合（見 docs/design/SDLCCT-123.md）。
+type AgentFilterValue = "all" | string;
+
 const FILTER_OPTIONS: { value: AnomalyTypeFilter; label: string }[] = [
   { value: "all", label: t("anomalies.filter.all") },
   ...(Object.keys(ANOMALY_TYPE_LABELS) as (keyof typeof ANOMALY_TYPE_LABELS)[]).map((key) => ({
@@ -30,6 +34,7 @@ export default function AnomaliesPage() {
   const anomaliesState = useFetchOnce(fetchAnomalyFeed);
   const agentsState = useFetchOnce(fetchAgentsList);
   const [filter, setFilter] = useState<AnomalyTypeFilter>("all");
+  const [agentFilter, setAgentFilter] = useState<AgentFilterValue>("all");
 
   // SDLCCT-84 決策 4：anomalies 本身是主要資料來源，agents 列表失敗時不阻
   // 斷整頁渲染——改走 agentDisplayNames 為空 Map 的 fallback（AgentCell 顯
@@ -45,16 +50,41 @@ export default function AnomaliesPage() {
     return map;
   }, [agentsState]);
 
-  const allRows: EnrichedAnomalyRow[] =
-    anomaliesState.status === "success"
-      ? anomaliesState.data.anomalies.map((row: AnomalyRow) => ({
-          ...row,
-          agentDisplay: row.agent !== null ? agentDisplayNames.get(row.agent) : undefined,
-        }))
-      : [];
+  const allRows: EnrichedAnomalyRow[] = useMemo(
+    () =>
+      anomaliesState.status === "success"
+        ? anomaliesState.data.anomalies.map((row: AnomalyRow) => ({
+            ...row,
+            agentDisplay: row.agent !== null ? agentDisplayNames.get(row.agent) : undefined,
+          }))
+        : [],
+    [anomaliesState, agentDisplayNames],
+  );
 
-  const filteredRows =
+  // SDLCCT-123：篩選選項來自未篩選的原始 allRows（不隨另一個篩選條件縮
+  // 小，沿用 SDLCCT-108/111 既有慣例），排除 agent === null 的列，依顯示
+  // 名稱 localeCompare("zh-Hant") 排序（見 docs/design/SDLCCT-123.md 決策
+  // 1）。
+  const agentFilterOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const row of allRows) {
+      if (row.agent !== null && !seen.has(row.agent)) {
+        seen.set(row.agent, agentDisplayNames.get(row.agent) ?? row.agent);
+      }
+    }
+    return Array.from(seen.entries())
+      .sort((a, b) => a[1].localeCompare(b[1], "zh-Hant"))
+      .map(([code, label]) => ({ value: code, label }));
+  }, [allRows, agentDisplayNames]);
+
+  // AND 組合：先套用既有類型篩選，再套用新 Agent 篩選（鏈式 .filter()，
+  // 兩者互相獨立，任一個改回 "all" 不影響另一個已套用的條件）。
+  const typeFilteredRows =
     filter === "all" ? allRows : allRows.filter((row) => row.anomaly_type === filter);
+  const filteredRows =
+    agentFilter === "all"
+      ? typeFilteredRows
+      : typeFilteredRows.filter((row) => row.agent === agentFilter);
 
   const okRows = filteredRows.filter((row) => row.status === "ok");
   const errorRows = filteredRows.filter((row) => row.status === "error");
@@ -99,7 +129,16 @@ export default function AnomaliesPage() {
 
           {!isLoading && anomaliesState.status === "success" && (
             <>
-              <div className="mb-4">
+              <div className="mb-4 flex flex-col gap-3">
+                <SegmentedFilter<AgentFilterValue>
+                  aria-label={t("anomalies.filter.agentAriaLabel")}
+                  options={[
+                    { value: "all", label: t("anomalies.filter.all") },
+                    ...agentFilterOptions,
+                  ]}
+                  value={agentFilter}
+                  onChange={setAgentFilter}
+                />
                 <SegmentedFilter<AnomalyTypeFilter>
                   aria-label={t("anomalies.filter.ariaLabel")}
                   options={FILTER_OPTIONS}
