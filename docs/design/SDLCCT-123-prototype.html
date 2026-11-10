@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <title>SDLCCT-123 原型 — 異常清單依 Agent 篩選</title>
+    <style>
+      :root {
+        --border: #e5e7eb;
+        --bg: #ffffff;
+        --bg-gray-50: #f9fafb;
+        --text-primary: #111827;
+        --text-secondary: #6b7280;
+        --accent: #2563eb;
+        --red-50: #fef2f2;
+        --red-300: #fca5a5;
+        --red-700: #b91c1c;
+        --red-600: #dc2626;
+        --amber-50: #fffbeb;
+        --amber-300: #fcd34d;
+        --amber-700: #b45309;
+        --amber-600: #d97706;
+      }
+      body {
+        font-family: -apple-system, "Noto Sans TC", "PingFang TC", sans-serif;
+        background: var(--bg-gray-50);
+        color: var(--text-primary);
+        margin: 0;
+        padding: 24px;
+      }
+      .state-block {
+        max-width: 960px;
+        margin: 0 auto 40px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 20px;
+      }
+      .state-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--accent);
+        margin: 0 0 12px;
+      }
+      h1 {
+        font-size: 24px;
+        font-weight: 700;
+        margin: 0 0 4px;
+      }
+      .subtitle {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin: 0 0 20px;
+      }
+      .filters {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .segmented {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .toggle-group {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        border: 1px solid var(--border);
+        background: var(--bg-gray-50);
+        border-radius: 8px;
+        padding: 4px;
+      }
+      .toggle {
+        border: none;
+        background: transparent;
+        border-radius: 6px;
+        padding: 4px 12px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        cursor: default;
+      }
+      .toggle.pressed {
+        background: var(--bg);
+        color: var(--text-primary);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--border);
+      }
+      .count-label {
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      th {
+        text-align: left;
+        color: var(--text-secondary);
+        font-weight: 500;
+        border-bottom: 1px solid var(--border);
+        padding: 8px 6px;
+      }
+      td {
+        padding: 10px 6px;
+        border-bottom: 1px solid var(--border);
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border-radius: 999px;
+        padding: 2px 8px;
+        font-size: 12px;
+        font-weight: 500;
+        border: 1px solid;
+      }
+      .badge.danger {
+        color: var(--red-700);
+        background: var(--red-50);
+        border-color: var(--red-300);
+      }
+      .badge.danger .dot {
+        background: var(--red-600);
+      }
+      .badge.warning {
+        color: var(--amber-700);
+        background: var(--amber-50);
+        border-color: var(--amber-300);
+      }
+      .badge.warning .dot {
+        background: var(--amber-600);
+      }
+      .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        display: inline-block;
+      }
+      .agent-cell .code {
+        display: block;
+        font-family: "SF Mono", monospace;
+        font-size: 11px;
+        color: var(--text-secondary);
+      }
+      .unknown {
+        color: var(--text-secondary);
+      }
+      .faded-row {
+        opacity: 0.35;
+        text-decoration: line-through;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 狀態 1：兩個篩選器皆為「全部」 -->
+    <section class="state-block">
+      <p class="state-title">狀態 1：Agent 篩選＝全部，異常類型篩選＝全部（初始狀態）</p>
+      <h1>異常與告警</h1>
+      <p class="subtitle">彙整各規則偵測到的異常與治理缺口，包含持續中的治理缺口。</p>
+      <div class="filters">
+        <div class="segmented">
+          <div class="toggle-group" aria-label="依 Agent 篩選">
+            <button class="toggle pressed">全部</button>
+            <button class="toggle">訂單狀態查詢</button>
+            <button class="toggle">銷售副駕</button>
+            <button class="toggle">維運機器人</button>
+          </div>
+        </div>
+        <div class="segmented">
+          <div class="toggle-group" aria-label="依異常類型篩選">
+            <button class="toggle pressed">全部</button>
+            <button class="toggle">工具重試迴圈</button>
+            <button class="toggle">模型切換</button>
+            <button class="toggle">治理缺口</button>
+          </div>
+          <span class="count-label">顯示 4 / 4</span>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Agent</th>
+            <th>異常類型</th>
+            <th>日期</th>
+            <th>原因</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="agent-cell">訂單狀態查詢<span class="code">order_status</span></td>
+            <td><span class="badge warning"><span class="dot"></span>模型切換</span></td>
+            <td>2026/11/01</td>
+            <td>模型於 11/1 由 gpt-4 切換為 gpt-4o-mini</td>
+          </tr>
+          <tr>
+            <td class="agent-cell">銷售副駕<span class="code">sales_copilot</span></td>
+            <td>工具重試迴圈</td>
+            <td>2026/11/03</td>
+            <td>連續重試同一工具 5 次以上</td>
+          </tr>
+          <tr>
+            <td class="agent-cell">維運機器人<span class="code">ops_bot</span></td>
+            <td><span class="badge danger"><span class="dot"></span>治理缺口</span></td>
+            <td>持續中</td>
+            <td>缺少必要的審核流程紀錄</td>
+          </tr>
+          <tr>
+            <td class="unknown">不明</td>
+            <td>情境膨脹</td>
+            <td>2026/11/05</td>
+            <td>單次呼叫上下文超過門檻</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 狀態 2：只選特定 Agent -->
+    <section class="state-block">
+      <p class="state-title">
+        狀態 2：Agent 篩選＝「訂單狀態查詢」，異常類型篩選＝全部——agent=null 的列消失
+      </p>
+      <div class="filters">
+        <div class="segmented">
+          <div class="toggle-group" aria-label="依 Agent 篩選">
+            <button class="toggle">全部</button>
+            <button class="toggle pressed">訂單狀態查詢</button>
+            <button class="toggle">銷售副駕</button>
+            <button class="toggle">維運機器人</button>
+          </div>
+        </div>
+        <div class="segmented">
+          <div class="toggle-group" aria-label="依異常類型篩選">
+            <button class="toggle pressed">全部</button>
+            <button class="toggle">工具重試迴圈</button>
+            <button class="toggle">模型切換</button>
+            <button class="toggle">治理缺口</button>
+          </div>
+          <span class="count-label">顯示 1 / 4</span>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Agent</th>
+            <th>異常類型</th>
+            <th>日期</th>
+            <th>原因</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="agent-cell">訂單狀態查詢<span class="code">order_status</span></td>
+            <td><span class="badge warning"><span class="dot"></span>模型切換</span></td>
+            <td>2026/11/01</td>
+            <td>模型於 11/1 由 gpt-4 切換為 gpt-4o-mini</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 狀態 3：同時選特定 Agent + 特定異常類型（AND） -->
+    <section class="state-block">
+      <p class="state-title">
+        狀態 3：Agent 篩選＝「維運機器人」且異常類型篩選＝「治理缺口」（AND 組合）
+      </p>
+      <div class="filters">
+        <div class="segmented">
+          <div class="toggle-group" aria-label="依 Agent 篩選">
+            <button class="toggle">全部</button>
+            <button class="toggle">訂單狀態查詢</button>
+            <button class="toggle">銷售副駕</button>
+            <button class="toggle pressed">維運機器人</button>
+          </div>
+        </div>
+        <div class="segmented">
+          <div class="toggle-group" aria-label="依異常類型篩選">
+            <button class="toggle">全部</button>
+            <button class="toggle">工具重試迴圈</button>
+            <button class="toggle">模型切換</button>
+            <button class="toggle pressed">治理缺口</button>
+          </div>
+          <span class="count-label">顯示 1 / 4</span>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Agent</th>
+            <th>異常類型</th>
+            <th>日期</th>
+            <th>原因</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="agent-cell">維運機器人<span class="code">ops_bot</span></td>
+            <td><span class="badge danger"><span class="dot"></span>治理缺口</span></td>
+            <td>持續中</td>
+            <td>缺少必要的審核流程紀錄</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 狀態 4：異常類型篩選改回全部，Agent 篩選維持生效 -->
+    <section class="state-block">
+      <p class="state-title">
+        狀態 4：異常類型篩選改回「全部」，Agent 篩選（「維運機器人」）仍維持生效
+      </p>
+      <div class="filters">
+        <div class="segmented">
+          <div class="toggle-group" aria-label="依 Agent 篩選">
+            <button class="toggle">全部</button>
+            <button class="toggle">訂單狀態查詢</button>
+            <button class="toggle">銷售副駕</button>
+            <button class="toggle pressed">維運機器人</button>
+          </div>
+        </div>
+        <div class="segmented">
+          <div class="toggle-group" aria-label="依異常類型篩選">
+            <button class="toggle pressed">全部</button>
+            <button class="toggle">工具重試迴圈</button>
+            <button class="toggle">模型切換</button>
+            <button class="toggle">治理缺口</button>
+          </div>
+          <span class="count-label">顯示 1 / 4</span>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Agent</th>
+            <th>異常類型</th>
+            <th>日期</th>
+            <th>原因</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="agent-cell">維運機器人<span class="code">ops_bot</span></td>
+            <td><span class="badge danger"><span class="dot"></span>治理缺口</span></td>
+            <td>持續中</td>
+            <td>缺少必要的審核流程紀錄</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="font-size: 12px; color: var(--text-secondary); margin-top: 12px">
+        （對照：狀態 1 中「銷售副駕／工具重試迴圈」「不明／情境膨脹」兩列在此狀態下因
+        Agent 篩選仍維持「維運機器人」而不出現，證明兩個篩選維度互相獨立，不會因為其中一
+        個改回「全部」而連動重置另一個。）
+      </p>
+    </section>
+  </body>
+</html>
