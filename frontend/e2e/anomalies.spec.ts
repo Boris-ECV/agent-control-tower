@@ -115,10 +115,16 @@ test("anomalies page renders ok rows, null-date ongoing text, and error banners 
   // AC4: status="error" rows must not be silently omitted -- surfaced via a
   // banner above the table, including the affected agent (or a clear
   // placeholder when agent is null) and the reason.
-  await expect(page.getByText("ops-bot")).toBeVisible();
-  await expect(page.getByText("查詢觀測性後端逾時")).toBeVisible();
-  await expect(page.getByText("不明")).toBeVisible();
-  await expect(page.getByText("整批治理缺口規則執行失敗")).toBeVisible();
+  // SDLCCT-123: scoped to the banner's own <div> wrapper (same pattern as the
+  // multi-banner test below) -- the new Agent-filter SegmentedFilter button
+  // now also renders the raw agent code as its label when agentDisplayNames
+  // has no entry for it (this fixture doesn't mock /api/agents), so an
+  // unscoped "ops-bot" locator matches both the filter button and the banner.
+  const errorBanners = page.locator("div.border-red-300");
+  await expect(errorBanners.nth(0)).toContainText("ops-bot");
+  await expect(errorBanners.nth(0)).toContainText("查詢觀測性後端逾時");
+  await expect(errorBanners.nth(1)).toContainText("不明");
+  await expect(errorBanners.nth(1)).toContainText("整批治理缺口規則執行失敗");
 });
 
 test("AC4: multiple error rows with mixed null/non-null agents each render their own distinct banner", async ({
@@ -274,8 +280,12 @@ test("mobile viewport: card list view also honors AC1-AC4 (date/ongoing, agent, 
 
   // AC4: the error banner is not a responsive component (no hidden/md:hidden
   // classes in anomaly-error-banner.tsx) and must still surface on mobile.
-  await expect(page.getByText("ops-bot")).toBeVisible();
-  await expect(page.getByText("查詢觀測性後端逾時")).toBeVisible();
+  // SDLCCT-123: scoped to the banner's own <div> wrapper -- see the earlier
+  // desktop AC4 test's note on the new Agent-filter button colliding with an
+  // unscoped "ops-bot" locator.
+  const mobileErrorBanner = page.locator("div.border-red-300");
+  await expect(mobileErrorBanner).toContainText("ops-bot");
+  await expect(mobileErrorBanner).toContainText("查詢觀測性後端逾時");
 });
 
 // SDLCCT-84 scenarios below.
