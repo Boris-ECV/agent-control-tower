@@ -10,6 +10,7 @@ import { TraceBackLink } from "@/components/trace-detail/trace-back-link";
 import { TraceIdCopy } from "@/components/trace-detail/trace-id-copy";
 import { TraceMetaTags } from "@/components/trace-detail/trace-meta-tags";
 import { TraceSummaryRow } from "@/components/trace-detail/trace-summary-row";
+import { SpanWaterfall } from "@/components/trace-detail/span-waterfall";
 import { ErrorCard } from "@/components/cost-overview/error-card";
 import { useAgentDisplayName } from "@/lib/agent-display";
 import { fetchTraceSpans } from "@/lib/trace-spans-api";
@@ -94,6 +95,12 @@ export function TraceDetailContent() {
 
         {state.status === "success" && state.data.spans.length === 0 && (
           <p className="text-sm text-text-secondary">{t("traceDetail.empty")}</p>
+        )}
+
+        {state.status === "success" && (
+          <div className="mt-3">
+            <SpanWaterfall nodes={state.data.spans} />
+          </div>
         )}
 
         {state.status === "success" && state.data.spans.length > 0 && (
