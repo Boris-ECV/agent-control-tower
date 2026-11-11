@@ -40,6 +40,33 @@ report to the human supervisor.
    your answer" (true count: 0) and then proposed a fix that over-
    counted in the other direction; only verifying its own proposed
    query before shipping it caught the second mistake.
+1d. **A human can answer a HUMAN-INPUT ticket with a comment alone,
+   leaving BOTH `status` and `resolution` completely unchanged.** Rule
+   1c's two field-reliability gaps (no direct transition to `Done`;
+   `Done` not auto-populating `resolution`) both assume the human's
+   answer eventually shows up in *some* field. It doesn't have to: a
+   comment reply is itself a complete, valid answer, and nothing in
+   this Jira workflow requires or causes it to also move `status` or
+   set `resolution` — only the orchestrator's own follow-up action does
+   that, same as a gate decision (rule 3d). So rule 1c's own suggested
+   query (`status != Done AND resolution is EMPTY`) can still wrongly
+   report a ticket as open when the human has, in fact, already
+   answered it in a comment the orchestrator never read. **Rule:**
+   before telling the human a specific HUMAN-INPUT ticket is "still
+   awaiting your answer" — in a board snapshot, a session report, or
+   anywhere else — fetch and read that ticket's comment thread, not
+   just its status/resolution fields. If a comment contains an answer,
+   apply it (finalize the blocked ticket's open question, clear it, move
+   it out of Blocked) and close the HUMAN-INPUT ticket (set
+   `resolution`) before ever reporting on it, rather than listing it as
+   pending. Observed in this framework's pilot: three HUMAN-INPUT
+   tickets were answered via comment roughly an hour before a session
+   paused; on resuming, the orchestrator re-checked `status`/`resolution`
+   per rule 1c, found both fields still "open," and told the human all
+   three were still awaiting reply — the human had to point out they'd
+   already answered. Cost: the three downstream Blocked stories sat
+   unblocked-but-untouched for that entire window for no reason, and the
+   human had to repeat themselves.
 2. **Never skip exit-criteria verification.** Feeling confident is not
    verification. Run the checks (docs/02 §3) item by item.
 2b. **A local `pytest` pass is not proof the PR is green — check the
