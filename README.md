@@ -6,7 +6,7 @@ presents cost, quality and governance views for business and operations
 managers.
 
 The current milestone is a customer demo around a **cost-runaway** story for a
-manufacturing company. All demo data is synthetic.
+software team. All demo data is synthetic.
 
 ## Status
 
